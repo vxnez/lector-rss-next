@@ -228,20 +228,24 @@ function limpiarUrl(urlRaw) {
   }
 }
 
-async function obtenerTextoDecodificado(url, timeoutMs = 15000) {
+const RSS_TIMEOUT_MS = 8000;
+const HTML_TIMEOUT_MS = 12000;
+const MAX_FEED_CANDIDATES = 80;
+
+async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(url, { 
-      headers: HEADERS_BROWSER, 
+    const res = await fetch(url, {
+      headers: HEADERS_BROWSER,
       redirect: "follow",
-      signal: controller.signal 
+      signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    
+
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-    
+
     const buffer = await res.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
@@ -253,7 +257,11 @@ async function obtenerTextoDecodificado(url, timeoutMs = 15000) {
       ? new TextDecoder("windows-1252").decode(bytes)
       : utf8Text;
 
-    return repararTextoMalDecodificado(text);
+    return {
+      text: repararTextoMalDecodificado(text),
+      urlFinal: res.url || url,
+      contentType,
+    };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === "AbortError") {
@@ -265,90 +273,195 @@ async function obtenerTextoDecodificado(url, timeoutMs = 15000) {
 
 async function intentarParsearFeed(url) {
   try {
-    const xmlText = await obtenerTextoDecodificado(url);
-    const feed = await parser.parseString(xmlText);
+    const respuesta = await obtenerTextoDecodificado(url);
+    const contenido = respuesta.text.trim();
+    let feed;
+
+    if (contenido.startsWith("{")) {
+      const json = JSON.parse(contenido);
+      if (Array.isArray(json.items)) {
+        feed = {
+          title: json.title || "Fuente RSS",
+          items: json.items.map((item) => ({
+            title: item.title,
+            link: item.url || item.external_url,
+            content: item.content_html || item.content_text,
+            summary: item.summary,
+            isoDate: item.date_published || item.date_modified,
+            guid: item.id,
+          })),
+        };
+      }
+    } else {
+      feed = await parser.parseString(contenido);
+    }
+
     if (feed && feed.items && feed.items.length > 0) {
-      return feed;
+      return { feed, urlFinal: respuesta.urlFinal };
     }
   } catch (e) {
-    try {
-      const feed = await parser.parseURL(url);
-      if (feed && feed.items && feed.items.length > 0) return feed;
-    } catch (parseErr) {}
+    return null;
   }
   return null;
 }
 
+function agregarCandidato(candidatos, href, baseUrl, prioridad = 0) {
+  if (!href || candidatos.length >= MAX_FEED_CANDIDATES) return;
+
+  const valor = String(href)
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .trim();
+  if (!valor || /^(javascript:|mailto:|tel:|#)/i.test(valor)) return;
+
+  try {
+    const url = new URL(valor, baseUrl);
+    if (!/^https?:$/.test(url.protocol)) return;
+    url.hash = "";
+    const normalizada = url.href;
+    if (!candidatos.some((candidato) => candidato.url === normalizada)) {
+      candidatos.push({ url: normalizada, prioridad });
+    }
+  } catch (error) {
+    // Los enlaces malformados de una página no deben cancelar el descubrimiento.
+  }
+}
+
+function extraerCandidatosDesdeHtml(html, urlBase) {
+  const candidatos = [];
+  const $ = cheerio.load(html, { decodeEntities: true });
+  const baseHref = $("base[href]").first().attr("href");
+  let baseUrl = urlBase;
+
+  try {
+    baseUrl = baseHref ? new URL(baseHref, urlBase).href : urlBase;
+  } catch (error) {}
+
+  $("link[href]").each((_, element) => {
+    const href = $(element).attr("href");
+    const type = ($(element).attr("type") || "").toLowerCase();
+    const rel = ($(element).attr("rel") || "").toLowerCase();
+    const esFeed = /rss|atom|rdf|xml|json|feed/.test(`${type} ${rel}`);
+    agregarCandidato(candidatos, href, baseUrl, esFeed ? 100 : 80);
+  });
+
+  $("meta[content]").each((_, element) => {
+    const contenido = $(element).attr("content");
+    const nombre = `${$(element).attr("name") || ""} ${$(element).attr("property") || ""}`;
+    if (/rss|atom|feed|alternate/i.test(nombre)) {
+      agregarCandidato(candidatos, contenido, baseUrl, 90);
+    }
+  });
+
+  $("a[href], area[href]").each((_, element) => {
+    const href = $(element).attr("href");
+    const texto = `${$(element).text()} ${$(element).attr("aria-label") || ""}`;
+    if (/rss|atom|feed|xml|suscrib|sindic/i.test(`${href} ${texto}`)) {
+      agregarCandidato(candidatos, href, baseUrl, 70);
+    }
+  });
+
+  // Algunos CMS publican el endpoint solamente dentro de JSON-LD o scripts.
+  const posiblesUrls = html.match(/(?:https?:)?\/\/[^\s"'<>]+|(?:\/|\?)[^\s"'<>]*(?:rss|atom|feed|\.xml)[^\s"'<>]*/gi) || [];
+  for (const posibleUrl of posiblesUrls) {
+    if (/rss|atom|feed|\.xml/i.test(posibleUrl)) {
+      agregarCandidato(candidatos, posibleUrl, baseUrl, 60);
+    }
+  }
+
+  return candidatos;
+}
+
+function obtenerRutasFeed(urlLimpia) {
+  const entrada = new URL(urlLimpia);
+  const origen = entrada.origin;
+  const rutas = new Set();
+  const agregarRuta = (ruta) => rutas.add(new URL(ruta, origen).href);
+  const path = entrada.pathname.replace(/\/+/g, "/").replace(/\/$/, "");
+  const directorio = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "/";
+
+  [
+    "/feed/", "/feed", "/feed/rss2/", "/rss/", "/rss", "/rss/feed/", "/atom/", "/atom",
+    "/feed.xml", "/feed.json", "/rss.xml", "/rss.json", "/atom.xml", "/index.xml",
+    "/rss/index.xml", "/feeds/rss.xml", "/feeds/atom.xml", "/rss/feed.xml",
+    "/?feed=rss2", "/?feed=atom", "/?feed=rss", "/?format=feed", "/?format=xml",
+    "/?output=1", "/?output=rss", "/?output=atom",
+  ].forEach(agregarRuta);
+
+  if (directorio !== "/") {
+    ["feed/", "feed", "feed/rss2/", "rss/", "rss", "atom.xml", "feed.xml", "feed.json", "index.xml"].forEach((ruta) => {
+      agregarRuta(`${directorio}${ruta}`);
+    });
+  }
+
+  if (path && path !== "/") {
+    ["/feed/", "/feed", "/feed/rss2/", "/rss.xml", "/atom.xml", "/index.xml"].forEach((sufijo) => {
+      agregarRuta(`${path}${sufijo}`);
+    });
+  }
+
+  return [...rutas];
+}
+
+async function buscarPrimerFeed(candidatos) {
+  const ordenados = [...candidatos]
+    .sort((a, b) => b.prioridad - a.prioridad)
+    .slice(0, MAX_FEED_CANDIDATES);
+  let siguiente = 0;
+  let encontrado = null;
+  const worker = async () => {
+    while (!encontrado) {
+      const indice = siguiente++;
+      if (indice >= ordenados.length) return;
+      const resultado = await intentarParsearFeed(ordenados[indice].url);
+      if (resultado) encontrado = resultado;
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(6, ordenados.length) }, worker));
+  return encontrado;
+}
+
 async function buscarFeedRSS(urlIngresada) {
   const urlLimpia = limpiarUrl(urlIngresada);
-    if (!urlLimpia) {
-      throw new Error("La URL es obligatoria.");
-    }
+  if (!urlLimpia) throw new Error("La URL es obligatoria.");
 
-  let feed = await intentarParsearFeed(urlLimpia);
-  if (feed) return { feed, urlFinal: urlLimpia };
+  const feedDirecto = await intentarParsearFeed(urlLimpia);
+  if (feedDirecto) return feedDirecto;
+
+  const candidatos = [];
+  let urlPagina = urlLimpia;
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const res = await fetch(urlLimpia, { 
-      headers: HEADERS_BROWSER, 
+    const timeoutId = setTimeout(() => controller.abort(), HTML_TIMEOUT_MS);
+    const res = await fetch(urlLimpia, {
+      headers: HEADERS_BROWSER,
       redirect: "follow",
-      signal: controller.signal 
+      signal: controller.signal,
     });
     clearTimeout(timeoutId);
+    urlPagina = res.url || urlLimpia;
 
-    if (res.ok) {
-      const html = await res.text();
-      const $ = cheerio.load(html);
-
-      const enlacesRSS = $("link[href]")
-        .map((_, el) => {
-          const type = ($(el).attr("type") || "").toLowerCase();
-          const rel = ($(el).attr("rel") || "").toLowerCase();
-          const href = $(el).attr("href");
-          return href && (type.includes("rss") || type.includes("atom") || rel.includes("alternate")) ? href : null;
-        })
-        .get();
-      const enlacesPagina = $("a[href]").map((_, el) => $(el).attr("href")).get();
-      const enlaces = [...new Set([...enlacesRSS, ...enlacesPagina].filter(Boolean))];
-      for (const href of enlaces) {
-        if (/\.xml(?:$|\?|\/)|(?:rss|atom|feed)(?:$|[/?])/i.test(href)) {
-          try {
-            const urlAbsoluta = new URL(href, urlLimpia).href;
-            feed = await intentarParsearFeed(urlAbsoluta);
-            if (feed) return { feed, urlFinal: urlAbsoluta };
-          } catch (e) {}
-        }
+    const enlacesHeader = res.headers.get("link") || "";
+    for (const coincidencia of enlacesHeader.matchAll(/<([^>]+)>\s*;[^,]*rel\s*=\s*["']?([^,;"']+)["']?[^,]*/gi)) {
+      const relacion = coincidencia[2].toLowerCase();
+      if (/alternate|feed|self/.test(relacion)) {
+        agregarCandidato(candidatos, coincidencia[1], urlPagina, 95);
       }
     }
+
+    if (res.ok && /html|xhtml|text\//i.test(res.headers.get("content-type") || "text/html")) {
+      const html = await res.text();
+      extraerCandidatosDesdeHtml(html, urlPagina).forEach((candidato) => candidatos.push(candidato));
+    }
   } catch (err) {
-    console.warn("Error leyendo HTML:", err.message);
+    console.warn("Error leyendo la página para descubrir RSS:", err.message);
   }
 
-  const origin = new URL(urlLimpia).origin;
-  const candidatos = [
-    `${urlLimpia}/index.xml`,
-    `${urlLimpia}/feed/rss2/`,
-    `${urlLimpia}/atom.xml`,
-    `${urlLimpia}/rss.xml`,
-    `${urlLimpia}/feed.xml`,
-    `${origin}/rss/feed.xml`,
-    `${origin}/feeds/rss.xml`,
-    `${origin}/mundo/rss.xml`,
-    `${origin}/rss.xml`,
-    `${origin}/index.xml`,
-    `${origin}/feed`,
-    `${origin}/feed/`,
-    `${origin}/rss`,
-    `${origin}/rss/`,
-    `${origin}/?feed=rss2`,
-  ];
-
-  for (const ruta of candidatos) {
-    feed = await intentarParsearFeed(ruta);
-    if (feed) return { feed, urlFinal: ruta };
-  }
+  obtenerRutasFeed(urlPagina).forEach((url) => agregarCandidato(candidatos, url, urlPagina, 40));
+  const feedDescubierto = await buscarPrimerFeed(candidatos);
+  if (feedDescubierto) return feedDescubierto;
 
   throw new Error("No se pudo detectar un feed RSS válido en esta URL.");
 }
