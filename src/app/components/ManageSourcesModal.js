@@ -6,7 +6,7 @@ import { X, Trash2, RotateCw, RefreshCcw, Rss } from "lucide-react";
 
 export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
   const [sources, setSources] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [refreshingSourceId, setRefreshingSourceId] = useState(null);
 
@@ -16,22 +16,23 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
       if (res.ok) {
         const data = await res.json();
         const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
-        setSources(sourcesArr);
+        return sourcesArr;
       }
     } catch (err) {
       if (err.name !== "AbortError") {
         console.error("Error al obtener fuentes:", err);
       }
     }
+    return [];
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
 
     if (isOpen) {
-      setLoading(true);
-      fetchSources(controller.signal).finally(() => {
+      fetchSources(controller.signal).then((sourcesArr) => {
         if (!controller.signal.aborted) {
+          setSources(sourcesArr);
           setLoading(false);
         }
       });

@@ -19,6 +19,7 @@ const HEADERS_BROWSER = {
 };
 
 function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
+  return clasificarCategoriaPonderada(titulo, resumen);
   const texto = `${titulo} ${resumen}`.toLowerCase();
 
   // --- CIENCIA Y ESPACIO ---
@@ -26,11 +27,61 @@ function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
     return "Ciencia";
   }
 
-  // --- TECNOLOGÍA (GENERAL E IA) ---
-  if (/inteligencia artificial|ia|chatgpt|openai|gemini|claude|deepseek|algoritmo|machine learning|ciberseguridad|ciberataque|hackeos?|ransomware|red(es)?|internet|fibra optica|tecnologia|codigo|programacion|desarrollo( de software)?|camaras de vigilancia|satelites de comunicacion|redes sociales|tiktok|instagram|facebook|x corp|meta|google/.test(texto)) {
-    return "Tecnología";
+
+  const CATEGORIAS_ARTICULOS = [
+    { nombre: "Inteligencia Artificial", palabras: ["inteligencia artificial", "machine learning", "aprendizaje automatico", "chatgpt", "openai", "gemini", "claude", "deepseek", "copilot", "modelo de lenguaje", "chatbot", "algoritmo generativo"] },
+    { nombre: "Ciberseguridad", palabras: ["ciberseguridad", "ciberataque", "hackeo", "hacker", "ransomware", "malware", "phishing", "vulnerabilidad", "robo de datos", "brecha de seguridad", "contraseña", "privacidad digital"] },
+    { nombre: "Videojuegos", palabras: ["videojuego", "gaming", "gamer", "nintendo", "playstation", "ps5", "xbox", "steam", "valve", "esports", "e-sports", "game pass", "zelda", "mario", "fortnite", "minecraft", "call of duty"] },
+    { nombre: "Celulares", palabras: ["smartphone", "celular", "telefono movil", "movil", "iphone", "ipad", "ios", "android", "xiaomi", "samsung galaxy", "oppo", "vivo", "huawei", "honor", "motorola", "snapdragon", "mediatek", "smartwatch", "wearable"] },
+    { nombre: "Computadoras", palabras: ["computadora", "ordenador", "pc", "laptop", "portatil", "windows", "linux", "ubuntu", "macos", "macbook", "gpu", "cpu", "procesador", "tarjeta grafica", "nvidia", "amd", "intel", "hardware", "periferico", "monitor", "teclado mecanico"] },
+    { nombre: "Tecnología", palabras: ["tecnologia", "internet", "fibra optica", "software", "programacion", "codigo", "app", "aplicacion", "redes sociales", "tiktok", "instagram", "facebook", "google", "meta", "satelite", "robotica", "dron", "gadgets"] },
+    { nombre: "Ciencia y Espacio", palabras: ["nasa", "esa", "spacex", "espacio", "astronomia", "astrofisica", "planeta", "galaxia", "universo", "marte", "luna", "agujero negro", "fisica", "quimica", "biologia", "fosil", "laboratorio", "investigacion cientifica", "hallazgo cientifico", "arqueologia"] },
+    { nombre: "Política", palabras: ["gobierno", "presidente", "primer ministro", "ministro", "congreso", "senado", "parlamento", "elecciones", "candidato", "partido politico", "ley", "decreto", "politica", "diplomacia", "milei", "trump", "biden", "putin", "zelenski", "union europea", "otan", "geopolitica", "embajada"] },
+    { nombre: "Economía y Finanzas", palabras: ["economia", "inflacion", "banco central", "banco", "empleo", "desempleo", "mercado", "empresa", "startup", "hacienda", "impuesto", "bolsa", "acciones", "wall street", "finanzas", "dinero", "inversion", "criptomoneda", "bitcoin", "ethereum", "pib", "hipoteca"] },
+    { nombre: "Deportes", palabras: ["futbol", "futbol americano", "touchdown", "liga", "real madrid", "barcelona", "champions league", "copa del mundo", "mundial", "deporte", "tenis", "atleta", "seleccion", "formula 1", "f1", "baloncesto", "nba", "beisbol", "mlb", "boxeo", "ufc", "rally", "ciclismo", "olimpiadas"] },
+    { nombre: "Salud y Medicina", palabras: ["salud", "hospital", "medico", "virus", "bacteria", "enfermedad", "infeccion", "trasplante", "medicina", "doctor", "farmaco", "medicamento", "clinica", "psicologia", "salud mental", "ansiedad", "depresion", "cancer", "vacuna", "oms", "sintoma", "tratamiento"] },
+    { nombre: "Fitness y Nutrición", palabras: ["ejercicio", "entrenamiento", "fitness", "nutricion", "dieta", "gimnasio", "musculo", "bienestar fisico", "correr", "running", "cardio", "proteina", "perder peso", "adelgazar"] },
+    { nombre: "Medio Ambiente", palabras: ["medio ambiente", "ecologia", "reciclaje", "cambio climatico", "calentamiento global", "sostenibilidad", "sustentable", "naturaleza", "contaminacion", "energia renovable", "energia solar", "fauna silvestre", "especies en peligro", "ecosistema", "deforestacion"] },
+    { nombre: "Cultura y Arte", palabras: ["cultura", "arte", "pintura", "museo", "literatura", "libro", "novela", "poesia", "teatro", "arquitectura", "exposicion", "escultura", "patrimonio"] },
+    { nombre: "Cine y Series", palabras: ["cine", "pelicula", "serie", "streaming", "netflix", "hbo", "disney", "oscar", "premios goya", "actor", "actriz", "director de cine", "trailer"] },
+    { nombre: "Música", palabras: ["musica", "concierto", "banda", "album", "cantante", "festival musical", "gira", "cancion", "rapero", "salsa", "rock"] },
+    { nombre: "Sociedad y Sucesos", palabras: ["sociedad", "suceso", "tribunal", "juez", "sentencia", "delito", "policia", "guardia civil", "detenido", "asesinato", "robo", "accidente", "bomberos", "rescate", "manifestacion", "huelga", "protesta", "inmigracion", "refugiados", "derechos humanos"] },
+    { nombre: "Gastronomía", palabras: ["gastronomia", "cocina", "receta", "restaurante", "chef", "comida", "bebida", "vino", "cerveza", "postre", "reposteria"] },
+    { nombre: "Viajes y Turismo", palabras: ["viaje", "turismo", "turista", "hotel", "vuelo", "aerolinea", "destino turistico", "mochilero", "excursion", "senderismo", "guia de viajes", "vacaciones"] },
+    { nombre: "Motor", palabras: ["automovil", "coche", "vehiculo", "motor", "motocicleta", "moto", "electrico", "tesla", "volkswagen", "toyota", "concesionario", "formula 1"] },
+    { nombre: "Educación", palabras: ["educacion", "universidad", "escuela", "colegio", "estudiante", "profesor", "docente", "beca", "examen", "investigacion academica", "campus"] },
+    { nombre: "Moda y Belleza", palabras: ["moda", "belleza", "cosmetica", "maquillaje", "perfume", "ropa", "desfile", "diseñador", "piel", "cabello"] },
+    { nombre: "Hogar y Vida Diaria", palabras: ["hogar", "casa", "rutina", "vida cotidiana", "habitos", "decoracion", "bricolaje", "jardineria", "limpieza del hogar", "mascotas", "perros", "gatos"] },
+    { nombre: "Ciencia Ficción y Fantasía", palabras: ["ciencia ficcion", "sci-fi", "fantasia epica", "star wars", "star trek", "marvel", "dc comics", "superheroe", "tolkien", "señor de los anillos", "juego de rol", "dungeons and dragons"] },
+  ];
+
+  function normalizarTexto(texto = "") {
+    return texto
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9ñ\s-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
+  function clasificarCategoriaPonderada(titulo = "", resumen = "") {
+    const tituloNormalizado = normalizarTexto(titulo);
+    const resumenNormalizado = normalizarTexto(resumen);
+    const resultados = CATEGORIAS_ARTICULOS.map((categoria, indice) => {
+      const puntuacion = categoria.palabras.reduce((total, palabra) => {
+        const palabraNormalizada = normalizarTexto(palabra);
+        const coincidenciaTitulo = tituloNormalizado.includes(palabraNormalizada);
+        const coincidenciaResumen = resumenNormalizado.includes(palabraNormalizada);
+        return total + (coincidenciaTitulo ? 5 : 0) + (coincidenciaResumen ? 1 : 0);
+      }, 0);
+
+      return { nombre: categoria.nombre, puntuacion, indice };
+    });
+
+    resultados.sort((a, b) => b.puntuacion - a.puntuacion || a.indice - b.indice);
+    return resultados[0].puntuacion > 0 ? resultados[0].nombre : "General";
+  }
   // --- CELULARES Y DISPOSITIVOS MÓVILES ---
   if (/movil(es)?|telefono(s)?|smartphone(s)?|celular(es)?|ios|android|xiaomi|samsung|apple|iphone|poco|oppo|vivo|huawei|honor|motorola|snapdragon|mediatek|bootloader|custom rom|apple watch|smartwatch(es)?|wearable(s)?|tableta(s)?|ipad/.test(texto)) {
     return "Celulares";
@@ -305,9 +356,9 @@ export async function POST(req) {
             if (result.affectedRows === 0) {
               await db.query(
                 `UPDATE articulos_publicados 
-                 SET descartado = 0 
+                 SET categoria = ?, descartado = 0 
                  WHERE url_original = ? AND fuente_id = ?`,
-                [linkNormalizado, source_id]
+               [categoriaArticulo, linkNormalizado, source_id]
               );
             }
           }
@@ -366,9 +417,9 @@ export async function POST(req) {
               } else {
                 await db.query(
                   `UPDATE articulos_publicados 
-                   SET descartado = 0 
+                   SET categoria = ?, descartado = 0 
                    WHERE url_original = ? AND fuente_id = ?`,
-                  [linkNormalizado, fuente.id]
+                  [categoriaArticulo, linkNormalizado, fuente.id]
                 );
               }
             }
@@ -459,6 +510,7 @@ export async function GET(req) {
         a.leido,
         a.guardado,
         a.categoria,
+        a.fuente_id,
         f.titulo AS fuente_nombre
        FROM articulos_publicados a
        INNER JOIN fuentes_rss f ON a.fuente_id = f.id

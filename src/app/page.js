@@ -44,7 +44,7 @@ export default function HomePage() {
 
   const fetchSources = useCallback(async (signal) => {
     try {
-      const res = await fetch("/api/rss/sources", { cache: "no-store", signal });
+      const res = await fetch("/api/sources", { cache: "no-store", signal });
       if (res.ok) {
         const data = await res.json();
         const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
@@ -222,29 +222,6 @@ export default function HomePage() {
     }
   };
 
-  const fuentesDisponiblesEnArticulos = useMemo(() => {
-  let baseList = articulos;
-  if (activeTab === "guardadas") {
-    baseList = articulos.filter((art) => art.guardado);
-  } else if (activeTab === "leidas") {
-    baseList = articulos.filter((art) => art.leido);
-  } else {
-    baseList = articulos.filter((art) => !art.leido);
-  }
-
-  // Extraer nombres de fuentes únicos presentes en la lista filtrada actual
-  const fuentesUnicas = Array.from(
-    new Set(
-      baseList
-        .map((art) => art.fuente || art.source || art.domain || art.feedName || art.nombre_fuente)
-        .filter(Boolean)
-    )
-  );
-  fuentesUnicas.sort((a, b) => a.localeCompare(b));
-
-  return ["Todas", ...fuentesUnicas];
-}, [articulos, activeTab]);
-
 const categoriasDisponibles = useMemo(() => {
   let baseList = articulos;
   if (activeTab === "guardadas") {
@@ -259,7 +236,7 @@ const categoriasDisponibles = useMemo(() => {
   const categoriasUnicas = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
   categoriasUnicas.sort((a, b) => a.localeCompare(b));
 
-  return ["Todas", ...categoriasUnicas];
+  return categoriasUnicas;
 }, [articulos, activeTab]);
 
   const articulosFiltrados = useMemo(() => {
@@ -268,8 +245,6 @@ const categoriasDisponibles = useMemo(() => {
       base = articulos.filter((art) => art.guardado);
     } else if (activeTab === "leidas") {
       base = articulos.filter((art) => art.leido);
-    } else {
-      base = articulos.filter((art) => !art.leido && !art.guardado);
     }
 
     if (categoriaSeleccionada !== "todas") {
@@ -278,10 +253,7 @@ const categoriasDisponibles = useMemo(() => {
 
     if (selectedSourceId !== "todas") {
       base = base.filter((art) => {
-        const fuenteArticulo = String(art.fuente || art.source || art.domain || art.feedName || art.nombre_fuente || "").toLowerCase();
-        const idArticulo = String(art.fuente_id || art.source_id || art.feed_id || "").toLowerCase();
-        const objetivo = String(selectedSourceId).toLowerCase();
-        return fuenteArticulo === objetivo || idArticulo === objetivo;
+        return String(art.fuente_id) === String(selectedSourceId);
       });
     }
 
@@ -513,10 +485,8 @@ const categoriasDisponibles = useMemo(() => {
                   className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
                 >
                   <option value="todas">Todas las fuentes</option>
-                  {fuentesDisponiblesEnArticulos.map((fuente) => (
-                    fuente !== "Todas" && (
-                      <option key={fuente} value={fuente}>{fuente}</option>
-                    )
+                  {fuentesDisponibles.map((fuente) => (
+                    <option key={fuente.id} value={fuente.id}>{fuente.nombre}</option>
                   ))}
                 </select>
               </div>
