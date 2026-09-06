@@ -536,7 +536,7 @@ const categoriasDisponibles = useMemo(() => {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+            <aside className="order-first lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
               <div className="flex items-center gap-2 pb-3 border-b border-gray-800 text-white font-semibold text-sm">
                 <Filter size={16} className="text-sky-400" />
                 <span>Filtros y Orden</span>
