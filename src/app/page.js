@@ -564,47 +564,6 @@ export default function HomePage() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-gray-400">Categorías</label>
-                  {categoriasSeleccionadas.length > 0 && (
-                    <span className="text-[11px] text-sky-400">
-                      {categoriasSeleccionadas.length} seleccionada{categoriasSeleccionadas.length === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </div>
-                <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2 space-y-1">
-                  <label className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-gray-200 hover:bg-gray-900 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={categoriasSeleccionadas.length === 0}
-                      onChange={() => setCategoriasSeleccionadas([])}
-                      className="h-4 w-4 accent-sky-500 shrink-0"
-                    />
-                    <span>Todas las categorías</span>
-                  </label>
-
-                  {categoriasDisponibles.map((categoria) => (
-                    <label
-                      key={categoria}
-                      className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-gray-300 hover:bg-gray-900 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={categoriasSeleccionadas.includes(categoria)}
-                        onChange={() => alternarCategoria(categoria)}
-                        className="h-4 w-4 accent-sky-500 shrink-0"
-                      />
-                      <span className="truncate">{categoria}</span>
-                    </label>
-                  ))}
-
-                  {categoriasDisponibles.length === 0 && (
-                    <p className="px-2.5 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">Fuente RSS</label>
                 <select
                   value={selectedSourceId}
@@ -616,6 +575,49 @@ export default function HomePage() {
                     <option key={fuente.id} value={fuente.id}>{fuente.nombre}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-gray-400">Categorías</label>
+                  {categoriasSeleccionadas.length > 0 && (
+                    <span className="text-[11px] text-sky-400">
+                      {categoriasSeleccionadas.length} seleccionada{categoriasSeleccionadas.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm text-gray-200 hover:bg-gray-900 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={categoriasSeleccionadas.length === 0}
+                        onChange={() => setCategoriasSeleccionadas([])}
+                        className="h-4 w-4 accent-sky-500 shrink-0"
+                      />
+                      <span className="truncate">Todas</span>
+                    </label>
+
+                    {categoriasDisponibles.map((categoria) => (
+                      <label
+                        key={categoria}
+                        className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm text-gray-300 hover:bg-gray-900 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={categoriasSeleccionadas.includes(categoria)}
+                          onChange={() => alternarCategoria(categoria)}
+                          className="h-4 w-4 accent-sky-500 shrink-0"
+                        />
+                        <span className="truncate">{categoria}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {categoriasDisponibles.length === 0 && (
+                    <p className="px-2.5 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
+                  )}
+                </div>
               </div>
             </aside>
 
