@@ -95,6 +95,9 @@ const formatFecha = (fechaStr) => {
 };
 
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave }) {
+  const [savingAction, setSavingAction] = useState("");
+  const [actionError, setActionError] = useState("");
+
   useEffect(() => {
     if (!article) return undefined;
     const handleKeyDown = (event) => {
@@ -107,13 +110,21 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   if (!article) return null;
 
   const handleMarcarLeido = async () => {
-    await onToggleRead(article.id, !article.leido);
-    onClose();
+    setSavingAction("leido");
+    setActionError("");
+    const actualizado = await onToggleRead(article.id, Boolean(article.leido));
+    setSavingAction("");
+    if (actualizado) onClose();
+    else setActionError("No se pudo actualizar el estado de lectura.");
   };
 
   const handleGuardar = async () => {
-    await onToggleSave(article.id, !article.guardado);
-    onClose();
+    setSavingAction("guardado");
+    setActionError("");
+    const actualizado = await onToggleSave(article.id, Boolean(article.guardado));
+    setSavingAction("");
+    if (actualizado) onClose();
+    else setActionError("No se pudo actualizar el estado guardado.");
   };
 
   const fechaFormateada = formatFecha(article.fecha_publicacion);
@@ -170,11 +181,18 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </div>
         </div>
 
+        {actionError && (
+          <p role="alert" className="mt-4 text-sm text-rose-400">
+            {actionError}
+          </p>
+        )}
+
         {/* Acciones del pie */}
         <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-800">
           <div className="flex items-center gap-2">
             <button
               onClick={handleMarcarLeido}
+              disabled={Boolean(savingAction)}
               className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
                 article.leido
                   ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
@@ -182,11 +200,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               }`}
             >
               <Check size={14} />
-              <span>{article.leido ? "Leído" : "Marcar como leído"}</span>
+              <span>{savingAction === "leido" ? "Guardando..." : article.leido ? "Leído" : "Marcar como leído"}</span>
             </button>
 
             <button
               onClick={handleGuardar}
+              disabled={Boolean(savingAction)}
               className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
                 article.guardado
                   ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
@@ -194,7 +213,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               }`}
             >
               <Bookmark size={14} />
-              <span>{article.guardado ? "Guardado" : "Guardar"}</span>
+              <span>{savingAction === "guardado" ? "Guardando..." : article.guardado ? "Guardado" : "Guardar"}</span>
             </button>
           </div>
 

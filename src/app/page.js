@@ -214,15 +214,21 @@ export default function HomePage() {
     );
 
     try {
-      await fetch("/api/rss", {
+      const res = await fetch("/api/rss", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, leido: leidoNuevo }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo actualizar el estado de lectura.");
+      }
+      return true;
     } catch {
       setArticulos((prev) =>
         prev.map((art) => (art.id === id ? { ...art, leido: leidoActual } : art))
       );
+      return false;
     }
   };
 
@@ -233,15 +239,21 @@ export default function HomePage() {
     );
 
     try {
-      await fetch("/api/rss", {
+      const res = await fetch("/api/rss", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, guardado: guardadoNuevo }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo actualizar el estado guardado.");
+      }
+      return true;
     } catch {
       setArticulos((prev) =>
         prev.map((art) => (art.id === id ? { ...art, guardado: guardadoActual } : art))
       );
+      return false;
     }
   };
 
