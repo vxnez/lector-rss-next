@@ -27,9 +27,13 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al agregar la fuente");
 
+      if (!data.nuevos) {
+        throw new Error("La fuente no devolvió noticias para mostrar.");
+      }
+
       setUrl("");
+      if (onSuccess) await onSuccess();
       onClose();
-      if (onSuccess) onSuccess(); // Recargar la lista de artículos
     } catch (err) {
       setError(err.message);
     } finally {

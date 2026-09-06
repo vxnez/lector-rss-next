@@ -2,9 +2,13 @@
 "use client";
 
 import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar } from "lucide-react";
+import { getCategoryStyle } from "@/lib/categoryStyles";
+import { useEffect, useState } from "react";
 
 // Función para asignar colores distintivos a las categorías
 const getCategoryColor = (categoria) => {
+  return getCategoryStyle(categoria);
+
   switch (categoria) {
     case "Inteligencia Artificial":
       return "bg-violet-950/60 text-violet-300 border-violet-800/50";
@@ -20,6 +24,10 @@ const getCategoryColor = (categoria) => {
       return "bg-amber-950/60 text-amber-300 border-amber-800/50";
     case "Medio Ambiente":
       return "bg-emerald-950/60 text-emerald-300 border-emerald-800/50";
+    case "Clima y Meteorología":
+      return "bg-sky-950/60 text-sky-300 border-sky-800/50";
+    case "Seguridad y Justicia":
+      return "bg-red-950/60 text-red-300 border-red-800/50";
     case "Cultura y Arte":
       return "bg-pink-950/60 text-pink-300 border-pink-800/50";
     case "Cine y Series":
@@ -87,6 +95,15 @@ const formatFecha = (fechaStr) => {
 };
 
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave }) {
+  useEffect(() => {
+    if (!article) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [article, onClose]);
+
   if (!article) return null;
 
   const handleMarcarLeido = async () => {
@@ -115,9 +132,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 </span>
               )}
               {article.categoria && (
-                <span className={`flex items-center gap-1 border px-2.5 py-1 rounded-md font-medium ${getCategoryColor(article.categoria)}`}>
+                <span style={getCategoryColor(article.categoria)} className="flex items-center gap-1 border px-2.5 py-1 rounded-md font-medium">
                   <Tag size={12} className="opacity-75" />
                   {article.categoria}
+                </span>
+              )}
+              {article.clasificacion_metodo && (
+                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2.5 py-1 rounded-md">
+                  {article.clasificacion_metodo === "gemini" ? "IA" : "Local"} · {Math.round(Number(article.clasificacion_confianza || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (
@@ -130,6 +152,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
             <button
               onClick={onClose}
+              aria-label="Cerrar lector de noticia"
               className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
             >
               <X size={20} />

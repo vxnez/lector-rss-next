@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar } from "lucide-react";
 import ArticleReaderModal from "./ArticleReaderModal";
+import { getCategoryStyle } from "@/lib/categoryStyles";
 
 const DOMAIN_COLOR_PALETTES = [
   { bg: "bg-sky-950/60", text: "text-sky-400", border: "border-sky-800/50" },
@@ -28,6 +29,8 @@ const getDomainColor = (domainName) => {
 };
 
 const getCategoryColor = (categoria) => {
+  return getCategoryStyle(categoria);
+
   switch (categoria) {
     case "Inteligencia Artificial":
       return "bg-violet-950/60 text-violet-300 border-violet-800/50";
@@ -43,6 +46,10 @@ const getCategoryColor = (categoria) => {
       return "bg-amber-950/60 text-amber-300 border-amber-800/50";
     case "Medio Ambiente":
       return "bg-emerald-950/60 text-emerald-300 border-emerald-800/50";
+    case "Clima y Meteorología":
+      return "bg-sky-950/60 text-sky-300 border-sky-800/50";
+    case "Seguridad y Justicia":
+      return "bg-red-950/60 text-red-300 border-red-800/50";
     case "Cultura y Arte":
       return "bg-pink-950/60 text-pink-300 border-pink-800/50";
     case "Cine y Series":
@@ -167,6 +174,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onDelet
 
                   <button
                     onClick={() => onDelete(art.id)}
+                    aria-label="Descartar noticia"
                     title="No me interesa esta noticia"
                     className="text-gray-500 hover:text-rose-400 p-1 rounded hover:bg-gray-800 transition shrink-0"
                   >
@@ -207,7 +215,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onDelet
 
                 <div className="flex items-center gap-1.5">
                   {art.categoria && (
-                    <span className={`border px-2 py-1 rounded text-[11px] flex items-center gap-1 font-medium ${getCategoryColor(art.categoria)}`}>
+                    <span style={getCategoryColor(art.categoria)} className="border px-2 py-1 rounded text-[11px] flex items-center gap-1 font-medium">
                       <Tag size={10} className="opacity-75" />
                       <span>{art.categoria}</span>
                     </span>

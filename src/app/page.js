@@ -23,6 +23,8 @@ import {
   X,
   ExternalLink,
   ArrowRight,
+  Search,
+  XCircle,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -41,6 +43,14 @@ export default function HomePage() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [selectedSourceId, setSelectedSourceId] = useState("todas");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const notify = useCallback((message, type = "info") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 4200);
+  }, []);
 
   const fetchSources = useCallback(async (signal) => {
     try {
@@ -52,9 +62,16 @@ export default function HomePage() {
         const formattedSources = sourcesArr.map((s) => ({
           id: s.id || s._id || s.fuente_id || s.url || s.nombre,
           nombre: s.nombre || s.name || s.titulo || s.domain || s.url || "Fuente sin nombre",
+          url_feed: s.url_feed || s.url || "",
+          categoria: s.categoria || "General",
+          articulos_count: s.articulos_count || 0,
+          ultima_actualizacion: s.ultima_actualizacion || null,
+          estado: s.estado || "activa",
         }));
 
-        setSourcesList(formattedSources);
+        if (formattedSources.length > 0) {
+          setSourcesList(formattedSources);
+        }
       }
     } catch (err) {
       if (err.name !== "AbortError") {
@@ -71,7 +88,23 @@ export default function HomePage() {
       });
       if (resArticles.ok) {
         const articlesData = await resArticles.json();
-        setArticulos(Array.isArray(articlesData) ? articlesData : []);
+        const articles = Array.isArray(articlesData) ? articlesData : [];
+        setArticulos(articles);
+        setLastUpdated(new Date());
+
+        setSourcesList((previousSources) => {
+          const sourcesById = new Map(previousSources.map((source) => [String(source.id), source]));
+          articles.forEach((article) => {
+            if (!article.fuente_id || sourcesById.has(String(article.fuente_id))) return;
+            sourcesById.set(String(article.fuente_id), {
+              id: article.fuente_id,
+              nombre: article.fuente_nombre || "Fuente RSS",
+              url_feed: article.fuente_url || "",
+              categoria: article.categoria || "General",
+            });
+          });
+          return Array.from(sourcesById.values());
+        });
       }
     } catch (err) {
       if (err.name !== "AbortError") {
@@ -134,17 +167,20 @@ export default function HomePage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetch("/api/rss", {
+      const response = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "refresh", restore_today: true }),
         cache: "no-store",
       });
+      if (!response.ok) throw new Error("No se pudieron actualizar las fuentes.");
 
       await Promise.all([fetchArticles(), fetchSources()]);
+      notify("Fuentes y noticias actualizadas.", "success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Error al refrescar las noticias:", err);
+      notify(err.message || "No se pudo actualizar el feed.", "error");
     } finally {
       setRefreshing(false);
     }
@@ -229,14 +265,11 @@ const categoriasDisponibles = useMemo(() => {
   } else if (activeTab === "leidas") {
     baseList = articulos.filter((art) => art.leido);
   } else {
-    baseList = articulos.filter((art) => !art.leido);
+    baseList = articulos.filter((art) => !art.leido && !art.guardado);
   }
 
-  // Extraer categorías únicas presentes en la lista filtrada actual y ordenarlas alfabéticamente
-  const categoriasUnicas = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
-  categoriasUnicas.sort((a, b) => a.localeCompare(b));
-
-  return categoriasUnicas;
+  const categorias = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
+  return categorias.sort((a, b) => a.localeCompare(b, "es"));
 }, [articulos, activeTab]);
 
   const articulosFiltrados = useMemo(() => {
@@ -245,6 +278,8 @@ const categoriasDisponibles = useMemo(() => {
       base = articulos.filter((art) => art.guardado);
     } else if (activeTab === "leidas") {
       base = articulos.filter((art) => art.leido);
+    } else {
+      base = articulos.filter((art) => !art.leido && !art.guardado);
     }
 
     if (categoriaSeleccionada !== "todas") {
@@ -257,16 +292,21 @@ const categoriasDisponibles = useMemo(() => {
       });
     }
 
+    const query = searchQuery.trim().toLocaleLowerCase("es");
+    if (query) {
+      base = base.filter((art) => `${art.titulo || ""} ${art.resumen || ""}`.toLocaleLowerCase("es").includes(query));
+    }
+
     return base;
-  }, [articulos, activeTab, categoriaSeleccionada, selectedSourceId]);
+  }, [articulos, activeTab, categoriaSeleccionada, selectedSourceId, searchQuery]);
 
   const articulosOrdenados = useMemo(() => {
     return [...articulosFiltrados].sort((a, b) => {
       if (orden === "az") return (a.titulo || "").localeCompare(b.titulo || "");
       if (orden === "za") return (b.titulo || "").localeCompare(a.titulo || "");
 
-      const fechaA = new Date(a.fecha || a.created_at || 0).getTime();
-      const fechaB = new Date(b.fecha || b.created_at || 0).getTime();
+      const fechaA = new Date(a.fecha_publicacion || a.created_at || 0).getTime();
+      const fechaB = new Date(b.fecha_publicacion || b.created_at || 0).getTime();
 
       if (orden === "recientes") return fechaB - fechaA;
       return 0;
@@ -275,6 +315,7 @@ const categoriasDisponibles = useMemo(() => {
 
   const totalGuardados = articulos.filter((art) => art.guardado).length;
   const totalLeidos = articulos.filter((art) => art.leido).length;
+  const totalPendientes = articulos.filter((art) => !art.leido && !art.guardado).length;
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
@@ -335,15 +376,54 @@ const categoriasDisponibles = useMemo(() => {
       {/* Main Content */}
       <main className="w-full px-6 py-6 flex-1">
         {loading ? (
-          <div className="flex justify-center items-center py-20 text-gray-400 gap-2">
-            <RotateCw size={20} className="animate-spin text-sky-500" />
-            <span>Cargando dashboard...</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-48 rounded-xl border border-gray-800 bg-gray-900/70" />
+            ))}
           </div>
         ) : session?.user ? (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             
             {/* Columna Izquierda / Central: Noticias */}
             <div className="lg:col-span-3 space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  ["Pendientes", totalPendientes, "text-sky-300"],
+                  ["Leídas", totalLeidos, "text-emerald-300"],
+                  ["Guardadas", totalGuardados, "text-amber-300"],
+                  ["Fuentes activas", fuentesDisponibles.length, "text-cyan-300"],
+                ].map(([label, value, color]) => (
+                  <div key={label} className="border border-gray-800 bg-gray-900/70 rounded-xl px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
+                    <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <label className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Buscar por título o resumen..."
+                    aria-label="Buscar noticias"
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-sky-600"
+                  />
+                </label>
+                {(searchQuery || categoriaSeleccionada !== "todas" || selectedSourceId !== "todas") && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setCategoriaSeleccionada("todas"); setSelectedSourceId("todas"); }}
+                    className="text-xs text-gray-300 hover:text-white border border-gray-800 rounded-xl px-3 py-2.5 flex items-center justify-center gap-2"
+                  >
+                    <XCircle size={15} /> Limpiar filtros
+                  </button>
+                )}
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {lastUpdated ? `Actualizado ${lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}` : "Sin actualizar"}
+                </span>
+              </div>
+
               <div className="flex flex-wrap justify-between items-center gap-4">
                 <div className="flex items-center gap-2">
                   <button
@@ -592,19 +672,23 @@ const categoriasDisponibles = useMemo(() => {
       <AddFeedModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => {
-          fetchArticles();
-          fetchSources();
-        }}
+        onSuccess={() => Promise.all([fetchArticles(), fetchSources()])}
       />
       <ManageSourcesModal
         isOpen={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
+        sources={fuentesDisponibles}
         onChange={() => {
           fetchArticles();
           fetchSources();
         }}
+        onNotify={notify}
       />
+      {toast && (
+        <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

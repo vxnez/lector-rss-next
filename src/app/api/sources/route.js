@@ -9,11 +9,26 @@ export async function GET() {
     const userId = session?.user?.id || 1;
 
     const [rows] = await db.query(
-      "SELECT id, titulo, url_feed, categoria, creado_en FROM fuentes_rss WHERE usuario_id = ? ORDER BY id DESC",
+      `SELECT
+         f.id,
+         f.titulo,
+         f.url_feed,
+         f.categoria,
+         f.creado_en,
+         COUNT(a.id) AS articulos_count,
+         MAX(a.fecha_publicacion) AS ultima_actualizacion,
+         'activa' AS estado
+       FROM fuentes_rss f
+       LEFT JOIN articulos_publicados a ON a.fuente_id = f.id AND (a.descartado = 0 OR a.descartado IS NULL)
+       WHERE f.usuario_id = ?
+       GROUP BY f.id, f.titulo, f.url_feed, f.categoria, f.creado_en
+       ORDER BY f.id DESC`,
       [userId]
     );
 
-    return NextResponse.json(rows);
+    return NextResponse.json(rows, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     console.error("Error en GET /api/sources:", error);
     return NextResponse.json({ error: "Error al obtener fuentes" }, { status: 500 });

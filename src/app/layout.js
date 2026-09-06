@@ -14,14 +14,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Lector RSS",
-  description: "Un lector de feeds RSS simple y minimalista para la web.",
+  title: "Feed Dashboard",
+  description: "Organiza, clasifica y lee tus fuentes RSS en un solo dashboard.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

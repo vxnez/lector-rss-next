@@ -2,13 +2,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Trash2, RotateCw, RefreshCcw, Rss } from "lucide-react";
+import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save } from "lucide-react";
 
-export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
+export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify, sources: availableSources = [] }) {
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [refreshingSourceId, setRefreshingSourceId] = useState(null);
+  const [editingSourceId, setEditingSourceId] = useState(null);
+  const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General" });
 
   const fetchSources = useCallback(async (signal) => {
     try {
@@ -43,6 +45,15 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
     };
   }, [isOpen, fetchSources]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Refrescar una fuente individual por su ID o URL de feed
   const handleRefreshSingle = async (source) => {
     const sourceId = source.id;
@@ -58,12 +69,14 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
       });
 
       if (res.ok) {
+        onNotify?.("Fuente actualizada correctamente.", "success");
         if (onChange) onChange();
       } else {
-        alert("No se pudo refrescar la fuente seleccionada.");
+        onNotify?.("No se pudo refrescar la fuente seleccionada.", "error");
       }
     } catch (err) {
       console.error("Error al refrescar fuente individual:", err);
+      onNotify?.("Error de conexión al refrescar la fuente.", "error");
     } finally {
       setRefreshingSourceId(null);
     }
@@ -80,6 +93,9 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
       });
 
       if (res.ok) {
+        const sourcesArr = await fetchSources();
+        setSources(sourcesArr);
+        onNotify?.("Todas las fuentes fueron actualizadas.", "success");
         if (onChange) onChange();
       }
     } catch (err) {
@@ -96,16 +112,52 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
       const res = await fetch(`/api/sources?id=${sourceId}`, { method: "DELETE" });
       if (res.ok) {
         setSources((prev) => prev.filter((s) => s.id !== sourceId));
+        onNotify?.("Fuente eliminada correctamente.", "success");
         if (onChange) onChange();
       } else {
-        alert("No se pudo eliminar la fuente.");
+        onNotify?.("No se pudo eliminar la fuente.", "error");
       }
     } catch (err) {
       console.error("Error al eliminar fuente:", err);
+      onNotify?.("Error de conexión al eliminar la fuente.", "error");
+    }
+  };
+
+  const handleStartEdit = (source) => {
+    setEditingSourceId(source.id);
+    setEditForm({
+      titulo: source.titulo || source.nombre || "Fuente RSS",
+      url_feed: source.url_feed || "",
+      categoria: source.categoria || "General",
+    });
+  };
+
+  const handleSaveEdit = async (sourceId) => {
+    try {
+      const res = await fetch("/api/sources", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: sourceId, ...editForm }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo actualizar la fuente");
+      }
+
+      setSources((prev) => prev.map((source) => (
+        source.id === sourceId ? { ...source, ...editForm } : source
+      )));
+      setEditingSourceId(null);
+      if (onChange) onChange();
+    } catch (err) {
+      onNotify?.(err.message, "error");
     }
   };
 
   if (!isOpen) return null;
+
+  const visibleSources = sources.length > 0 ? sources : availableSources;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -124,6 +176,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
             <button
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
+              aria-label="Refrescar todas las fuentes RSS"
               className="bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
@@ -132,6 +185,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
 
             <button
               onClick={onClose}
+              aria-label="Cerrar gestión de fuentes"
               className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition"
             >
               <X size={20} />
@@ -146,44 +200,102 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange }) {
               <RotateCw size={18} className="animate-spin text-sky-500" />
               <span className="text-sm">Cargando fuentes...</span>
             </div>
-          ) : sources.length === 0 ? (
+          ) : visibleSources.length === 0 ? (
             <p className="text-center text-gray-500 py-10 text-sm">No hay fuentes RSS registradas.</p>
           ) : (
-            sources.map((source) => {
+            visibleSources.map((source) => {
               const sId = source.id;
               const sUrl = source.url_feed;
               const isRefreshingThis = refreshingSourceId === sId;
-              const nombreFuente = source.titulo || "Fuente sin nombre";
+              const nombreFuente = source.titulo || source.nombre || "Fuente sin nombre";
+              const isEditing = editingSourceId === sId;
 
               return (
                 <div
                   key={sId}
                   className="bg-gray-950/60 border border-gray-800/80 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition hover:border-gray-700"
                 >
-                  <div className="space-y-1 overflow-hidden">
-                    <h4 className="text-sm font-semibold text-white truncate">
-                      {nombreFuente}
-                    </h4>
-                    <p className="text-xs text-gray-400 truncate max-w-md">
-                      {sUrl}
-                    </p>
-                    {source.categoria && (
-                      <span className="inline-block bg-gray-800 text-gray-300 text-[10px] px-2 py-0.5 rounded-md font-medium">
-                        {source.categoria}
-                      </span>
-                    )}
-                  </div>
+                  {isEditing ? (
+                    <div className="grid grid-cols-1 gap-2 w-full">
+                      <input
+                        value={editForm.titulo}
+                        onChange={(event) => setEditForm((form) => ({ ...form, titulo: event.target.value }))}
+                        placeholder="Nombre de la fuente"
+                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                      />
+                      <input
+                        value={editForm.url_feed}
+                        onChange={(event) => setEditForm((form) => ({ ...form, url_feed: event.target.value }))}
+                        placeholder="URL del feed RSS"
+                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                      />
+                      <input
+                        value={editForm.categoria}
+                        onChange={(event) => setEditForm((form) => ({ ...form, categoria: event.target.value }))}
+                        placeholder="Categoría de la fuente"
+                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1 overflow-hidden">
+                      <h4 className="text-sm font-semibold text-white truncate">{nombreFuente}</h4>
+                      <p className="text-xs text-gray-400 truncate max-w-md">{sUrl}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                        <span className="text-emerald-300">● {source.estado || "activa"}</span>
+                        <span className="text-gray-500">{Number(source.articulos_count || 0)} artículos</span>
+                        {source.ultima_actualizacion && (
+                          <span className="text-gray-500">
+                            Actualizada {new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(new Date(source.ultima_actualizacion))}
+                          </span>
+                        )}
+                      </div>
+                      {source.categoria && (
+                        <span className="inline-block bg-gray-800 text-gray-300 text-[10px] px-2 py-0.5 rounded-md font-medium">
+                          {source.categoria}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                    <button
-                      onClick={() => handleRefreshSingle(source)}
-                      disabled={isRefreshingThis}
-                      title="Volver a descargar y reinsertar noticias de esta fuente"
-                      className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <RotateCw size={12} className={isRefreshingThis ? "animate-spin" : ""} />
-                      <span>{isRefreshingThis ? "Actualizando..." : "Refrescar"}</span>
-                    </button>
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => handleSaveEdit(sId)}
+                          title="Guardar cambios"
+                          className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-lg transition border border-emerald-900/40 flex items-center gap-1.5"
+                        >
+                          <Save size={12} />
+                          <span>Guardar</span>
+                        </button>
+                        <button
+                          onClick={() => setEditingSourceId(null)}
+                          className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleStartEdit(source)}
+                          title="Editar fuente"
+                          className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+                        >
+                          <Pencil size={12} />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={() => handleRefreshSingle(source)}
+                          disabled={isRefreshingThis}
+                          title="Volver a descargar y reinsertar noticias de esta fuente"
+                          className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <RotateCw size={12} className={isRefreshingThis ? "animate-spin" : ""} />
+                          <span>{isRefreshingThis ? "Actualizando..." : "Refrescar"}</span>
+                        </button>
+                      </>
+                    )}
 
                     <button
                       onClick={() => handleDelete(sId)}

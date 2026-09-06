@@ -4,6 +4,10 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 import * as cheerio from "cheerio";
+import {
+  CATEGORIAS_DISPONIBLES,
+  clasificarCategoriaPorTexto as clasificarCategoriaInteligente,
+} from "@/lib/categoryClassifier";
 
 const parser = new Parser({
   headers: {
@@ -12,14 +16,44 @@ const parser = new Parser({
   },
 });
 
+const clasificacionCache = new Map();
+let classificationSchemaPromise;
+
+async function ensureClassificationSchema() {
+  if (!classificationSchemaPromise) {
+    classificationSchemaPromise = (async () => {
+      const [columns] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'articulos_publicados'
+           AND COLUMN_NAME IN ('clasificacion_metodo', 'clasificacion_confianza')`
+      );
+      const existing = new Set(columns.map((column) => column.COLUMN_NAME));
+      if (!existing.has("clasificacion_metodo")) {
+        await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_metodo VARCHAR(20) NOT NULL DEFAULT 'local'");
+      }
+      if (!existing.has("clasificacion_confianza")) {
+        await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_confianza DECIMAL(4,3) NOT NULL DEFAULT 0.500");
+      }
+    })().catch((error) => {
+      classificationSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return classificationSchemaPromise;
+}
+
 const HEADERS_BROWSER = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html, application/xhtml+xml, */*;q=0.8",
+  Referer: "https://www.google.com/",
+  "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 };
 
 function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
-  return clasificarCategoriaPonderada(titulo, resumen);
+  return clasificarCategoriaInteligente(titulo, resumen);
+
   const texto = `${titulo} ${resumen}`.toLowerCase();
 
   // --- CIENCIA Y ESPACIO ---
@@ -82,6 +116,9 @@ function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
     resultados.sort((a, b) => b.puntuacion - a.puntuacion || a.indice - b.indice);
     return resultados[0].puntuacion > 0 ? resultados[0].nombre : "General";
   }
+
+  return clasificarCategoriaPonderada(titulo, resumen);
+
   // --- CELULARES Y DISPOSITIVOS MÓVILES ---
   if (/movil(es)?|telefono(s)?|smartphone(s)?|celular(es)?|ios|android|xiaomi|samsung|apple|iphone|poco|oppo|vivo|huawei|honor|motorola|snapdragon|mediatek|bootloader|custom rom|apple watch|smartwatch(es)?|wearable(s)?|tableta(s)?|ipad/.test(texto)) {
     return "Celulares";
@@ -181,12 +218,17 @@ function limpiarUrlNoticia(rawUrl) {
 }
 
 function limpiarUrl(urlRaw) {
-  let url = urlRaw.trim();
-  url = url.replace(/^(https?:?\/*)?/, "");
-  return `https://${url}`;
+  const valor = urlRaw?.trim();
+  if (!valor) return "";
+
+  try {
+    return new URL(/^https?:\/\//i.test(valor) ? valor : `https://${valor}`).href;
+  } catch (error) {
+    throw new Error("La URL ingresada no tiene un formato válido.");
+  }
 }
 
-async function obtenerTextoDecodificado(url, timeoutMs = 8000) {
+async function obtenerTextoDecodificado(url, timeoutMs = 15000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -201,18 +243,17 @@ async function obtenerTextoDecodificado(url, timeoutMs = 8000) {
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
     
     const buffer = await res.arrayBuffer();
-    let decoder = new TextDecoder("utf-8", { fatal: false });
-    let text = decoder.decode(buffer);
-    
+    const bytes = new Uint8Array(buffer);
+    const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
     const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("iso-8859-1") || contentType.includes("windows-1252")) {
-      try {
-        const latinDecoder = new TextDecoder("windows-1252");
-        text = latinDecoder.decode(buffer);
-      } catch (e) {}
-    }
-    
-    return text;
+    const declaration = utf8Text.slice(0, 500).match(/encoding\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+    const usaLatin = /iso-8859-1|windows-1252|latin-1|cp1252/.test(`${contentType} ${declaration || ""}`);
+    const tieneReemplazos = utf8Text.includes("�");
+    const text = usaLatin || tieneReemplazos
+      ? new TextDecoder("windows-1252").decode(bytes)
+      : utf8Text;
+
+    return repararTextoMalDecodificado(text);
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === "AbortError") {
@@ -240,13 +281,16 @@ async function intentarParsearFeed(url) {
 
 async function buscarFeedRSS(urlIngresada) {
   const urlLimpia = limpiarUrl(urlIngresada);
+    if (!urlLimpia) {
+      throw new Error("La URL es obligatoria.");
+    }
 
   let feed = await intentarParsearFeed(urlLimpia);
   if (feed) return { feed, urlFinal: urlLimpia };
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(urlLimpia, { 
       headers: HEADERS_BROWSER, 
       redirect: "follow",
@@ -258,19 +302,18 @@ async function buscarFeedRSS(urlIngresada) {
       const html = await res.text();
       const $ = cheerio.load(html);
 
-      const rssHref =
-        $('link[type="application/rss+xml"]').attr("href") ||
-        $('link[type="application/atom+xml"]').attr("href");
-
-      if (rssHref) {
-        const urlAbsoluta = new URL(rssHref, urlLimpia).href;
-        feed = await intentarParsearFeed(urlAbsoluta);
-        if (feed) return { feed, urlFinal: urlAbsoluta };
-      }
-
-      const enlaces = $("a[href]").map((_, el) => $(el).attr("href")).get();
+      const enlacesRSS = $("link[href]")
+        .map((_, el) => {
+          const type = ($(el).attr("type") || "").toLowerCase();
+          const rel = ($(el).attr("rel") || "").toLowerCase();
+          const href = $(el).attr("href");
+          return href && (type.includes("rss") || type.includes("atom") || rel.includes("alternate")) ? href : null;
+        })
+        .get();
+      const enlacesPagina = $("a[href]").map((_, el) => $(el).attr("href")).get();
+      const enlaces = [...new Set([...enlacesRSS, ...enlacesPagina].filter(Boolean))];
       for (const href of enlaces) {
-        if (href.endsWith(".xml") || href.includes("/rss") || href.includes("/feed")) {
+        if (/\.xml(?:$|\?|\/)|(?:rss|atom|feed)(?:$|[/?])/i.test(href)) {
           try {
             const urlAbsoluta = new URL(href, urlLimpia).href;
             feed = await intentarParsearFeed(urlAbsoluta);
@@ -286,13 +329,20 @@ async function buscarFeedRSS(urlIngresada) {
   const origin = new URL(urlLimpia).origin;
   const candidatos = [
     `${urlLimpia}/index.xml`,
+    `${urlLimpia}/feed/rss2/`,
+    `${urlLimpia}/atom.xml`,
+    `${urlLimpia}/rss.xml`,
+    `${urlLimpia}/feed.xml`,
     `${origin}/rss/feed.xml`,
     `${origin}/feeds/rss.xml`,
     `${origin}/mundo/rss.xml`,
     `${origin}/rss.xml`,
     `${origin}/index.xml`,
     `${origin}/feed`,
+    `${origin}/feed/`,
     `${origin}/rss`,
+    `${origin}/rss/`,
+    `${origin}/?feed=rss2`,
   ];
 
   for (const ruta of candidatos) {
@@ -309,6 +359,7 @@ export async function POST(req) {
     const userId = session?.user?.id || 1;
 
     const body = await req.json().catch(() => ({}));
+    await ensureClassificationSchema();
 
     const limiteFecha = new Date();
     limiteFecha.setDate(limiteFecha.getDate() - 7);
@@ -326,7 +377,8 @@ export async function POST(req) {
       try {
         const feed = await intentarParsearFeed(url);
         if (feed?.items && feed.items.length > 0) {
-          for (const item of feed.items) {
+          const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+          for (const [itemIndex, item] of feed.items.entries()) {
             const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
             if (!linkNormalizado) continue;
 
@@ -344,21 +396,22 @@ export async function POST(req) {
               fechaPub = new Date();
             }
 
-            const categoriaArticulo = clasificarCategoriaPorTexto(item.title || "", resumenLimpio);
+            const clasificacion = clasificaciones[itemIndex];
+            const categoriaArticulo = clasificacion.categoria;
 
             const [result] = await db.query(
               `INSERT IGNORE INTO articulos_publicados 
-               (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, leido, guardado, descartado) 
-               VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-              [source_id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo]
+               (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
+              [source_id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
             );
 
             if (result.affectedRows === 0) {
               await db.query(
                 `UPDATE articulos_publicados 
-                 SET categoria = ?, descartado = 0 
+                 SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
                  WHERE url_original = ? AND fuente_id = ?`,
-               [categoriaArticulo, linkNormalizado, source_id]
+               [item.title || "Sin título", resumenLimpio, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza, linkNormalizado, source_id]
               );
             }
           }
@@ -381,11 +434,12 @@ export async function POST(req) {
       }
 
       let totalNuevas = 0;
-      for (const fuente of fuentes) {
+      await Promise.all(fuentes.map(async (fuente) => {
         try {
           const feed = await intentarParsearFeed(fuente.url_feed);
           if (feed?.items && feed.items.length > 0) {
-            for (const item of feed.items) {
+            const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+            for (const [itemIndex, item] of feed.items.entries()) {
               const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
               if (!linkNormalizado) continue;
 
@@ -403,13 +457,14 @@ export async function POST(req) {
                 fechaPub = new Date();
               }
 
-              const categoriaArticulo = clasificarCategoriaPorTexto(item.title || "", resumenLimpio);
+              const clasificacion = clasificaciones[itemIndex];
+              const categoriaArticulo = clasificacion.categoria;
 
               const [result] = await db.query(
                 `INSERT IGNORE INTO articulos_publicados 
-                 (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, leido, guardado, descartado) 
-                 VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-                [fuente.id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo]
+                 (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
+                [fuente.id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
               );
 
               if (result.affectedRows > 0) {
@@ -417,9 +472,9 @@ export async function POST(req) {
               } else {
                 await db.query(
                   `UPDATE articulos_publicados 
-                   SET categoria = ?, descartado = 0 
+                   SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
                    WHERE url_original = ? AND fuente_id = ?`,
-                  [categoriaArticulo, linkNormalizado, fuente.id]
+                  [item.title || "Sin título", resumenLimpio, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza, linkNormalizado, fuente.id]
                 );
               }
             }
@@ -427,7 +482,7 @@ export async function POST(req) {
         } catch (e) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
         }
-      }
+      }));
       return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas });
     }
 
@@ -438,17 +493,22 @@ export async function POST(req) {
 
     const { feed, urlFinal } = await buscarFeedRSS(url_feed);
 
+    if (!feed.items || feed.items.length === 0) {
+      throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");
+    }
+
     const [resFuente] = await db.query(
       "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria) VALUES (?, ?, ?, ?)",
-      [userId, feed.title || "Fuente RSS", urlFinal, "General"]
+      [userId, feed.title || "Fuente RSS", urlFinal, body.categoria?.trim() || "General"]
     );
 
     const fuenteId = resFuente.insertId;
+    let totalNuevas = 0;
 
-    if (feed.items && feed.items.length > 0) {
-      for (const item of feed.items) {
-        const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
-        if (!linkNormalizado) continue;
+    const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+    for (const [itemIndex, item] of feed.items.entries()) {
+      const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
+      if (!linkNormalizado) continue;
 
         const rawResumen = item.contentSnippet || item.summary || item.content || item.description || "";
         const resumenLimpio = rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300);
@@ -464,18 +524,24 @@ export async function POST(req) {
           fechaPub = new Date();
         }
 
-        const categoriaArticulo = clasificarCategoriaPorTexto(item.title || "", resumenLimpio);
+        const clasificacion = clasificaciones[itemIndex];
+        const categoriaArticulo = clasificacion.categoria;
 
-        await db.query(
+      const [result] = await db.query(
           `INSERT IGNORE INTO articulos_publicados 
-           (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, leido, guardado, descartado) 
-           VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-          [fuenteId, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo]
+           (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
+          [fuenteId, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
         );
-      }
+      totalNuevas += result.affectedRows;
     }
 
-    return NextResponse.json({ message: "Fuente agregada con éxito" }, { status: 201 });
+    if (totalNuevas === 0) {
+      await db.query("DELETE FROM fuentes_rss WHERE id = ? AND usuario_id = ?", [fuenteId, userId]);
+      throw new Error("El feed no contiene artículos con enlaces válidos para mostrar.");
+    }
+
+    return NextResponse.json({ message: "Fuente agregada con éxito", nuevos: totalNuevas }, { status: 201 });
   } catch (error) {
     console.error("Error crítico en POST /api/rss:", error);
     return NextResponse.json(
@@ -489,6 +555,7 @@ export async function GET(req) {
   try {
     const session = await auth();
     const userId = session?.user?.id || 1;
+    await ensureClassificationSchema();
     const { searchParams } = new URL(req.url);
     const tipo = searchParams.get("tipo");
 
@@ -510,15 +577,24 @@ export async function GET(req) {
         a.leido,
         a.guardado,
         a.categoria,
+        a.clasificacion_metodo,
+        a.clasificacion_confianza,
         a.fuente_id,
-        f.titulo AS fuente_nombre
+        f.titulo AS fuente_nombre,
+        f.url_feed AS fuente_url
        FROM articulos_publicados a
        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
        WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
        ORDER BY a.fecha_publicacion DESC, a.id DESC`,
       [userId]
     );
-    return NextResponse.json(rows);
+    const filasReparadas = rows.map((row) => ({
+      ...row,
+      titulo: repararTextoMalDecodificado(row.titulo),
+      resumen: repararTextoMalDecodificado(row.resumen),
+      fuente_nombre: repararTextoMalDecodificado(row.fuente_nombre),
+    }));
+    return NextResponse.json(filasReparadas);
   } catch (error) {
     console.error("Error al obtener datos:", error);
     return NextResponse.json({ error: "Error al obtener datos" }, { status: 500 });
@@ -613,4 +689,100 @@ export async function DELETE(req) {
     connection.release();
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
+}
+
+function repararTextoMalDecodificado(texto = "") {
+  if (!/[ÃÂâ€™�]/.test(texto)) return texto;
+
+  try {
+    const bytes = Uint8Array.from([...texto].map((caracter) => caracter.charCodeAt(0)));
+    const reparado = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    return reparado.includes("�") ? texto : reparado;
+  } catch (error) {
+    return texto;
+  }
+}
+
+function normalizarCategoria(valor = "") {
+  return valor
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+async function clasificarCategoriaConIA(titulo = "", resumen = "") {
+  const cacheKey = `${titulo.trim()}\u0000${resumen.trim()}`;
+  const cached = clasificacionCache.get(cacheKey);
+  if (cached) return cached;
+
+  const categoriaLocal = clasificarCategoriaPorTexto(titulo, resumen);
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const resultado = { categoria: categoriaLocal, metodo: "local", confianza: categoriaLocal === "General" ? 0.25 : 0.62 };
+    clasificacionCache.set(cacheKey, resultado);
+    return resultado;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          generationConfig: { temperature: 0, maxOutputTokens: 60 },
+          contents: [{
+            parts: [{
+              text: `Clasifica esta noticia en UNA sola categoría de la lista. Responde únicamente JSON válido con esta forma: {"categoria":"nombre exacto","confianza":0.0}. La confianza debe estar entre 0 y 1.\nCategorías: ${CATEGORIAS_DISPONIBLES.join(", ")}\nTítulo: ${titulo.slice(0, 500)}\nResumen: ${resumen.slice(0, 1000)}`,
+            }],
+          }],
+        }),
+      }
+    );
+
+    if (!response.ok) throw new Error("Gemini no respondió correctamente");
+    const data = await response.json();
+    const propuestaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const propuesta = JSON.parse(propuestaTexto.replace(/^```json\s*|\s*```$/g, ""));
+    const categoriaValida = CATEGORIAS_DISPONIBLES.find(
+      (categoria) => normalizarCategoria(categoria) === normalizarCategoria(propuesta.categoria)
+    );
+    if (!categoriaValida) throw new Error("Gemini devolvió una categoría no permitida");
+    const resultado = {
+      categoria: categoriaValida,
+      metodo: "gemini",
+      confianza: Math.max(0, Math.min(1, Number(propuesta.confianza) || 0.5)),
+    };
+    clasificacionCache.set(cacheKey, resultado);
+    return resultado;
+  } catch (error) {
+    const resultado = { categoria: categoriaLocal, metodo: "local", confianza: categoriaLocal === "General" ? 0.25 : 0.62 };
+    clasificacionCache.set(cacheKey, resultado);
+    return resultado;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function clasificarItemsEnParalelo(items, limite = 4) {
+  const resultados = new Array(items.length);
+  let siguiente = 0;
+  const worker = async () => {
+    while (siguiente < items.length) {
+      const indice = siguiente++;
+      const item = items[indice];
+      const resumen = (item.contentSnippet || item.summary || item.content || item.description || "")
+        .replace(/<[^>]*>?/gm, "")
+        .substring(0, 300);
+      resultados[indice] = await clasificarCategoriaConIA(item.title || "", resumen);
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(limite, items.length) }, worker));
+  return resultados;
 }
