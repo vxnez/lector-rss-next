@@ -21,41 +21,94 @@ const HEADERS_BROWSER = {
 function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
   const texto = `${titulo} ${resumen}`.toLowerCase();
 
-  if (/espacio|nasa|bepicolombo|mercurio|saturno|planeta|universo|cientifico|investigacion cientifica|astronomia|fisica|quimica|estudio revela/.test(texto)) {
+  // --- CIENCIA Y ESPACIO ---
+  if (/espacio|nasa|esa|spacex|bepicolombo|mercurio|saturno|marte|planeta|galaxia|universo|cientifico|investigacion cientifica|astronomia|astrofisica|fisica|quimica|biologia|fosil|especie invasora|arqueologia|estudio revela|hallazgo cientifico|laboratorio/.test(texto)) {
     return "Ciencia";
   }
-  if (/movil|moviles|telefono|telefonos|smartphone|celulares|celular|ios|android|xiaomi|samsung|apple|iphone|poco|snapdragon|mediatek|bootloader|apple watch|smartwatch/.test(texto)) {
+
+  // --- TECNOLOGÍA (GENERAL E IA) ---
+  if (/inteligencia artificial|ia|chatgpt|openai|gemini|claude|deepseek|algoritmo|machine learning|ciberseguridad|ciberataque|hackeos?|ransomware|red(es)?|internet|fibra optica|tecnologia|codigo|programacion|desarrollo( de software)?|camaras de vigilancia|satelites de comunicacion|redes sociales|tiktok|instagram|facebook|x corp|meta|google/.test(texto)) {
+    return "Tecnología";
+  }
+
+  // --- CELULARES Y DISPOSITIVOS MÓVILES ---
+  if (/movil(es)?|telefono(s)?|smartphone(s)?|celular(es)?|ios|android|xiaomi|samsung|apple|iphone|poco|oppo|vivo|huawei|honor|motorola|snapdragon|mediatek|bootloader|custom rom|apple watch|smartwatch(es)?|wearable(s)?|tableta(s)?|ipad/.test(texto)) {
     return "Celulares";
   }
-  if (/computadora|computadoras|pc|laptop|portatil|windows|linux|macbook|gpu|cpu|procesador|hardware|kindle/.test(texto)) {
+
+  // --- COMPUTADORAS Y HARDWARE ---
+  if (/computadora(s)?|pc|laptop(s)?|portatil(es)?|windows|linux|ubuntu|debian|macos|macbook|gpu|cpu|procesador(es)?|tarjeta grafica|nvidia|amd|intel|hardware|componentes|perifericos|teclado mecanico|mouse|monitor(es)?|kindle|e-reader/.test(texto)) {
     return "Computadoras";
   }
-  if (/gobierno|sanchez|feijoo|presidente|ministro|congreso|elecciones|partido|ley|politica|parlamento|marruecos|ceuta|melilla|diplomacia|milei/.test(texto)) {
+
+  // --- POLÍTICA NACIONAL E INTERNACIONAL ---
+  if (/gobierno|sanchez|feijoo|presidente|primer ministro|ministro(s)?|congreso|senado|parlamento|elecciones|candidato(s)?|partido politico|ley(es)?|decreto|politica|diplomacia|marruecos|ceuta|melilla|milei|trump|biden|putin|zelenski|union europea|otan|geopolitica|guerra|conflicto armado|embajada/.test(texto)) {
     return "Política";
   }
-  if (/ambiental|medio ambiente|ecologia|reciclaje|cambio climatico|sostenibilidad|sustentable|naturaleza|contaminacion|verde/.test(texto)) {
-    return "Cuidado ambiental";
-  }
-  if (/ejercicio|entrenamiento|fitness|nutricion|dieta|gimnasio|muscular|bienestar fisico|correr/.test(texto)) {
-    return "Cuidado físico";
-  }
-  if (/futbol|liga|real madrid|barcelona|champions|deporte|tenis|atleta|seleccion|mundial|formula 1|baloncesto/.test(texto)) {
-    return "Deportes";
-  }
-  if (/salud|hospital|medico|virus|enfermedad|trasplante|medicina|doctor|farmaco|clinica/.test(texto)) {
-    return "Salud";
-  }
-  if (/economia|inflacion|banco|empleo|mercado|empresa|hacienda|bolsa|finanzas|crisis|dinero|inversiones/.test(texto)) {
+
+  // --- ECONOMÍA Y FINANZAS ---
+  if (/economia|inflacion|banco(s)?|banco central|empleo|desempleo|mercado(s)?|empresa(s)?|startup(s)?|hacienda|impuesto(s)?|bolsa( de valores)?|acciones|wall street|finanzas|crisis economica|dinero|inversion(es)?|criptomoneda(s)?|bitcoin|ethereum|pib/.test(texto)) {
     return "Economía";
   }
-  if (/accesorio|gadget|audifonos|auricular|bluetooth|mochila|guantes inteligentes/.test(texto)) {
+
+  // --- DEPORTES ---
+  if (/futbol|fútbol americano|touchdown|liga|real madrid|barcelona|champions league|copa del mundo|mundial|deporte(s)?|tenis|atleta(s)?|seleccion|formula 1|f1|baloncesto|nba|beisbol|mlb|boxeo|ufc|rally|ciclis(mo|tas)|olimpiadas|juegos olimpicos/.test(texto)) {
+    return "Deportes";
+  }
+
+  // --- SALUD Y MEDICINA ---
+  if (/salud|hospital(es)?|medico(s)?|virus|bacterias|enfermedad(es)?|infeccion|trasplante|medicina|doctor(es)?|farmaco(s)?|medicamento(s)?|clinica(s)?|psicologia|salud mental|ansiedad|depresion|cancer|vacuna(s)?|OMS/.test(texto)) {
+    return "Salud";
+  }
+
+  // --- CUIDADO FÍSICO Y FITNESS ---
+  if (/ejercicio|entrenamiento|fitness|nutricion|dieta(s)?|gimnasio|musculo(s)?|bienestar fisico|correr|running|cardio|proteina(s)?|perder peso|adelgazar/.test(texto)) {
+    return "Cuidado físico";
+  }
+
+  // --- CUIDADO AMBIENTAL Y ECOLOGÍA ---
+  if (/ambiental|medio ambiente|ecologia|reciclaje|cambio climatico|calentamiento global|sostenibilidad|sustentable|naturaleza|contaminacion|energia renovable|energia solar|fauna silvestre|especies en peligro|ecosistema/.test(texto)) {
+    return "Cuidado ambiental";
+  }
+
+  // --- CULTURA, ARTE Y ENTRETENIMIENTO ---
+  if (/cultura|arte|pintura|museo(s)?|literatura|libro(s)?|novela(s)?|poesia|cine|pelicula(s)?|serie(s)?|streaming|netflix|hbo|disney|oscar|premios goya|musica|concierto(s)?|banda(s)?|album|cantant(e|es)|festival|teatro|arquitectura/.test(texto)) {
+    return "Cultura y Entretenimiento";
+  }
+
+  // --- VIDEOJUEGOS Y GAMING ---
+  if (/videojuego(s)?|gaming|gamer(s)?|nintendo|playstation|ps5|xbox|steam|valve|epic games|twitch|esports|gamepass|zelda|mario|call of duty|fortnite|juego indie/.test(texto)) {
+    return "Videojuegos";
+  }
+
+  // --- SOCIEDAD Y SUCESOS ---
+  if (/sociedad|sucesos|tribunales|juez|sentencia|delito|policia|guardia civil|detenido(s)?|asesinato|robo|investigacion policial|accidente(s)?|bomberos|rescate|manifestacion|huelga|protesta|inmigracion|refugiados|derechos humanos/.test(texto)) {
+    return "Sociedad y Sucesos";
+  }
+
+  // --- CIENCIA FICCIÓN Y FANTASY ---
+  if (/ciencia ficcion|sci-fi|fantasy|fantasia epica|star wars|star trek|marvel|dc comics|superheroe(s)?|tolkien|el señor de los anillos|wargame(s)?|juego de rol|dnd|dungeons and dragons/.test(texto)) {
+    return "Ciencia Ficción y Fantasía";
+  }
+
+  // --- GASTRONOMÍA Y COCINA ---
+  if (/gastronomia|cocina(r)?|receta(s)?|restaurante(s)?|chef|comida|bebida|vino(s)?|cerveza artesanal|postre(s)?|reposteria|nutricion culinaria/.test(texto)) {
+    return "Gastronomía";
+  }
+
+  // --- VIAJES Y TURISMO ---
+  if (/viaje(s)?|turismo|turista(s)?|hotel(es)?|vuelo(s)?|aerolinea(s)?|destino turistico|mochilero|excursion|senderismo|guia de viajes|vacaciones/.test(texto)) {
+    return "Viajes";
+  }
+
+  // --- USO PERSONAL Y ACCESORIOS (GADGETS) ---
+  if (/accesorio(s)?|gadget(s)?|audifonos|auricular(es)?|cascos inalambricos|bluetooth|mochila(s)?|guantes inteligentes|reloj(es)? analogicos|billetera(s)?|gafas de sol|maleta(s)?/.test(texto)) {
     return "Uso personal";
   }
-  if (/rutina|hogar|cocina|casa|consejo|tips|vida cotidiana|habitos/.test(texto)) {
+
+  // --- VIDA DIARIA Y HOGAR ---
+  if (/rutina(s)?|hogar|casa|reencuentro familiar|consejo(s)?|tips|vida cotidiana|habitos|decoracion|bricolaje|jardineria|limpieza del hogar|mascotas|perros|gatos/.test(texto)) {
     return "Vida diaria";
-  }
-  if (/ia|inteligencia artificial|chatgpt|openai|software|app|aplicacion|ciber|red|internet|tecnologia|codigo|programacion|algoritmo|camaras de vigilancia/.test(texto)) {
-    return "Tecnología";
   }
 
   return "General";

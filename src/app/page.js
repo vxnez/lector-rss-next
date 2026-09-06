@@ -222,19 +222,45 @@ export default function HomePage() {
     }
   };
 
-  const categoriasDisponibles = useMemo(() => {
-    let baseList = articulos;
-    if (activeTab === "guardadas") {
-      baseList = articulos.filter((art) => art.guardado);
-    } else if (activeTab === "leidas") {
-      baseList = articulos.filter((art) => art.leido);
-    } else {
-      baseList = articulos.filter((art) => !art.leido);
-    }
+  const fuentesDisponiblesEnArticulos = useMemo(() => {
+  let baseList = articulos;
+  if (activeTab === "guardadas") {
+    baseList = articulos.filter((art) => art.guardado);
+  } else if (activeTab === "leidas") {
+    baseList = articulos.filter((art) => art.leido);
+  } else {
+    baseList = articulos.filter((art) => !art.leido);
+  }
 
-    const cats = baseList.map((art) => art.categoria).filter(Boolean);
-    return Array.from(new Set(cats)).sort();
-  }, [articulos, activeTab]);
+  // Extraer nombres de fuentes únicos presentes en la lista filtrada actual
+  const fuentesUnicas = Array.from(
+    new Set(
+      baseList
+        .map((art) => art.fuente || art.source || art.domain || art.feedName || art.nombre_fuente)
+        .filter(Boolean)
+    )
+  );
+  fuentesUnicas.sort((a, b) => a.localeCompare(b));
+
+  return ["Todas", ...fuentesUnicas];
+}, [articulos, activeTab]);
+
+const categoriasDisponibles = useMemo(() => {
+  let baseList = articulos;
+  if (activeTab === "guardadas") {
+    baseList = articulos.filter((art) => art.guardado);
+  } else if (activeTab === "leidas") {
+    baseList = articulos.filter((art) => art.leido);
+  } else {
+    baseList = articulos.filter((art) => !art.leido);
+  }
+
+  // Extraer categorías únicas presentes en la lista filtrada actual y ordenarlas alfabéticamente
+  const categoriasUnicas = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
+  categoriasUnicas.sort((a, b) => a.localeCompare(b));
+
+  return ["Todas", ...categoriasUnicas];
+}, [articulos, activeTab]);
 
   const articulosFiltrados = useMemo(() => {
     let base = articulos;
@@ -475,6 +501,22 @@ export default function HomePage() {
                   <option value="todas">Todas las categorías</option>
                   {categoriasDisponibles.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-400">Fuente RSS</label>
+                <select
+                  value={selectedSourceId}
+                  onChange={(e) => setSelectedSourceId(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
+                >
+                  <option value="todas">Todas las fuentes</option>
+                  {fuentesDisponiblesEnArticulos.map((fuente) => (
+                    fuente !== "Todas" && (
+                      <option key={fuente} value={fuente}>{fuente}</option>
+                    )
                   ))}
                 </select>
               </div>
