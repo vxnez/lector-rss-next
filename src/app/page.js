@@ -486,7 +486,10 @@ export default function HomePage() {
                   aria-expanded={controlsOpen}
                   className="flex w-full items-center justify-between gap-3 text-left text-white font-semibold text-sm"
                 >
-                  <span>Controles del dashboard</span>
+                  <span className="flex items-center gap-2">
+                    <Settings size={16} className="text-sky-400" />
+                    <span>Controles del dashboard</span>
+                  </span>
                   <ChevronDown size={18} className={`text-gray-400 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
                 </button>
 
