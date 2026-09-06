@@ -48,6 +48,7 @@ export default function HomePage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [toast, setToast] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
 
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type });
@@ -478,9 +479,22 @@ export default function HomePage() {
 
             {/* Columna Derecha: Filtros y Orden */}
             <aside className="dashboard-control-sidebar order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
-              <section className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
-                <div className="grid grid-cols-3 gap-1.5">
+              <section className="rounded-xl border border-gray-800 bg-gray-950/30 p-3 space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setControlsOpen((open) => !open)}
+                  aria-expanded={controlsOpen}
+                  className="flex w-full items-center justify-between gap-3 text-left text-white font-semibold text-sm"
+                >
+                  <span>Controles del dashboard</span>
+                  <ChevronDown size={18} className={`text-gray-400 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {controlsOpen && (
+                  <div className="space-y-4 border-t border-gray-800 pt-4">
+                    <section className="space-y-3">
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
+                      <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
                     className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
@@ -507,13 +521,13 @@ export default function HomePage() {
                   >
                     <Star size={14} className={activeTab === "guardadas" ? "fill-white" : ""} />
                     <span className="truncate">Guardadas</span>
-                  </button>
-                </div>
-              </section>
+                      </button>
+                      </div>
+                    </section>
 
-              <section className="space-y-3 border-t border-gray-800 pt-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
-                <div className="grid grid-cols-2 gap-2">
+                    <section className="space-y-3 border-t border-gray-800 pt-4">
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
+                      <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
@@ -529,13 +543,13 @@ export default function HomePage() {
                   >
                     <Plus size={14} />
                     <span className="truncate">Agregar feed</span>
-                  </button>
-                </div>
-              </section>
+                      </button>
+                      </div>
+                    </section>
 
-              <section className="space-y-3 border-t border-gray-800 pt-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
-                <div className="grid grid-cols-2 gap-2">
+                    <section className="space-y-3 border-t border-gray-800 pt-4">
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
+                      <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleEliminarTodas}
                     title="Eliminar todas las publicaciones"
@@ -550,8 +564,11 @@ export default function HomePage() {
                   >
                     <Settings size={14} />
                     <span className="truncate">Fuentes</span>
-                  </button>
-                </div>
+                      </button>
+                      </div>
+                    </section>
+                  </div>
+                )}
               </section>
 
               <section className="border-t border-gray-800 pt-4">
