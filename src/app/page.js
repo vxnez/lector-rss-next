@@ -345,7 +345,7 @@ export default function HomePage() {
           <span className="bg-sky-500 text-gray-950 p-1.5 rounded-lg font-black text-sm flex items-center justify-center">
             <Rss size={18} className="stroke-[3]" />
           </span>
-          <span className="truncate">Feed Dashboard</span>
+          <span className="truncate">VX</span>
         </h1>
 
         <div className="flex items-center gap-4">
@@ -405,8 +405,8 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             
             {/* Columna Izquierda / Central: Noticias */}
-            <div className="lg:col-span-3 space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div className="contents lg:col-span-3 lg:block lg:space-y-6">
+              <div className="order-1 lg:order-none grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   ["Pendientes", totalPendientes, "text-sky-300"],
                   ["Leídas", totalLeidos, "text-emerald-300"],
@@ -420,7 +420,7 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              <div className="order-4 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 <label className="relative flex-1">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
@@ -444,7 +444,7 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <div className="flex flex-col xl:flex-row xl:justify-between items-stretch gap-3">
+              <div className="order-2 lg:order-none flex flex-col xl:flex-row xl:justify-between items-stretch gap-3">
                 <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center sm:gap-2">
                   <button
                     onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
@@ -515,8 +515,9 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {articulosOrdenados.length === 0 ? (
-                <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
+              <div className="order-5 lg:order-none">
+                {articulosOrdenados.length === 0 ? (
+                  <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
                   <p className="text-base text-gray-400">
                     {activeTab === "guardadas"
                       ? "No tienes noticias guardadas con esta categoría."
@@ -532,19 +533,20 @@ export default function HomePage() {
                       <Plus size={16} /> Agregar tu primera fuente RSS
                     </button>
                   )}
-                </div>
-              ) : (
-                <NewsFeed
-                  articles={articulosOrdenados}
-                  onToggleRead={toggleLeido}
-                  onToggleSave={toggleGuardado}
-                  onDelete={descartarArticulo}
-                />
-              )}
+                  </div>
+                ) : (
+                  <NewsFeed
+                    articles={articulosOrdenados}
+                    onToggleRead={toggleLeido}
+                    onToggleSave={toggleGuardado}
+                    onDelete={descartarArticulo}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="order-first lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+            <aside className="order-3 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
               <div className="flex items-center gap-2 pb-3 border-b border-gray-800 text-white font-semibold text-sm">
                 <Filter size={16} className="text-sky-400" />
                 <span>Filtros y Orden</span>
