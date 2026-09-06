@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Lector RSS",
-  description: "Un lector de feeds RSS simple y minimalista",
+  description: "Un lector de feeds RSS simple y minimalista para la web.",
 };
 
 export default function RootLayout({ children }) {
