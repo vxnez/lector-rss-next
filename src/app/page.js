@@ -40,7 +40,7 @@ export default function HomePage() {
 
   const [activeTab, setActiveTab] = useState("todas"); // "todas" | "guardadas" | "leidas"
   const [orden, setOrden] = useState("recientes");
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
+  const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [selectedSourceId, setSelectedSourceId] = useState("todas");
   const [searchQuery, setSearchQuery] = useState("");
@@ -270,19 +270,27 @@ export default function HomePage() {
     }
   };
 
-const categoriasDisponibles = useMemo(() => {
-  let baseList = articulos;
-  if (activeTab === "guardadas") {
-    baseList = articulos.filter((art) => art.guardado);
-  } else if (activeTab === "leidas") {
-    baseList = articulos.filter((art) => art.leido);
-  } else {
-    baseList = articulos.filter((art) => !art.leido && !art.guardado);
-  }
+  const categoriasDisponibles = useMemo(() => {
+    let baseList = articulos;
+    if (activeTab === "guardadas") {
+      baseList = articulos.filter((art) => art.guardado);
+    } else if (activeTab === "leidas") {
+      baseList = articulos.filter((art) => art.leido);
+    } else {
+      baseList = articulos.filter((art) => !art.leido && !art.guardado);
+    }
 
-  const categorias = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
-  return categorias.sort((a, b) => a.localeCompare(b, "es"));
-}, [articulos, activeTab]);
+    const categorias = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
+    return categorias.sort((a, b) => a.localeCompare(b, "es"));
+  }, [articulos, activeTab]);
+
+  const alternarCategoria = (categoria) => {
+    setCategoriasSeleccionadas((actuales) => (
+      actuales.includes(categoria)
+        ? actuales.filter((actual) => actual !== categoria)
+        : [...actuales, categoria]
+    ));
+  };
 
   const articulosFiltrados = useMemo(() => {
     let base = articulos;
@@ -294,8 +302,8 @@ const categoriasDisponibles = useMemo(() => {
       base = articulos.filter((art) => !art.leido && !art.guardado);
     }
 
-    if (categoriaSeleccionada !== "todas") {
-      base = base.filter((art) => art.categoria === categoriaSeleccionada);
+    if (categoriasSeleccionadas.length > 0) {
+      base = base.filter((art) => categoriasSeleccionadas.includes(art.categoria));
     }
 
     if (selectedSourceId !== "todas") {
@@ -310,7 +318,7 @@ const categoriasDisponibles = useMemo(() => {
     }
 
     return base;
-  }, [articulos, activeTab, categoriaSeleccionada, selectedSourceId, searchQuery]);
+  }, [articulos, activeTab, categoriasSeleccionadas, selectedSourceId, searchQuery]);
 
   const articulosOrdenados = useMemo(() => {
     return [...articulosFiltrados].sort((a, b) => {
@@ -423,9 +431,9 @@ const categoriasDisponibles = useMemo(() => {
                     className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-sky-600"
                   />
                 </label>
-                {(searchQuery || categoriaSeleccionada !== "todas" || selectedSourceId !== "todas") && (
+                {(searchQuery || categoriasSeleccionadas.length > 0 || selectedSourceId !== "todas") && (
                   <button
-                    onClick={() => { setSearchQuery(""); setCategoriaSeleccionada("todas"); setSelectedSourceId("todas"); }}
+                    onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setSelectedSourceId("todas"); }}
                     className="text-xs text-gray-300 hover:text-white border border-gray-800 rounded-xl px-3 py-2.5 flex items-center justify-center gap-2"
                   >
                     <XCircle size={15} /> Limpiar filtros
@@ -439,7 +447,7 @@ const categoriasDisponibles = useMemo(() => {
               <div className="flex flex-col xl:flex-row xl:justify-between items-stretch gap-3">
                 <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center sm:gap-2">
                   <button
-                    onClick={() => { setActiveTab("todas"); setCategoriaSeleccionada("todas"); }}
+                    onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
                     className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "todas" ? "bg-sky-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
@@ -449,7 +457,7 @@ const categoriasDisponibles = useMemo(() => {
                   </button>
 
                   <button
-                    onClick={() => { setActiveTab("leidas"); setCategoriaSeleccionada("todas"); }}
+                    onClick={() => { setActiveTab("leidas"); setCategoriasSeleccionadas([]); }}
                     className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "leidas" ? "bg-emerald-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
@@ -459,7 +467,7 @@ const categoriasDisponibles = useMemo(() => {
                   </button>
 
                   <button
-                    onClick={() => { setActiveTab("guardadas"); setCategoriaSeleccionada("todas"); }}
+                    onClick={() => { setActiveTab("guardadas"); setCategoriasSeleccionadas([]); }}
                     className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "guardadas" ? "bg-amber-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
@@ -556,17 +564,44 @@ const categoriasDisponibles = useMemo(() => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-400">Categoría</label>
-                <select
-                  value={categoriaSeleccionada}
-                  onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
-                >
-                  <option value="todas">Todas las categorías</option>
-                  {categoriasDisponibles.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-gray-400">Categorías</label>
+                  {categoriasSeleccionadas.length > 0 && (
+                    <span className="text-[11px] text-sky-400">
+                      {categoriasSeleccionadas.length} seleccionada{categoriasSeleccionadas.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2 space-y-1">
+                  <label className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-gray-200 hover:bg-gray-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={categoriasSeleccionadas.length === 0}
+                      onChange={() => setCategoriasSeleccionadas([])}
+                      className="h-4 w-4 accent-sky-500 shrink-0"
+                    />
+                    <span>Todas las categorías</span>
+                  </label>
+
+                  {categoriasDisponibles.map((categoria) => (
+                    <label
+                      key={categoria}
+                      className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-gray-300 hover:bg-gray-900 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={categoriasSeleccionadas.includes(categoria)}
+                        onChange={() => alternarCategoria(categoria)}
+                        className="h-4 w-4 accent-sky-500 shrink-0"
+                      />
+                      <span className="truncate">{categoria}</span>
+                    </label>
                   ))}
-                </select>
+
+                  {categoriasDisponibles.length === 0 && (
+                    <p className="px-2.5 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
+                  )}
+                </div>
               </div>
               
               <div className="space-y-2">
