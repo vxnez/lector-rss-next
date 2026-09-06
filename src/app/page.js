@@ -347,7 +347,7 @@ export default function HomePage() {
           <span className="bg-sky-500 text-gray-950 p-1.5 rounded-lg font-black text-sm flex items-center justify-center">
             <Rss size={18} className="stroke-[3]" />
           </span>
-          <span className="truncate">VX</span>
+          <span className="truncate">RSS Dashboard</span>
         </h1>
 
         <div className="flex items-center gap-4">
@@ -477,7 +477,7 @@ export default function HomePage() {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+            <aside className="dashboard-control-sidebar order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
               <section className="space-y-3">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
                 <div className="grid grid-cols-3 gap-1.5">

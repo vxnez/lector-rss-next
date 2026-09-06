@@ -25,6 +25,19 @@ body {
   overflow-x: hidden;
 }
 
+@media (min-width: 1024px) {
+  .dashboard-control-sidebar {
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .dashboard-control-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 button,
 select,
 input,
