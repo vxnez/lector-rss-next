@@ -479,16 +479,16 @@ export default function HomePage() {
 
             {/* Columna Derecha: Filtros y Orden */}
             <aside className="dashboard-control-sidebar order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
-              <section className="rounded-xl border border-gray-800 bg-gray-950/30 p-3 space-y-4">
+              <section className="border-b border-gray-800 pb-4 space-y-4">
                 <button
                   type="button"
                   onClick={() => setControlsOpen((open) => !open)}
                   aria-expanded={controlsOpen}
-                  className="flex w-full items-center justify-between gap-3 text-left text-white font-semibold text-sm"
+                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-white font-semibold text-[clamp(0.75rem,1vw,0.875rem)]"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <Settings size={16} className="text-sky-400" />
-                    <span>Controles del dashboard</span>
+                    <span className="truncate">Controles del dashboard</span>
                   </span>
                   <ChevronDown size={18} className={`text-gray-400 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -496,11 +496,11 @@ export default function HomePage() {
                 {controlsOpen && (
                   <div className="space-y-4 border-t border-gray-800 pt-4">
                     <section className="space-y-3">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
                       <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
                       activeTab === "todas" ? "bg-sky-600 text-white border-sky-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
                     }`}
                   >
@@ -509,7 +509,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => { setActiveTab("leidas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
                       activeTab === "leidas" ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
                     }`}
                   >
@@ -518,7 +518,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => { setActiveTab("guardadas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
                       activeTab === "guardadas" ? "bg-amber-600 text-white border-amber-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
                     }`}
                   >
@@ -529,20 +529,20 @@ export default function HomePage() {
                     </section>
 
                     <section className="space-y-3 border-t border-gray-800 pt-4">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
                     title="Actualizar y restaurar noticias de hoy"
-                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     <RotateCw size={14} className={refreshing ? "animate-spin text-sky-400" : ""} />
                     <span className="truncate">{refreshing ? "Actualizando..." : "Refrescar"}</span>
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-xs font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
+                    className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
                   >
                     <Plus size={14} />
                     <span className="truncate">Agregar feed</span>
@@ -551,19 +551,19 @@ export default function HomePage() {
                     </section>
 
                     <section className="space-y-3 border-t border-gray-800 pt-4">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleEliminarTodas}
                     title="Eliminar todas las publicaciones"
-                    className="min-w-0 rounded-lg border border-red-900/50 bg-red-950/40 px-2 py-2 text-xs font-medium text-red-300 transition hover:bg-red-900/50 flex items-center justify-center gap-1.5"
+                    className="min-w-0 rounded-lg border border-red-900/50 bg-red-950/40 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-red-300 transition hover:bg-red-900/50 flex items-center justify-center gap-1.5"
                   >
                     <Trash2 size={14} />
                     <span className="truncate">Eliminar todo</span>
                   </button>
                   <button
                     onClick={() => setIsManageModalOpen(true)}
-                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
+                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
                   >
                     <Settings size={14} />
                     <span className="truncate">Fuentes</span>
@@ -574,16 +574,16 @@ export default function HomePage() {
                 )}
               </section>
 
-              <section className="border-t border-gray-800 pt-4">
+              <section className="pt-4">
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
                   aria-expanded={filtersOpen}
-                  className="flex w-full items-center justify-between gap-3 text-left text-white font-semibold text-sm"
+                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-white font-semibold text-[clamp(0.75rem,1vw,0.875rem)]"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <Filter size={16} className="text-sky-400" />
-                    <span>Filtros y Orden</span>
+                    <span className="truncate">Filtros y Orden</span>
                   </span>
                   <ChevronDown size={18} className={`text-gray-400 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
                 </button>
