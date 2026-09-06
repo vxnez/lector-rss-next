@@ -17,6 +17,7 @@ import {
   RotateCw,
   Sparkles,
   Filter,
+  ChevronDown,
   Check,
   Trash2,
   HelpCircle,
@@ -46,6 +47,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
   const [toast, setToast] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type });
@@ -420,7 +422,7 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="order-4 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              <div className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 <label className="relative flex-1">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
@@ -444,78 +446,7 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <div className="order-2 lg:order-none flex flex-col xl:flex-row xl:justify-between items-stretch gap-3">
-                <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center sm:gap-2">
-                  <button
-                    onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
-                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
-                      activeTab === "todas" ? "bg-sky-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
-                    }`}
-                  >
-                    <Rss size={16} />
-                    <span className="truncate">Pendientes</span>
-                  </button>
-
-                  <button
-                    onClick={() => { setActiveTab("leidas"); setCategoriasSeleccionadas([]); }}
-                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
-                      activeTab === "leidas" ? "bg-emerald-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
-                    }`}
-                  >
-                    <Check size={16} />
-                    <span className="truncate">Leídas ({totalLeidos})</span>
-                  </button>
-
-                  <button
-                    onClick={() => { setActiveTab("guardadas"); setCategoriasSeleccionadas([]); }}
-                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
-                      activeTab === "guardadas" ? "bg-amber-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
-                    }`}
-                  >
-                    <Star size={16} className={activeTab === "guardadas" ? "fill-white" : ""} />
-                    <span className="truncate">Guardadas ({totalGuardados})</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 xl:flex items-stretch gap-2">
-                  <button
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    title="Actualizar y restaurar noticias de hoy"
-                    className="bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-gray-200 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
-                  >
-                    <RotateCw size={16} className={refreshing ? "animate-spin text-sky-400" : ""} />
-                    <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Refrescar"}</span>
-                  </button>
-
-                  <button
-                    onClick={handleEliminarTodas}
-                    title="Eliminar todas las publicaciones"
-                    className="bg-red-950/40 hover:bg-red-900/50 text-red-300 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-red-900/50 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
-                  >
-                    <Trash2 size={16} />
-                    <span className="hidden sm:inline">Eliminar todas</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsManageModalOpen(true)}
-                    className="bg-gray-900 hover:bg-gray-800 text-gray-200 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
-                  >
-                    <Settings size={16} />
-                    <span className="hidden sm:inline">Fuentes</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm px-2.5 sm:px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 shadow-sm"
-                  >
-                    <Plus size={16} />
-                    <span>Agregar Feed</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="order-5 lg:order-none">
+              <div className="order-4 lg:order-none">
                 {articulosOrdenados.length === 0 ? (
                   <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
                   <p className="text-base text-gray-400">
@@ -546,11 +477,100 @@ export default function HomePage() {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="order-3 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-800 text-white font-semibold text-sm">
-                <Filter size={16} className="text-sky-400" />
-                <span>Filtros y Orden</span>
-              </div>
+            <aside className="order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+              <section className="space-y-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                      activeTab === "todas" ? "bg-sky-600 text-white border-sky-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
+                    }`}
+                  >
+                    <Rss size={14} />
+                    <span className="truncate">Pendientes</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("leidas"); setCategoriasSeleccionadas([]); }}
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                      activeTab === "leidas" ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
+                    }`}
+                  >
+                    <Check size={14} />
+                    <span className="truncate">Leídas</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("guardadas"); setCategoriasSeleccionadas([]); }}
+                    className={`min-w-0 rounded-lg border px-2 py-2 text-xs font-medium transition flex items-center justify-center gap-1 ${
+                      activeTab === "guardadas" ? "bg-amber-600 text-white border-amber-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
+                    }`}
+                  >
+                    <Star size={14} className={activeTab === "guardadas" ? "fill-white" : ""} />
+                    <span className="truncate">Guardadas</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t border-gray-800 pt-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title="Actualizar y restaurar noticias de hoy"
+                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCw size={14} className={refreshing ? "animate-spin text-sky-400" : ""} />
+                    <span className="truncate">{refreshing ? "Actualizando..." : "Refrescar"}</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-xs font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
+                  >
+                    <Plus size={14} />
+                    <span className="truncate">Agregar feed</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t border-gray-800 pt-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleEliminarTodas}
+                    title="Eliminar todas las publicaciones"
+                    className="min-w-0 rounded-lg border border-red-900/50 bg-red-950/40 px-2 py-2 text-xs font-medium text-red-300 transition hover:bg-red-900/50 flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 size={14} />
+                    <span className="truncate">Eliminar todo</span>
+                  </button>
+                  <button
+                    onClick={() => setIsManageModalOpen(true)}
+                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
+                  >
+                    <Settings size={14} />
+                    <span className="truncate">Fuentes</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="border-t border-gray-800 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  aria-expanded={filtersOpen}
+                  className="flex w-full items-center justify-between gap-3 text-left text-white font-semibold text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <Filter size={16} className="text-sky-400" />
+                    <span>Filtros y Orden</span>
+                  </span>
+                  <ChevronDown size={18} className={`text-gray-400 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+                </button>
+              </section>
+
+              {filtersOpen && (
+                <div className="space-y-5 sm:space-y-6">
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">Ordenar por</label>
@@ -621,6 +641,8 @@ export default function HomePage() {
                   )}
                 </div>
               </div>
+                </div>
+              )}
             </aside>
 
           </div>
