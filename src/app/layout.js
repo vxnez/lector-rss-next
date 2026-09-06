@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "RSS Reader",
-  description: "A simple RSS reader built with Next.js 13 and Tailwind CSS.",
+  title: "Lector RSS",
+  description: "Un lector de feeds RSS simple y minimalista",
 };
 
 export default function RootLayout({ children }) {
