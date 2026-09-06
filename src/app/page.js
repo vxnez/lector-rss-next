@@ -332,17 +332,17 @@ const categoriasDisponibles = useMemo(() => {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
       {/* Navbar */}
-      <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-md px-6 py-4 flex justify-between items-center sticky top-0 z-20">
-        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+      <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-md px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20">
+        <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 min-w-0">
           <span className="bg-sky-500 text-gray-950 p-1.5 rounded-lg font-black text-sm flex items-center justify-center">
             <Rss size={18} className="stroke-[3]" />
           </span>
-          Feed Dashboard
+          <span className="truncate">Feed Dashboard</span>
         </h1>
 
         <div className="flex items-center gap-4">
           {session?.user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowWelcomeModal(true)}
                 title="Ayuda sobre cómo buscar fuentes RSS"
@@ -361,24 +361,24 @@ const categoriasDisponibles = useMemo(() => {
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
               >
                 <LogOut size={14} />
-                <span>Cerrar Sesión</span>
+                <span className="hidden sm:inline">Cerrar Sesión</span>
               </Link>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <Link
                 href="/login"
                 className="text-sm bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 transition border border-gray-700"
               >
                 <LogIn size={16} />
-                <span>Iniciar Sesión</span>
+                <span className="hidden sm:inline">Iniciar Sesión</span>
               </Link>
               <Link
                 href="/register"
                 className="text-sm bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 transition"
               >
                 <UserPlus size={16} />
-                <span>Registrarse</span>
+                <span className="hidden sm:inline">Registrarse</span>
               </Link>
             </div>
           )}
@@ -386,7 +386,7 @@ const categoriasDisponibles = useMemo(() => {
       </header>
 
       {/* Main Content */}
-      <main className="w-full px-6 py-6 flex-1">
+      <main className="w-full px-3 py-4 sm:px-6 sm:py-6 flex-1">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -398,16 +398,16 @@ const categoriasDisponibles = useMemo(() => {
             
             {/* Columna Izquierda / Central: Noticias */}
             <div className="lg:col-span-3 space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   ["Pendientes", totalPendientes, "text-sky-300"],
                   ["Leídas", totalLeidos, "text-emerald-300"],
                   ["Guardadas", totalGuardados, "text-amber-300"],
                   ["Fuentes activas", fuentesDisponibles.length, "text-cyan-300"],
                 ].map(([label, value, color]) => (
-                  <div key={label} className="border border-gray-800 bg-gray-900/70 rounded-xl px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
-                    <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                  <div key={label} className="border border-gray-800 bg-gray-900/70 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 min-w-0">
+                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 truncate">{label}</p>
+                    <p className={`text-xl sm:text-2xl font-semibold ${color}`}>{value}</p>
                   </div>
                 ))}
               </div>
@@ -436,45 +436,45 @@ const categoriasDisponibles = useMemo(() => {
                 </span>
               </div>
 
-              <div className="flex flex-wrap justify-between items-center gap-4">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col xl:flex-row xl:justify-between items-stretch gap-3">
+                <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center sm:gap-2">
                   <button
                     onClick={() => { setActiveTab("todas"); setCategoriaSeleccionada("todas"); }}
-                    className={`text-sm px-3.5 py-2 rounded-lg transition flex items-center gap-2 font-medium ${
+                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "todas" ? "bg-sky-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
                   >
                     <Rss size={16} />
-                    <span>Todas las Noticias</span>
+                    <span className="truncate">Pendientes</span>
                   </button>
 
                   <button
                     onClick={() => { setActiveTab("leidas"); setCategoriaSeleccionada("todas"); }}
-                    className={`text-sm px-3.5 py-2 rounded-lg transition flex items-center gap-2 font-medium ${
+                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "leidas" ? "bg-emerald-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
                   >
                     <Check size={16} />
-                    <span>Leídas ({totalLeidos})</span>
+                    <span className="truncate">Leídas ({totalLeidos})</span>
                   </button>
 
                   <button
                     onClick={() => { setActiveTab("guardadas"); setCategoriaSeleccionada("todas"); }}
-                    className={`text-sm px-3.5 py-2 rounded-lg transition flex items-center gap-2 font-medium ${
+                    className={`text-xs sm:text-sm px-2 sm:px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 font-medium min-w-0 ${
                       activeTab === "guardadas" ? "bg-amber-600 text-white shadow-sm" : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
                     }`}
                   >
                     <Star size={16} className={activeTab === "guardadas" ? "fill-white" : ""} />
-                    <span>Guardadas ({totalGuardados})</span>
+                    <span className="truncate">Guardadas ({totalGuardados})</span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 xl:flex items-stretch gap-2">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
                     title="Actualizar y restaurar noticias de hoy"
-                    className="bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-gray-200 text-sm px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center gap-2"
+                    className="bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-gray-200 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
                   >
                     <RotateCw size={16} className={refreshing ? "animate-spin text-sky-400" : ""} />
                     <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Refrescar"}</span>
@@ -483,7 +483,7 @@ const categoriasDisponibles = useMemo(() => {
                   <button
                     onClick={handleEliminarTodas}
                     title="Eliminar todas las publicaciones"
-                    className="bg-red-950/40 hover:bg-red-900/50 text-red-300 text-sm px-3.5 py-2 rounded-lg font-medium transition border border-red-900/50 flex items-center gap-2"
+                    className="bg-red-950/40 hover:bg-red-900/50 text-red-300 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-red-900/50 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
                   >
                     <Trash2 size={16} />
                     <span className="hidden sm:inline">Eliminar todas</span>
@@ -491,7 +491,7 @@ const categoriasDisponibles = useMemo(() => {
 
                   <button
                     onClick={() => setIsManageModalOpen(true)}
-                    className="bg-gray-900 hover:bg-gray-800 text-gray-200 text-sm px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center gap-2"
+                    className="bg-gray-900 hover:bg-gray-800 text-gray-200 text-xs sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg font-medium transition border border-gray-800 flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
                   >
                     <Settings size={16} />
                     <span className="hidden sm:inline">Fuentes</span>
@@ -499,7 +499,7 @@ const categoriasDisponibles = useMemo(() => {
 
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="bg-sky-600 hover:bg-sky-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow-sm"
+                    className="bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm px-2.5 sm:px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 shadow-sm"
                   >
                     <Plus size={16} />
                     <span>Agregar Feed</span>
@@ -536,7 +536,7 @@ const categoriasDisponibles = useMemo(() => {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="bg-gray-900/40 border border-gray-800/80 rounded-2xl p-5 space-y-6 sticky top-24">
+            <aside className="bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
               <div className="flex items-center gap-2 pb-3 border-b border-gray-800 text-white font-semibold text-sm">
                 <Filter size={16} className="text-sky-400" />
                 <span>Filtros y Orden</span>

@@ -161,26 +161,26 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 max-h-[calc(100dvh-2rem)] flex flex-col">
         
         {/* Cabecera con Botón de Refrescar Todo */}
-        <div className="flex justify-between items-center pb-4 border-b border-gray-800">
+        <div className="flex justify-between items-start gap-3 pb-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
               <Rss size={20} className="text-sky-400" />
               Gestionar Fuentes RSS
             </h3>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
               aria-label="Refrescar todas las fuentes RSS"
-              className="bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+              className="bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
-              <span>{refreshingAll ? "Actualizando todo..." : "Refrescar Todo"}</span>
+              <span className="hidden sm:inline">{refreshingAll ? "Actualizando todo..." : "Refrescar Todo"}</span>
             </button>
 
             <button
@@ -213,7 +213,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               return (
                 <div
                   key={sId}
-                  className="bg-gray-950/60 border border-gray-800/80 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition hover:border-gray-700"
+                  className="bg-gray-950/60 border border-gray-800/80 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 transition hover:border-gray-700"
                 >
                   {isEditing ? (
                     <div className="grid grid-cols-1 gap-2 w-full">
@@ -237,7 +237,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       />
                     </div>
                   ) : (
-                    <div className="space-y-1 overflow-hidden">
+                    <div className="space-y-1 overflow-hidden w-full min-w-0">
                       <h4 className="text-sm font-semibold text-white truncate">{nombreFuente}</h4>
                       <p className="text-xs text-gray-400 truncate max-w-md">{sUrl}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px]">
@@ -257,7 +257,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-center flex-shrink-0 sm:justify-end">
                     {isEditing ? (
                       <>
                         <button

@@ -43,7 +43,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-900 border border-gray-800 p-6 rounded-xl w-full max-w-md shadow-2xl relative">
+      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
         {/* Botón cerrar X */}
         <button
           onClick={onClose}
@@ -53,11 +53,11 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
         </button>
 
         {/* Encabezado con icono */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-5 sm:mb-6 pr-8">
           <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg border border-sky-500/20">
             <Rss size={20} />
           </div>
-          <h3 className="text-xl font-bold text-white">Agregar Fuente RSS</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-white">Agregar Fuente RSS</h3>
         </div>
 
         {/* Mensaje de error con icono */}
@@ -102,18 +102,18 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800/60">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3 pt-4 border-t border-gray-800/60">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-300 transition"
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-300 transition"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50 flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50 flex items-center justify-center gap-2 min-w-0"
             >
               {loading ? (
                 <>

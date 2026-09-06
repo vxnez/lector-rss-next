@@ -22,6 +22,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
   min-width: 320px;
+  overflow-x: hidden;
 }
 
 button,
@@ -29,6 +30,12 @@ select,
 input,
 textarea {
   font: inherit;
+}
+
+button,
+a,
+select {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,

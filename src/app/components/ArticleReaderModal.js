@@ -131,7 +131,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-gray-900 border border-gray-800 p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[90vh] flex flex-col justify-between">
+      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col justify-between">
         {/* Cabecera del modal */}
         <div>
           <div className="flex justify-between items-start gap-4 mb-3">
@@ -171,7 +171,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </div>
 
           {/* Título completo */}
-          <h2 className="text-xl md:text-2xl font-bold text-white leading-snug mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-snug mb-4 break-words">
             {article.titulo}
           </h2>
 
@@ -188,12 +188,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         )}
 
         {/* Acciones del pie */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-800">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-4 border-t border-gray-800">
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
             <button
               onClick={handleMarcarLeido}
               disabled={Boolean(savingAction)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+              className={`px-2 sm:px-3.5 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition min-w-0 ${
                 article.leido
                   ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
                   : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -206,7 +206,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             <button
               onClick={handleGuardar}
               disabled={Boolean(savingAction)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+              className={`px-2 sm:px-3.5 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition min-w-0 ${
                 article.guardado
                   ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
                   : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -221,7 +221,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             href={article.url_original}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-sky-600/20"
+            className="w-full sm:w-auto justify-center px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-sky-600/20"
           >
             <span>Ir al sitio oficial</span>
             <ExternalLink size={14} />
