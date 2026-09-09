@@ -150,7 +150,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               )}
               {article.clasificacion_metodo && (
                 <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2.5 py-1 rounded-md">
-                  {article.clasificacion_metodo === "gemini" ? "IA" : "Local"} · {Math.round(Number(article.clasificacion_confianza || 0) * 100)}%
+                  {article.clasificacion_metodo === "gemini" ? "IA" : "Sin IA"} · {Math.round(Number(article.clasificacion_confianza || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (

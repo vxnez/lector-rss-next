@@ -54,7 +54,7 @@ src/
       NewsFeed.js                 Tarjetas de noticias
   lib/
     db.js                         Pool de conexion MySQL
-    categoryClassifier.js         Categorias y clasificador local
+    categoryClassifier.js         Catalogo de categorias para la clasificacion IA
     categoryStyles.js             Colores deterministas por categoria
 ```
 
@@ -117,9 +117,11 @@ La pestaña principal excluye automaticamente noticias leidas y guardadas. Al ma
 
 ## 7. Clasificacion de categorias
 
-El proyecto cuenta con un catalogo de categorias controlado por codigo. Gemini no puede inventar categorias: solo puede seleccionar una de las categorias enviadas en el prompt.
+La clasificacion de cada noticia la realiza exclusivamente la inteligencia artificial (Gemini); no existe clasificador heuristico local.
 
-Entre las categorias disponibles se encuentran:
+El proyecto cuenta con un catalogo de categorias controlado por codigo en `src/lib/categoryClassifier.js`. Gemini no puede inventar categorias: recibe el catalogo completo con la descripcion de cada categoria y solo puede seleccionar una de ellas a partir del titulo y el resumen.
+
+Entre las categorias del catalogo se encuentran:
 
 - Politica.
 - Economia y Finanzas.
@@ -143,32 +145,24 @@ Entre las categorias disponibles se encuentran:
 - Educacion.
 - Moda y Belleza.
 - Hogar y Vida Diaria.
-
-El clasificador local analiza titulo y resumen con coincidencias ponderadas. Las palabras del titulo tienen mayor influencia que las del resumen y existen terminos fuertes para casos periodisticos frecuentes, por ejemplo:
-
-- Candidaturas, Morena y elecciones para Politica.
-- Multihomicidio, secuestro y decomiso para Seguridad y Justicia.
-- Frentes frios, SMN y ciclones para Clima y Meteorologia.
-- Letras, poesia y premios literarios para Cultura y Arte.
-- Liga, partido y jugadores para Deportes.
-- Banxico, inflacion y tasas para Economia y Finanzas.
+- General, como categoria de respaldo.
 
 ## 8. Clasificacion con Gemini
 
-Cuando existe `GEMINI_API_KEY` en `.env.local`, el servidor puede solicitar a Gemini una clasificacion complementaria.
+Cuando existe `GEMINI_API_KEY` en `.env.local`, cada noticia se clasifica llamando a Gemini.
 
 Gemini recibe:
 
 - El titulo de la noticia.
 - El resumen breve.
-- La lista cerrada de categorias permitidas.
+- El catalogo de categorias permitidas con una descripcion de cada una.
 
 La respuesta esperada contiene:
 
 - Nombre exacto de la categoria.
 - Nivel de confianza entre 0 y 1.
 
-La respuesta se valida contra `CATEGORIAS_DISPONIBLES`. Si Gemini responde una categoria inexistente, falla, excede el tiempo limite o no existe la clave, se usa automaticamente el clasificador local.
+La respuesta se valida contra `CATEGORIAS_DISPONIBLES`. Si Gemini responde una categoria inexistente, falla, excede el tiempo limite o no existe la clave de API, el articulo se guarda como `General` con clasificacion `sin-ia` (no se usa ningun clasificador local).
 
 Para mejorar el rendimiento:
 
@@ -179,7 +173,7 @@ Para mejorar el rendimiento:
 En la base de datos se conservan:
 
 - `categoria`.
-- `clasificacion_metodo`: `gemini` o `local`.
+- `clasificacion_metodo`: `gemini` o `sin-ia`.
 - `clasificacion_confianza`.
 
 Las columnas de metodo y confianza se crean de forma idempotente cuando la API verifica el esquema.

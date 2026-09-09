@@ -5,8 +5,8 @@ import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 import * as cheerio from "cheerio";
 import {
+  CATALOGO_PROMPT,
   CATEGORIAS_DISPONIBLES,
-  clasificarCategoriaPorTexto as clasificarCategoriaInteligente,
 } from "@/lib/categoryClassifier";
 
 const parser = new Parser({
@@ -30,7 +30,7 @@ async function ensureClassificationSchema() {
       );
       const existing = new Set(columns.map((column) => column.COLUMN_NAME));
       if (!existing.has("clasificacion_metodo")) {
-        await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_metodo VARCHAR(20) NOT NULL DEFAULT 'local'");
+        await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_metodo VARCHAR(20) NOT NULL DEFAULT 'sin-ia'");
       }
       if (!existing.has("clasificacion_confianza")) {
         await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_confianza DECIMAL(4,3) NOT NULL DEFAULT 0.500");
@@ -50,157 +50,6 @@ const HEADERS_BROWSER = {
   Referer: "https://www.google.com/",
   "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 };
-
-function clasificarCategoriaPorTexto(titulo = "", resumen = "") {
-  return clasificarCategoriaInteligente(titulo, resumen);
-
-  const texto = `${titulo} ${resumen}`.toLowerCase();
-
-  // --- CIENCIA Y ESPACIO ---
-  if (/espacio|nasa|esa|spacex|bepicolombo|mercurio|saturno|marte|planeta|galaxia|universo|cientifico|investigacion cientifica|astronomia|astrofisica|fisica|quimica|biologia|fosil|especie invasora|arqueologia|estudio revela|hallazgo cientifico|laboratorio/.test(texto)) {
-    return "Ciencia";
-  }
-
-
-  const CATEGORIAS_ARTICULOS = [
-    { nombre: "Inteligencia Artificial", palabras: ["inteligencia artificial", "machine learning", "aprendizaje automatico", "chatgpt", "openai", "gemini", "claude", "deepseek", "copilot", "modelo de lenguaje", "chatbot", "algoritmo generativo"] },
-    { nombre: "Ciberseguridad", palabras: ["ciberseguridad", "ciberataque", "hackeo", "hacker", "ransomware", "malware", "phishing", "vulnerabilidad", "robo de datos", "brecha de seguridad", "contraseña", "privacidad digital"] },
-    { nombre: "Videojuegos", palabras: ["videojuego", "gaming", "gamer", "nintendo", "playstation", "ps5", "xbox", "steam", "valve", "esports", "e-sports", "game pass", "zelda", "mario", "fortnite", "minecraft", "call of duty"] },
-    { nombre: "Celulares", palabras: ["smartphone", "celular", "telefono movil", "movil", "iphone", "ipad", "ios", "android", "xiaomi", "samsung galaxy", "oppo", "vivo", "huawei", "honor", "motorola", "snapdragon", "mediatek", "smartwatch", "wearable"] },
-    { nombre: "Computadoras", palabras: ["computadora", "ordenador", "pc", "laptop", "portatil", "windows", "linux", "ubuntu", "macos", "macbook", "gpu", "cpu", "procesador", "tarjeta grafica", "nvidia", "amd", "intel", "hardware", "periferico", "monitor", "teclado mecanico"] },
-    { nombre: "Tecnología", palabras: ["tecnologia", "internet", "fibra optica", "software", "programacion", "codigo", "app", "aplicacion", "redes sociales", "tiktok", "instagram", "facebook", "google", "meta", "satelite", "robotica", "dron", "gadgets"] },
-    { nombre: "Ciencia y Espacio", palabras: ["nasa", "esa", "spacex", "espacio", "astronomia", "astrofisica", "planeta", "galaxia", "universo", "marte", "luna", "agujero negro", "fisica", "quimica", "biologia", "fosil", "laboratorio", "investigacion cientifica", "hallazgo cientifico", "arqueologia"] },
-    { nombre: "Política", palabras: ["gobierno", "presidente", "primer ministro", "ministro", "congreso", "senado", "parlamento", "elecciones", "candidato", "partido politico", "ley", "decreto", "politica", "diplomacia", "milei", "trump", "biden", "putin", "zelenski", "union europea", "otan", "geopolitica", "embajada"] },
-    { nombre: "Economía y Finanzas", palabras: ["economia", "inflacion", "banco central", "banco", "empleo", "desempleo", "mercado", "empresa", "startup", "hacienda", "impuesto", "bolsa", "acciones", "wall street", "finanzas", "dinero", "inversion", "criptomoneda", "bitcoin", "ethereum", "pib", "hipoteca"] },
-    { nombre: "Deportes", palabras: ["futbol", "futbol americano", "touchdown", "liga", "real madrid", "barcelona", "champions league", "copa del mundo", "mundial", "deporte", "tenis", "atleta", "seleccion", "formula 1", "f1", "baloncesto", "nba", "beisbol", "mlb", "boxeo", "ufc", "rally", "ciclismo", "olimpiadas"] },
-    { nombre: "Salud y Medicina", palabras: ["salud", "hospital", "medico", "virus", "bacteria", "enfermedad", "infeccion", "trasplante", "medicina", "doctor", "farmaco", "medicamento", "clinica", "psicologia", "salud mental", "ansiedad", "depresion", "cancer", "vacuna", "oms", "sintoma", "tratamiento"] },
-    { nombre: "Fitness y Nutrición", palabras: ["ejercicio", "entrenamiento", "fitness", "nutricion", "dieta", "gimnasio", "musculo", "bienestar fisico", "correr", "running", "cardio", "proteina", "perder peso", "adelgazar"] },
-    { nombre: "Medio Ambiente", palabras: ["medio ambiente", "ecologia", "reciclaje", "cambio climatico", "calentamiento global", "sostenibilidad", "sustentable", "naturaleza", "contaminacion", "energia renovable", "energia solar", "fauna silvestre", "especies en peligro", "ecosistema", "deforestacion"] },
-    { nombre: "Cultura y Arte", palabras: ["cultura", "arte", "pintura", "museo", "literatura", "libro", "novela", "poesia", "teatro", "arquitectura", "exposicion", "escultura", "patrimonio"] },
-    { nombre: "Cine y Series", palabras: ["cine", "pelicula", "serie", "streaming", "netflix", "hbo", "disney", "oscar", "premios goya", "actor", "actriz", "director de cine", "trailer"] },
-    { nombre: "Música", palabras: ["musica", "concierto", "banda", "album", "cantante", "festival musical", "gira", "cancion", "rapero", "salsa", "rock"] },
-    { nombre: "Sociedad y Sucesos", palabras: ["sociedad", "suceso", "tribunal", "juez", "sentencia", "delito", "policia", "guardia civil", "detenido", "asesinato", "robo", "accidente", "bomberos", "rescate", "manifestacion", "huelga", "protesta", "inmigracion", "refugiados", "derechos humanos"] },
-    { nombre: "Gastronomía", palabras: ["gastronomia", "cocina", "receta", "restaurante", "chef", "comida", "bebida", "vino", "cerveza", "postre", "reposteria"] },
-    { nombre: "Viajes y Turismo", palabras: ["viaje", "turismo", "turista", "hotel", "vuelo", "aerolinea", "destino turistico", "mochilero", "excursion", "senderismo", "guia de viajes", "vacaciones"] },
-    { nombre: "Motor", palabras: ["automovil", "coche", "vehiculo", "motor", "motocicleta", "moto", "electrico", "tesla", "volkswagen", "toyota", "concesionario", "formula 1"] },
-    { nombre: "Educación", palabras: ["educacion", "universidad", "escuela", "colegio", "estudiante", "profesor", "docente", "beca", "examen", "investigacion academica", "campus"] },
-    { nombre: "Moda y Belleza", palabras: ["moda", "belleza", "cosmetica", "maquillaje", "perfume", "ropa", "desfile", "diseñador", "piel", "cabello"] },
-    { nombre: "Hogar y Vida Diaria", palabras: ["hogar", "casa", "rutina", "vida cotidiana", "habitos", "decoracion", "bricolaje", "jardineria", "limpieza del hogar", "mascotas", "perros", "gatos"] },
-    { nombre: "Ciencia Ficción y Fantasía", palabras: ["ciencia ficcion", "sci-fi", "fantasia epica", "star wars", "star trek", "marvel", "dc comics", "superheroe", "tolkien", "señor de los anillos", "juego de rol", "dungeons and dragons"] },
-  ];
-
-  function normalizarTexto(texto = "") {
-    return texto
-      .toLocaleLowerCase("es")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9ñ\s-]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function clasificarCategoriaPonderada(titulo = "", resumen = "") {
-    const tituloNormalizado = normalizarTexto(titulo);
-    const resumenNormalizado = normalizarTexto(resumen);
-    const resultados = CATEGORIAS_ARTICULOS.map((categoria, indice) => {
-      const puntuacion = categoria.palabras.reduce((total, palabra) => {
-        const palabraNormalizada = normalizarTexto(palabra);
-        const coincidenciaTitulo = tituloNormalizado.includes(palabraNormalizada);
-        const coincidenciaResumen = resumenNormalizado.includes(palabraNormalizada);
-        return total + (coincidenciaTitulo ? 5 : 0) + (coincidenciaResumen ? 1 : 0);
-      }, 0);
-
-      return { nombre: categoria.nombre, puntuacion, indice };
-    });
-
-    resultados.sort((a, b) => b.puntuacion - a.puntuacion || a.indice - b.indice);
-    return resultados[0].puntuacion > 0 ? resultados[0].nombre : "General";
-  }
-
-  return clasificarCategoriaPonderada(titulo, resumen);
-
-  // --- CELULARES Y DISPOSITIVOS MÓVILES ---
-  if (/movil(es)?|telefono(s)?|smartphone(s)?|celular(es)?|ios|android|xiaomi|samsung|apple|iphone|poco|oppo|vivo|huawei|honor|motorola|snapdragon|mediatek|bootloader|custom rom|apple watch|smartwatch(es)?|wearable(s)?|tableta(s)?|ipad/.test(texto)) {
-    return "Celulares";
-  }
-
-  // --- COMPUTADORAS Y HARDWARE ---
-  if (/computadora(s)?|pc|laptop(s)?|portatil(es)?|windows|linux|ubuntu|debian|macos|macbook|gpu|cpu|procesador(es)?|tarjeta grafica|nvidia|amd|intel|hardware|componentes|perifericos|teclado mecanico|mouse|monitor(es)?|kindle|e-reader/.test(texto)) {
-    return "Computadoras";
-  }
-
-  // --- POLÍTICA NACIONAL E INTERNACIONAL ---
-  if (/gobierno|sanchez|feijoo|presidente|primer ministro|ministro(s)?|congreso|senado|parlamento|elecciones|candidato(s)?|partido politico|ley(es)?|decreto|politica|diplomacia|marruecos|ceuta|melilla|milei|trump|biden|putin|zelenski|union europea|otan|geopolitica|guerra|conflicto armado|embajada/.test(texto)) {
-    return "Política";
-  }
-
-  // --- ECONOMÍA Y FINANZAS ---
-  if (/economia|inflacion|banco(s)?|banco central|empleo|desempleo|mercado(s)?|empresa(s)?|startup(s)?|hacienda|impuesto(s)?|bolsa( de valores)?|acciones|wall street|finanzas|crisis economica|dinero|inversion(es)?|criptomoneda(s)?|bitcoin|ethereum|pib/.test(texto)) {
-    return "Economía";
-  }
-
-  // --- DEPORTES ---
-  if (/futbol|fútbol americano|touchdown|liga|real madrid|barcelona|champions league|copa del mundo|mundial|deporte(s)?|tenis|atleta(s)?|seleccion|formula 1|f1|baloncesto|nba|beisbol|mlb|boxeo|ufc|rally|ciclis(mo|tas)|olimpiadas|juegos olimpicos/.test(texto)) {
-    return "Deportes";
-  }
-
-  // --- SALUD Y MEDICINA ---
-  if (/salud|hospital(es)?|medico(s)?|virus|bacterias|enfermedad(es)?|infeccion|trasplante|medicina|doctor(es)?|farmaco(s)?|medicamento(s)?|clinica(s)?|psicologia|salud mental|ansiedad|depresion|cancer|vacuna(s)?|OMS/.test(texto)) {
-    return "Salud";
-  }
-
-  // --- CUIDADO FÍSICO Y FITNESS ---
-  if (/ejercicio|entrenamiento|fitness|nutricion|dieta(s)?|gimnasio|musculo(s)?|bienestar fisico|correr|running|cardio|proteina(s)?|perder peso|adelgazar/.test(texto)) {
-    return "Cuidado físico";
-  }
-
-  // --- CUIDADO AMBIENTAL Y ECOLOGÍA ---
-  if (/ambiental|medio ambiente|ecologia|reciclaje|cambio climatico|calentamiento global|sostenibilidad|sustentable|naturaleza|contaminacion|energia renovable|energia solar|fauna silvestre|especies en peligro|ecosistema/.test(texto)) {
-    return "Cuidado ambiental";
-  }
-
-  // --- CULTURA, ARTE Y ENTRETENIMIENTO ---
-  if (/cultura|arte|pintura|museo(s)?|literatura|libro(s)?|novela(s)?|poesia|cine|pelicula(s)?|serie(s)?|streaming|netflix|hbo|disney|oscar|premios goya|musica|concierto(s)?|banda(s)?|album|cantant(e|es)|festival|teatro|arquitectura/.test(texto)) {
-    return "Cultura y Entretenimiento";
-  }
-
-  // --- VIDEOJUEGOS Y GAMING ---
-  if (/videojuego(s)?|gaming|gamer(s)?|nintendo|playstation|ps5|xbox|steam|valve|epic games|twitch|esports|gamepass|zelda|mario|call of duty|fortnite|juego indie/.test(texto)) {
-    return "Videojuegos";
-  }
-
-  // --- SOCIEDAD Y SUCESOS ---
-  if (/sociedad|sucesos|tribunales|juez|sentencia|delito|policia|guardia civil|detenido(s)?|asesinato|robo|investigacion policial|accidente(s)?|bomberos|rescate|manifestacion|huelga|protesta|inmigracion|refugiados|derechos humanos/.test(texto)) {
-    return "Sociedad y Sucesos";
-  }
-
-  // --- CIENCIA FICCIÓN Y FANTASY ---
-  if (/ciencia ficcion|sci-fi|fantasy|fantasia epica|star wars|star trek|marvel|dc comics|superheroe(s)?|tolkien|el señor de los anillos|wargame(s)?|juego de rol|dnd|dungeons and dragons/.test(texto)) {
-    return "Ciencia Ficción y Fantasía";
-  }
-
-  // --- GASTRONOMÍA Y COCINA ---
-  if (/gastronomia|cocina(r)?|receta(s)?|restaurante(s)?|chef|comida|bebida|vino(s)?|cerveza artesanal|postre(s)?|reposteria|nutricion culinaria/.test(texto)) {
-    return "Gastronomía";
-  }
-
-  // --- VIAJES Y TURISMO ---
-  if (/viaje(s)?|turismo|turista(s)?|hotel(es)?|vuelo(s)?|aerolinea(s)?|destino turistico|mochilero|excursion|senderismo|guia de viajes|vacaciones/.test(texto)) {
-    return "Viajes";
-  }
-
-  // --- USO PERSONAL Y ACCESORIOS (GADGETS) ---
-  if (/accesorio(s)?|gadget(s)?|audifonos|auricular(es)?|cascos inalambricos|bluetooth|mochila(s)?|guantes inteligentes|reloj(es)? analogicos|billetera(s)?|gafas de sol|maleta(s)?/.test(texto)) {
-    return "Uso personal";
-  }
-
-  // --- VIDA DIARIA Y HOGAR ---
-  if (/rutina(s)?|hogar|casa|reencuentro familiar|consejo(s)?|tips|vida cotidiana|habitos|decoracion|bricolaje|jardineria|limpieza del hogar|mascotas|perros|gatos/.test(texto)) {
-    return "Vida diaria";
-  }
-
-  return "General";
-}
 
 function limpiarUrlNoticia(rawUrl) {
   if (!rawUrl) return "";
@@ -824,17 +673,32 @@ function normalizarCategoria(valor = "") {
     .trim();
 }
 
+const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0.1 };
+
+function construirInstruccionClasificacion(titulo = "", resumen = "") {
+  return `Eres un clasificador de noticias. A partir del Título y del Resumen de una noticia, elige la ÚNICA categoría del siguiente catálogo que mejor describa la noticia.
+
+Catálogo de categorías:
+${CATALOGO_PROMPT}
+
+Reglas:
+- Responde únicamente JSON válido con esta forma exacta: {"categoria":"<nombre exacto de una categoría del catálogo>","confianza":<número entre 0 y 1>}
+- "confianza" indica qué tan seguro estás de la categoría elegida.
+- No inventes ni combines categorías; usa exactamente un nombre del catálogo.
+
+Título: ${titulo.slice(0, 500)}
+Resumen: ${resumen.slice(0, 1000)}`;
+}
+
 async function clasificarCategoriaConIA(titulo = "", resumen = "") {
   const cacheKey = `${titulo.trim()}\u0000${resumen.trim()}`;
   const cached = clasificacionCache.get(cacheKey);
   if (cached) return cached;
 
-  const categoriaLocal = clasificarCategoriaPorTexto(titulo, resumen);
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    const resultado = { categoria: categoriaLocal, metodo: "local", confianza: categoriaLocal === "General" ? 0.25 : 0.62 };
-    clasificacionCache.set(cacheKey, resultado);
-    return resultado;
+    clasificacionCache.set(cacheKey, SIN_CLASIFICACION);
+    return SIN_CLASIFICACION;
   }
 
   const controller = new AbortController();
@@ -851,7 +715,7 @@ async function clasificarCategoriaConIA(titulo = "", resumen = "") {
           generationConfig: { temperature: 0, maxOutputTokens: 60 },
           contents: [{
             parts: [{
-              text: `Clasifica esta noticia en UNA sola categoría de la lista. Responde únicamente JSON válido con esta forma: {"categoria":"nombre exacto","confianza":0.0}. La confianza debe estar entre 0 y 1.\nCategorías: ${CATEGORIAS_DISPONIBLES.join(", ")}\nTítulo: ${titulo.slice(0, 500)}\nResumen: ${resumen.slice(0, 1000)}`,
+              text: construirInstruccionClasificacion(titulo, resumen),
             }],
           }],
         }),
@@ -861,22 +725,24 @@ async function clasificarCategoriaConIA(titulo = "", resumen = "") {
     if (!response.ok) throw new Error("Gemini no respondió correctamente");
     const data = await response.json();
     const propuestaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!propuestaTexto) throw new Error("Gemini no devolvió contenido");
     const propuesta = JSON.parse(propuestaTexto.replace(/^```json\s*|\s*```$/g, ""));
     const categoriaValida = CATEGORIAS_DISPONIBLES.find(
       (categoria) => normalizarCategoria(categoria) === normalizarCategoria(propuesta.categoria)
     );
     if (!categoriaValida) throw new Error("Gemini devolvió una categoría no permitida");
+    const confianzaNumerica = Number(propuesta.confianza);
     const resultado = {
       categoria: categoriaValida,
       metodo: "gemini",
-      confianza: Math.max(0, Math.min(1, Number(propuesta.confianza) || 0.5)),
+      confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
     };
     clasificacionCache.set(cacheKey, resultado);
     return resultado;
   } catch (error) {
-    const resultado = { categoria: categoriaLocal, metodo: "local", confianza: categoriaLocal === "General" ? 0.25 : 0.62 };
-    clasificacionCache.set(cacheKey, resultado);
-    return resultado;
+    console.warn("Clasificación con Gemini falló; se usará 'General':", error.message);
+    clasificacionCache.set(cacheKey, SIN_CLASIFICACION);
+    return SIN_CLASIFICACION;
   } finally {
     clearTimeout(timeoutId);
   }
