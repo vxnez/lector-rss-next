@@ -36,6 +36,14 @@ body {
   .dashboard-control-sidebar::-webkit-scrollbar {
     display: none;
   }
+
+  .category-filter-list {
+    scrollbar-width: none;
+  }
+
+  .category-filter-list::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 button,
