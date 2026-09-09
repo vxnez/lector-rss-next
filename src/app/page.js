@@ -666,28 +666,40 @@ export default function HomePage() {
                 </div>
                 <div className="category-filter-list max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
                   <div className="rss-check-list grid grid-cols-2 gap-1.5">
-                    <div className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900">
+                    <div className="flex min-w-0 items-center rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900">
                       <input
                         id="filtro-cat-todas"
                         type="checkbox"
+                        className="sr-only"
                         checked={categoriasSeleccionadas.length === 0}
                         onChange={() => setCategoriasSeleccionadas([])}
                       />
-                      <label htmlFor="filtro-cat-todas" className="truncate">Todas</label>
+                      <label htmlFor="filtro-cat-todas" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                        <span className="rss-check-box" aria-hidden="true">
+                          <Check size={12} strokeWidth={3} />
+                        </span>
+                        <span className="truncate">Todas</span>
+                      </label>
                     </div>
 
                     {categoriasDisponibles.map((categoria, indice) => (
                       <div
                         key={categoria}
-                        className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900"
+                        className="flex min-w-0 items-center rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900"
                       >
                         <input
                           id={`filtro-cat-${indice}`}
                           type="checkbox"
+                          className="sr-only"
                           checked={categoriasSeleccionadas.includes(categoria)}
                           onChange={() => alternarCategoria(categoria)}
                         />
-                        <label htmlFor={`filtro-cat-${indice}`} className="truncate">{categoria}</label>
+                        <label htmlFor={`filtro-cat-${indice}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                          <span className="rss-check-box" aria-hidden="true">
+                            <Check size={12} strokeWidth={3} />
+                          </span>
+                          <span className="truncate">{categoria}</span>
+                        </label>
                       </div>
                     ))}
                   </div>

@@ -88,52 +88,47 @@ textarea:focus-visible {
   transition: color 150ms ease-in-out;
 }
 
-/* styled checkbox */
-.rss-check-list input[type="checkbox"] {
-  appearance: none;
+/* caja visible del checkbox con icono Lucide real */
+.rss-check-list input.sr-only:focus-visible {
   outline: none;
+}
+.rss-check-list .rss-check-box {
   width: 1.15rem;
   height: 1.15rem;
   aspect-ratio: 1;
-  padding: 0.2rem;
+  flex-shrink: 0;
   background: transparent;
   border: 1px solid var(--_clr-current);
   border-radius: 2px;
-  display: grid;
+  display: inline-grid;
   place-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
+  transition: border-color 150ms ease-in-out;
 }
-.rss-check-list input[type="checkbox"]::after {
-  content: "";
-  width: 0.75rem;
-  height: 0.75rem;
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZWNrIj48cGF0aCBkPSJNMjAgNiA5IDE3bC01LTUiLz48L3N2Zz4=");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+.rss-check-list .rss-check-box svg {
   opacity: 0;
   transition: opacity 150ms ease-in-out;
   color: var(--_clr-checked);
 }
 
 .rss-check-list label:hover,
-.rss-check-list input[type="checkbox"]:focus-visible,
-.rss-check-list input[type="checkbox"]:focus-visible + label,
-.rss-check-list input[type="checkbox"]:hover,
-.rss-check-list input[type="checkbox"]:hover + label {
+.rss-check-list input:focus-visible ~ label,
+.rss-check-list input:hover ~ label {
   --_clr-current: var(--_clr-hover);
 }
-.rss-check-list input[type="checkbox"]:focus-visible::after,
-.rss-check-list input[type="checkbox"]:hover::after {
+.rss-check-list input:focus-visible ~ label .rss-check-box,
+.rss-check-list input:hover ~ label .rss-check-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rss-check-list input:focus-visible ~ label .rss-check-box svg,
+.rss-check-list input:hover ~ label .rss-check-box svg {
   opacity: 0.5;
   color: var(--_clr-hover);
 }
 
-.rss-check-list input[type="checkbox"]:checked + label:not(:hover),
-.rss-check-list input[type="checkbox"]:checked:not(:hover) {
+.rss-check-list input:checked ~ label:not(:hover) {
   --_clr-current: var(--_clr-checked);
 }
-.rss-check-list input[type="checkbox"]:checked::after {
+.rss-check-list input:checked ~ label .rss-check-box svg {
   opacity: 1;
 }
