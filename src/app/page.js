@@ -604,7 +604,7 @@ export default function HomePage() {
                   onChange={(e) => setOrden(e.target.value)}
                   className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
                 >
-                  <option value="recientes">Más recientes primero</option>
+                  <option value="recientes">Recientes primero</option>
                   <option value="az">Alfabético (A - Z)</option>
                   <option value="za">Alfabético (Z - A)</option>
                 </select>
