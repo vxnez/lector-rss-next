@@ -114,9 +114,25 @@ export default function HomePage() {
     }
   }, []);
 
-  const programarRefetchCategorias = useCallback(() => {
-    window.setTimeout(() => { fetchArticles(); }, 10000);
-    window.setTimeout(() => { fetchArticles(); }, 25000);
+  const procesarColaClasificacion = useCallback(async () => {
+    for (let intento = 0; intento < 12; intento++) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      let restantes = 0;
+      try {
+        const res = await fetch("/api/rss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+        });
+        if (!res.ok) break;
+        const data = await res.json().catch(() => ({}));
+        restantes = Number(data.restantes) || 0;
+      } catch {
+        break;
+      }
+      await fetchArticles();
+      if (restantes === 0) break;
+    }
   }, [fetchArticles]);
 
   useEffect(() => {
@@ -190,7 +206,7 @@ export default function HomePage() {
         : "Fuentes y noticias actualizadas.";
       if (pendientes > 0) {
         mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
-        programarRefetchCategorias();
+        procesarColaClasificacion();
       }
       notify(mensaje, "success");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -787,7 +803,7 @@ export default function HomePage() {
           await Promise.all([fetchArticles(), fetchSources()]);
           if (Number(data?.pendientes) > 0) {
             notify("Fuente agregada. Completando categorías en segundo plano...", "success");
-            programarRefetchCategorias();
+            procesarColaClasificacion();
           }
         }}
       />

@@ -54,6 +54,26 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Clasifica la cola de pendientes por lotes hasta agotarla (progreso visible)
+  const procesarColaClasificacion = useCallback(async () => {
+    for (let intento = 0; intento < 12; intento++) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const res = await fetch("/api/rss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+        });
+        if (!res.ok) break;
+        const data = await res.json().catch(() => ({}));
+        if (onChange) await onChange();
+        if (!Number(data.restantes)) break;
+      } catch {
+        break;
+      }
+    }
+  }, [onChange]);
+
   // Refrescar una fuente individual por su ID o URL de feed
   const handleRefreshSingle = async (source) => {
     const sourceId = source.id;
@@ -79,7 +99,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         );
         if (onChange) onChange();
         if (pendientes > 0) {
-          window.setTimeout(() => { if (onChange) onChange(); }, 15000);
+          procesarColaClasificacion();
         }
       } else {
         onNotify?.("No se pudo refrescar la fuente seleccionada.", "error");
@@ -113,7 +133,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           : "Todas las fuentes fueron actualizadas.";
         if (pendientes > 0) {
           mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
-          window.setTimeout(() => { if (onChange) onChange(); }, 15000);
+          procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");
         if (onChange) onChange();
