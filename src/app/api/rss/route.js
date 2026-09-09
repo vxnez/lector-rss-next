@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
-import * as cheerio from "cheerio";
+
+export const maxDuration = 60;import * as cheerio from "cheerio";
 import {
   CATALOGO_PROMPT,
   CATEGORIAS_DISPONIBLES,
@@ -363,6 +364,7 @@ export async function POST(req) {
       let clasificados = 0;
       if (filas.length > 0) clasificados = await bulkUpdateCategoriasPorId(filas);
 
+      const todosFallaron = resultados.every((resultado) => resultado?.metodo !== "gemini");
       const [[conteo]] = await db.query(
         `SELECT COUNT(*) AS restantes
          FROM articulos_publicados a
@@ -370,7 +372,7 @@ export async function POST(req) {
          WHERE f.usuario_id = ? AND a.clasificacion_metodo = 'sin-ia' AND (a.descartado = 0 OR a.descartado IS NULL)`,
         [userId]
       );
-      return NextResponse.json({ clasificados, restantes: Number(conteo?.restantes) || 0 });
+      return NextResponse.json({ clasificados, restantes: Number(conteo?.restantes) || 0, reintentarEn: todosFallaron ? 30 : 0 });
     }
 
     if (body.action === "refresh_source") {
@@ -642,11 +644,11 @@ function normalizarCategoria(valor = "") {
 
 const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0.1 };
 
-// Modelos probados en orden: el lite primero por ser el más rápido, luego los alternos.
-const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.6-flash"];
+// Modelos probados en orden: el lite primero por ser el más rápido, luego el alterno.
+const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash"];
 const GEMINI_LOTE_TAMANO = 12;
 const GEMINI_LOTE_MAX_TOKENS = 1200;
-const GEMINI_LOTE_TIMEOUT_MS = 15000;
+const GEMINI_LOTE_TIMEOUT_MS = 25000;
 
 function construirInstruccionLote(noticias = []) {
   const listado = noticias

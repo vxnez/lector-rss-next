@@ -167,7 +167,7 @@ La respuesta se valida contra `CATEGORIAS_DISPONIBLES`. Si Gemini responde una c
 Para mejorar el rendimiento:
 
 - Se utiliza una cache en memoria basada en titulo y resumen.
-- Las noticias nuevas se guardan de inmediato y su categoria se completa por lotes de 12 mediante la accion `clasificar_pendientes`, que el panel solicita cada 2 segundos hasta agotar la cola.
+- Las noticias nuevas se guardan de inmediato y su categoria se completa por lotes de 12 mediante la accion `clasificar_pendientes`, que el panel solicita en ciclo corto hasta agotar la cola (con pausa de 30s si la IA indica falta de cuota).
 - No se repite la llamada de IA para contenido identico durante la vida del proceso.
 
 En la base de datos se conservan:

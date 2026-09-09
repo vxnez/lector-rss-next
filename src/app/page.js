@@ -116,8 +116,8 @@ export default function HomePage() {
 
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
       let restantes = 0;
+      let esperaMs = 500;
       try {
         const res = await fetch("/api/rss", {
           method: "POST",
@@ -127,11 +127,13 @@ export default function HomePage() {
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));
         restantes = Number(data.restantes) || 0;
+        if (Number(data.reintentarEn) > 0) esperaMs = Number(data.reintentarEn) * 1000;
       } catch {
         break;
       }
       await fetchArticles();
       if (restantes === 0) break;
+      await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
   }, [fetchArticles]);
 
