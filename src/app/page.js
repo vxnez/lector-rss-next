@@ -177,9 +177,16 @@ export default function HomePage() {
         cache: "no-store",
       });
       if (!response.ok) throw new Error("No se pudieron actualizar las fuentes.");
+      const data = await response.json().catch(() => ({}));
 
       await Promise.all([fetchArticles(), fetchSources()]);
-      notify("Fuentes y noticias actualizadas.", "success");
+      const restaurados = Number(data.restaurados) || 0;
+      notify(
+        restaurados > 0
+          ? `Fuentes actualizadas. Se recuperaron ${restaurados} noticias borradas.`
+          : "Fuentes y noticias actualizadas.",
+        "success"
+      );
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Error al refrescar las noticias:", err);
@@ -726,7 +733,7 @@ export default function HomePage() {
                 <div>
                   <strong className="text-white block mb-0.5">Explora un directorio de feeds</strong>
                   <p className="text-gray-400 mb-2">
-                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/vxnez/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">joshuawalcher/rssfeeds <ExternalLink size={12} /></a>.
+                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/vxnez/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">vxnez/rssfeeds <ExternalLink size={12} /></a>.
                   </p>
                 </div>
               </div>

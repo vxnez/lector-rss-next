@@ -93,9 +93,16 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       });
 
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         const sourcesArr = await fetchSources();
         setSources(sourcesArr);
-        onNotify?.("Todas las fuentes fueron actualizadas.", "success");
+        const restaurados = Number(data.restaurados) || 0;
+        onNotify?.(
+          restaurados > 0
+            ? `Todas las fuentes fueron actualizadas. Se recuperaron ${restaurados} noticias borradas.`
+            : "Todas las fuentes fueron actualizadas.",
+          "success"
+        );
         if (onChange) onChange();
       }
     } catch (err) {

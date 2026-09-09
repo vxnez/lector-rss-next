@@ -378,7 +378,13 @@ export async function POST(req) {
             }
           }
         }
-        return NextResponse.json({ message: "Fuente individual actualizada correctamente" });
+        const [restauradosFuente] = await db.query(
+          `UPDATE articulos_publicados
+           SET descartado = 0
+           WHERE fuente_id = ? AND descartado = 1 AND fecha_publicacion >= ?`,
+          [source_id, inicioHoy]
+        );
+        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0 });
       } catch (e) {
         console.error(`[RSS REFRESH SOURCE ERROR] Fuente ID ${source_id}:`, e.message);
         return NextResponse.json({ error: e.message || "No se pudo actualizar la fuente seleccionada" }, { status: 500 });
@@ -445,7 +451,18 @@ export async function POST(req) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
         }
       }));
-      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas });
+      let totalRestaurados = 0;
+      if (body.restore_today) {
+        const [restaurados] = await db.query(
+          `UPDATE articulos_publicados a
+           INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+           SET a.descartado = 0
+           WHERE f.usuario_id = ? AND a.descartado = 1 AND a.fecha_publicacion >= ?`,
+          [userId, inicioHoy]
+        );
+        totalRestaurados = restaurados.affectedRows || 0;
+      }
+      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados });
     }
 
     const { url_feed } = body;
