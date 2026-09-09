@@ -338,10 +338,12 @@ export async function POST(req) {
 
       try {
         const feed = await intentarParsearFeed(url);
+        let pendientes = 0;
         if (feed?.items && feed.items.length > 0) {
           const existentes = await obtenerClasificacionesExistentes([source_id]);
-          const clasificaciones = await prepararClasificaciones(source_id, feed.items, existentes);
+          const clasificaciones = await prepararClasificaciones(source_id, feed.items, existentes, { omitirIA: true });
           await persistirArticulos(source_id, feed.items, clasificaciones, limiteFecha);
+          pendientes = clasificarPendientesEnSegundoPlano(source_id, extraerPendientes(clasificaciones));
         }
         const [restauradosFuente] = await db.query(
           `UPDATE articulos_publicados
@@ -349,7 +351,7 @@ export async function POST(req) {
            WHERE fuente_id = ? AND descartado = 1 AND fecha_publicacion >= ?`,
           [source_id, inicioHoy]
         );
-        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0 });
+        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0, pendientes });
       } catch (e) {
         console.error(`[RSS REFRESH SOURCE ERROR] Fuente ID ${source_id}:`, e.message);
         return NextResponse.json({ error: e.message || "No se pudo actualizar la fuente seleccionada" }, { status: 500 });
@@ -367,14 +369,16 @@ export async function POST(req) {
       }
 
       let totalNuevas = 0;
+      let totalPendientes = 0;
       const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
       await Promise.all(fuentes.map(async (fuente) => {
         try {
           const feed = await intentarParsearFeed(fuente.url_feed);
           if (feed?.items && feed.items.length > 0) {
-            const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes);
+            const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes, { omitirIA: true });
             const { insertados } = await persistirArticulos(fuente.id, feed.items, clasificaciones, limiteFecha);
             totalNuevas += insertados;
+            totalPendientes += clasificarPendientesEnSegundoPlano(fuente.id, extraerPendientes(clasificaciones));
           }
         } catch (e) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
@@ -391,7 +395,7 @@ export async function POST(req) {
         );
         totalRestaurados = restaurados.affectedRows || 0;
       }
-      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados });
+      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados, pendientes: totalPendientes });
     }
 
     const { url_feed } = body;
@@ -412,7 +416,7 @@ export async function POST(req) {
 
     const fuenteId = resFuente.insertId;
 
-    const clasificaciones = await prepararClasificaciones(fuenteId, feed.items, new Map());
+    const clasificaciones = await prepararClasificaciones(fuenteId, feed.items, new Map(), { omitirIA: true });
     const { insertados } = await persistirArticulos(fuenteId, feed.items, clasificaciones, limiteFecha, { soloInsertar: true });
     const totalNuevas = insertados;
 
@@ -421,7 +425,9 @@ export async function POST(req) {
       throw new Error("El feed no contiene artículos con enlaces válidos para mostrar.");
     }
 
-    return NextResponse.json({ message: "Fuente agregada con éxito", nuevos: totalNuevas }, { status: 201 });
+    const pendientes = clasificarPendientesEnSegundoPlano(fuenteId, extraerPendientes(clasificaciones));
+
+    return NextResponse.json({ message: "Fuente agregada con éxito", nuevos: totalNuevas, pendientes }, { status: 201 });
   } catch (error) {
     console.error("Error crítico en POST /api/rss:", error);
     return NextResponse.json(
@@ -797,7 +803,7 @@ function normalizarItemNoticia(item = {}) {
   };
 }
 
-async function prepararClasificaciones(fuenteId, items = [], existentes = new Map()) {
+async function prepararClasificaciones(fuenteId, items = [], existentes = new Map(), { omitirIA = false } = {}) {
   const resultados = new Array(items.length).fill(null);
   const nuevos = [];
   items.forEach((item, posicion) => {
@@ -813,7 +819,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
 
   const apiKey = process.env.GEMINI_API_KEY;
   let resultadosIA = nuevos.map(() => ({ ...SIN_CLASIFICACION }));
-  if (apiKey && nuevos.length > 0) {
+  if (apiKey && nuevos.length > 0 && !omitirIA) {
     resultadosIA = await clasificarLoteConIA(apiKey, nuevos);
   }
   nuevos.forEach((nuevo, k) => {
@@ -845,25 +851,30 @@ function calcularFechaPublicacion(item = {}, limiteFecha) {
   return fechaPub;
 }
 
-async function bulkUpdateArticulos(fuenteId, filas, conCategoria) {
+async function bulkUpdateArticulos(fuenteId, filas, { conCategoria = false, soloCategoria = false } = {}) {
   if (filas.length === 0) return;
   const params = [];
   const agregarCasos = (obtenerValor) => {
     for (const fila of filas) params.push(fila.link, obtenerValor(fila));
     return `CASE url_original ${filas.map(() => "WHEN ? THEN ?").join(" ")} END`;
   };
-  let sql = `UPDATE articulos_publicados SET
-    titulo = ${agregarCasos((fila) => fila.titulo)},
-    resumen = ${agregarCasos((fila) => fila.resumen)},
-    fecha_publicacion = ${agregarCasos((fila) => fila.fechaPub)},`;
-  if (conCategoria) {
-    sql += `
-    categoria = ${agregarCasos((fila) => fila.categoria)},
-    clasificacion_metodo = ${agregarCasos((fila) => fila.metodo)},
-    clasificacion_confianza = ${agregarCasos((fila) => fila.confianza)},`;
+  const asignaciones = [];
+  if (!soloCategoria) {
+    asignaciones.push(
+      `titulo = ${agregarCasos((fila) => fila.titulo)}`,
+      `resumen = ${agregarCasos((fila) => fila.resumen)}`,
+      `fecha_publicacion = ${agregarCasos((fila) => fila.fechaPub)}`
+    );
   }
-  sql += `
-    descartado = 0
+  if (conCategoria || soloCategoria) {
+    asignaciones.push(
+      `categoria = ${agregarCasos((fila) => fila.categoria)}`,
+      `clasificacion_metodo = ${agregarCasos((fila) => fila.metodo)}`,
+      `clasificacion_confianza = ${agregarCasos((fila) => fila.confianza)}`
+    );
+  }
+  if (!soloCategoria) asignaciones.push("descartado = 0");
+  const sql = `UPDATE articulos_publicados SET ${asignaciones.join(", ")}
     WHERE fuente_id = ? AND url_original IN (${filas.map(() => "?").join(", ")})`;
   params.push(fuenteId, ...filas.map((fila) => fila.link));
   await db.query(sql, params);
@@ -886,8 +897,36 @@ async function persistirArticulos(fuenteId, items = [], clasificaciones = [], li
   );
 
   if (!soloInsertar) {
-    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => !fila.esNuevo), false);
-    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => fila.esNuevo), true);
+    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => !fila.esNuevo), { conCategoria: false });
+    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => fila.esNuevo), { conCategoria: true });
   }
   return { insertados: insertRes.affectedRows || 0 };
+}
+
+function extraerPendientes(clasificaciones = []) {
+  const vistos = new Set();
+  const pendientes = [];
+  for (const clasificacion of clasificaciones) {
+    if (!clasificacion?.esNuevo || vistos.has(clasificacion.link)) continue;
+    vistos.add(clasificacion.link);
+    pendientes.push({ link: clasificacion.link, titulo: clasificacion.titulo, resumen: clasificacion.resumen });
+  }
+  return pendientes;
+}
+
+function clasificarPendientesEnSegundoPlano(fuenteId, pendientes = []) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || pendientes.length === 0) return 0;
+  clasificarLoteConIA(apiKey, pendientes)
+    .then((resultados) => {
+      const filas = [];
+      pendientes.forEach((pendiente, indice) => {
+        const resultado = resultados[indice];
+        if (resultado?.metodo === "gemini") filas.push({ ...pendiente, ...resultado });
+      });
+      if (filas.length === 0) return null;
+      return bulkUpdateArticulos(fuenteId, filas, { soloCategoria: true });
+    })
+    .catch((error) => console.error(`[IA FONDO] Fuente ID ${fuenteId}:`, error.message));
+  return pendientes.length;
 }

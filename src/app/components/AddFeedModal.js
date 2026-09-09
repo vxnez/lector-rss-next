@@ -32,7 +32,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
       }
 
       setUrl("");
-      if (onSuccess) await onSuccess();
+      if (onSuccess) await onSuccess(data);
       onClose();
     } catch (err) {
       setError(err.message);

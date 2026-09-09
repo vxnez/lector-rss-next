@@ -69,8 +69,18 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       });
 
       if (res.ok) {
-        onNotify?.("Fuente actualizada correctamente.", "success");
+        const data = await res.json().catch(() => ({}));
+        const pendientes = Number(data.pendientes) || 0;
+        onNotify?.(
+          pendientes > 0
+            ? `Fuente actualizada. Completando ${pendientes} categorías en segundo plano...`
+            : "Fuente actualizada correctamente.",
+          "success"
+        );
         if (onChange) onChange();
+        if (pendientes > 0) {
+          window.setTimeout(() => { if (onChange) onChange(); }, 15000);
+        }
       } else {
         onNotify?.("No se pudo refrescar la fuente seleccionada.", "error");
       }
@@ -97,12 +107,15 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         const sourcesArr = await fetchSources();
         setSources(sourcesArr);
         const restaurados = Number(data.restaurados) || 0;
-        onNotify?.(
-          restaurados > 0
-            ? `Todas las fuentes fueron actualizadas. Se recuperaron ${restaurados} noticias borradas.`
-            : "Todas las fuentes fueron actualizadas.",
-          "success"
-        );
+        const pendientes = Number(data.pendientes) || 0;
+        let mensaje = restaurados > 0
+          ? `Todas las fuentes fueron actualizadas. Se recuperaron ${restaurados} noticias borradas.`
+          : "Todas las fuentes fueron actualizadas.";
+        if (pendientes > 0) {
+          mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
+          window.setTimeout(() => { if (onChange) onChange(); }, 15000);
+        }
+        onNotify?.(mensaje, "success");
         if (onChange) onChange();
       }
     } catch (err) {

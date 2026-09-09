@@ -114,6 +114,11 @@ export default function HomePage() {
     }
   }, []);
 
+  const programarRefetchCategorias = useCallback(() => {
+    window.setTimeout(() => { fetchArticles(); }, 10000);
+    window.setTimeout(() => { fetchArticles(); }, 25000);
+  }, [fetchArticles]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -179,12 +184,15 @@ export default function HomePage() {
 
       await Promise.all([fetchArticles(), fetchSources()]);
       const restaurados = Number(data.restaurados) || 0;
-      notify(
-        restaurados > 0
-          ? `Fuentes actualizadas. Se recuperaron ${restaurados} noticias borradas.`
-          : "Fuentes y noticias actualizadas.",
-        "success"
-      );
+      const pendientes = Number(data.pendientes) || 0;
+      let mensaje = restaurados > 0
+        ? `Fuentes actualizadas. Se recuperaron ${restaurados} noticias borradas.`
+        : "Fuentes y noticias actualizadas.";
+      if (pendientes > 0) {
+        mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
+        programarRefetchCategorias();
+      }
+      notify(mensaje, "success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Error al refrescar las noticias:", err);
@@ -775,7 +783,13 @@ export default function HomePage() {
       <AddFeedModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => Promise.all([fetchArticles(), fetchSources()])}
+        onSuccess={async (data) => {
+          await Promise.all([fetchArticles(), fetchSources()]);
+          if (Number(data?.pendientes) > 0) {
+            notify("Fuente agregada. Completando categorías en segundo plano...", "success");
+            programarRefetchCategorias();
+          }
+        }}
       />
       <ManageSourcesModal
         isOpen={isManageModalOpen}
