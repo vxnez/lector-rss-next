@@ -116,7 +116,7 @@ export default function HomePage() {
 
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       let restantes = 0;
       try {
         const res = await fetch("/api/rss", {

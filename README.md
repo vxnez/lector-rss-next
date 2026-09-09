@@ -30,7 +30,7 @@ El proyecto esta construido con Next.js y utiliza una base de datos MySQL para c
 ### Servicios externos
 
 - MySQL/Aiven para persistencia.
-- Gemini (2.5 Flash y modelos alternos) para clasificacion mediante IA.
+- Gemini (3.5 Flash-Lite como principal y modelos alternos) para clasificacion mediante IA.
 - Proveedores OAuth de Google y GitHub, configurables mediante variables de entorno.
 
 ## 3. Estructura principal

@@ -57,7 +57,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   // Clasifica la cola de pendientes por lotes hasta agotarla (progreso visible)
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       try {
         const res = await fetch("/api/rss", {
           method: "POST",

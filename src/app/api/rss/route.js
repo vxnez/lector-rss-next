@@ -642,15 +642,15 @@ function normalizarCategoria(valor = "") {
 
 const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0.1 };
 
-// Modelos probados en orden: si uno fue retirado, está saturado o sin cuota, se intenta con el siguiente.
-const MODELOS_GEMINI = ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
+// Modelos probados en orden: el lite primero por ser el más rápido, luego los alternos.
+const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.6-flash"];
 const GEMINI_LOTE_TAMANO = 12;
 const GEMINI_LOTE_MAX_TOKENS = 1200;
 const GEMINI_LOTE_TIMEOUT_MS = 15000;
 
 function construirInstruccionLote(noticias = []) {
   const listado = noticias
-    .map((noticia, indice) => `[${indice}] Título: ${(noticia.titulo || "").slice(0, 300)}\n[${indice}] Resumen: ${(noticia.resumen || "").slice(0, 500)}`)
+    .map((noticia, indice) => `[${indice}] Título: ${(noticia.titulo || "").slice(0, 300)}\n[${indice}] Resumen: ${(noticia.resumen || "").slice(0, 250)}`)
     .join("\n");
   return `Eres un clasificador de noticias. Clasifica CADA una de las siguientes noticias eligiendo la ÚNICA categoría del catálogo que mejor la describa.
 
