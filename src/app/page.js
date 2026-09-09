@@ -72,9 +72,7 @@ export default function HomePage() {
           estado: s.estado || "activa",
         }));
 
-        if (formattedSources.length > 0) {
-          setSourcesList(formattedSources);
-        }
+        setSourcesList(formattedSources);
       }
     } catch (err) {
       if (err.name !== "AbortError") {
@@ -782,7 +780,6 @@ export default function HomePage() {
       <ManageSourcesModal
         isOpen={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
-        sources={fuentesDisponibles}
         onChange={() => {
           fetchArticles();
           fetchSources();

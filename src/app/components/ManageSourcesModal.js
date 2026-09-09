@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save } from "lucide-react";
 
-export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify, sources: availableSources = [] }) {
+export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify }) {
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -164,7 +164,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   if (!isOpen) return null;
 
-  const visibleSources = sources.length > 0 ? sources : availableSources;
+  const visibleSources = sources;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">

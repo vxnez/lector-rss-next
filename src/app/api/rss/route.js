@@ -692,6 +692,11 @@ function normalizarCategoria(valor = "") {
 
 const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0.1 };
 
+// Modelos probados en orden: si uno fue retirado, está saturado o sin cuota, se intenta con el siguiente.
+const MODELOS_GEMINI = ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
+const GEMINI_TIMEOUT_MS = 8000;
+const GEMINI_MAX_TOKENS = 300;
+
 function construirInstruccionClasificacion(titulo = "", resumen = "") {
   return `Eres un clasificador de noticias. A partir del Título y del Resumen de una noticia, elige la ÚNICA categoría del siguiente catálogo que mejor describa la noticia.
 
@@ -707,6 +712,99 @@ Título: ${titulo.slice(0, 500)}
 Resumen: ${resumen.slice(0, 1000)}`;
 }
 
+function extraerJsonPropuesta(texto = "") {
+  const limpio = texto.replace(/^```json\s*|\s*```$/g, "").trim();
+  try {
+    return JSON.parse(limpio);
+  } catch {
+    const coincidencia = limpio.match(/\{[\s\S]*\}/);
+    if (coincidencia) return JSON.parse(coincidencia[0]);
+    throw new Error("Gemini no devolvió un JSON válido");
+  }
+}
+
+function extraerEsperaReintento(texto = "") {
+  const coincidencia = texto.match(/retry in ([\d.]+)s/i);
+  const segundos = coincidencia ? Number(coincidencia[1]) : NaN;
+  if (!Number.isFinite(segundos)) return 12000;
+  return Math.min(Math.max(segundos * 1000, 1000), 60000);
+}
+
+const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function solicitarModelo(apiKey, modelo, titulo = "", resumen = "") {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          generationConfig: { temperature: 0, maxOutputTokens: GEMINI_MAX_TOKENS },
+          contents: [{
+            parts: [{
+              text: construirInstruccionClasificacion(titulo, resumen),
+            }],
+          }],
+        }),
+      }
+    );
+
+    if ([400, 401, 403].includes(response.status)) {
+      throw new Error(`Gemini rechazó la solicitud (HTTP ${response.status}); se aborta la cadena de modelos`, { cause: "fatal" });
+    }
+    if (response.status === 429) {
+      const cuerpo = await response.text().catch(() => "");
+      throw new Error(`Gemini sin cuota en ${modelo} (HTTP 429)`, { cause: { esperaMs: extraerEsperaReintento(cuerpo) } });
+    }
+    if (!response.ok) throw new Error(`Gemini respondió HTTP ${response.status} con ${modelo}`);
+    const data = await response.json();
+    const propuestaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!propuestaTexto) throw new Error(`Gemini no devolvió contenido con ${modelo}`);
+    const propuesta = extraerJsonPropuesta(propuestaTexto);
+    const categoriaValida = CATEGORIAS_DISPONIBLES.find(
+      (categoria) => normalizarCategoria(categoria) === normalizarCategoria(propuesta.categoria)
+    );
+    if (!categoriaValida) throw new Error(`Gemini devolvió una categoría no permitida con ${modelo}`);
+    const confianzaNumerica = Number(propuesta.confianza);
+    return {
+      categoria: categoriaValida,
+      metodo: "gemini",
+      confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function solicitarCategoriaGemini(apiKey, titulo = "", resumen = "") {
+  let ultimoError = new Error("Gemini no respondió correctamente");
+  for (const modelo of MODELOS_GEMINI) {
+    try {
+      return await solicitarModelo(apiKey, modelo, titulo, resumen);
+    } catch (error) {
+      ultimoError = error;
+      if (error?.cause === "fatal") break;
+      const esperaMs = error?.cause?.esperaMs;
+      if (esperaMs) {
+        console.warn(`Cuota excedida en ${modelo}; reintentando en ${Math.round(esperaMs / 1000)}s...`);
+        await esperar(esperaMs);
+        try {
+          return await solicitarModelo(apiKey, modelo, titulo, resumen);
+        } catch (errorReintento) {
+          ultimoError = errorReintento;
+          if (errorReintento?.cause === "fatal") break;
+        }
+      }
+      console.warn(`Clasificación con ${modelo} falló; probando siguiente modelo:`, ultimoError.message);
+    }
+  }
+  throw ultimoError;
+}
+
 async function clasificarCategoriaConIA(titulo = "", resumen = "") {
   const cacheKey = `${titulo.trim()}\u0000${resumen.trim()}`;
   const cached = clasificacionCache.get(cacheKey);
@@ -718,50 +816,14 @@ async function clasificarCategoriaConIA(titulo = "", resumen = "") {
     return SIN_CLASIFICACION;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500);
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          generationConfig: { temperature: 0, maxOutputTokens: 60 },
-          contents: [{
-            parts: [{
-              text: construirInstruccionClasificacion(titulo, resumen),
-            }],
-          }],
-        }),
-      }
-    );
-
-    if (!response.ok) throw new Error("Gemini no respondió correctamente");
-    const data = await response.json();
-    const propuestaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!propuestaTexto) throw new Error("Gemini no devolvió contenido");
-    const propuesta = JSON.parse(propuestaTexto.replace(/^```json\s*|\s*```$/g, ""));
-    const categoriaValida = CATEGORIAS_DISPONIBLES.find(
-      (categoria) => normalizarCategoria(categoria) === normalizarCategoria(propuesta.categoria)
-    );
-    if (!categoriaValida) throw new Error("Gemini devolvió una categoría no permitida");
-    const confianzaNumerica = Number(propuesta.confianza);
-    const resultado = {
-      categoria: categoriaValida,
-      metodo: "gemini",
-      confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
-    };
+    const resultado = await solicitarCategoriaGemini(apiKey, titulo, resumen);
     clasificacionCache.set(cacheKey, resultado);
     return resultado;
   } catch (error) {
     console.warn("Clasificación con Gemini falló; se usará 'General':", error.message);
     clasificacionCache.set(cacheKey, SIN_CLASIFICACION);
     return SIN_CLASIFICACION;
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
