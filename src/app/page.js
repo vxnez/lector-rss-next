@@ -371,7 +371,7 @@ export default function HomePage() {
               <button
                 onClick={async () => {
                   const { signOut } = await import("next-auth/react");
-                  await signOut({ redirectTo: "/login" });
+                  await signOut({ callbackUrl: "/login" });
                 }}
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 cursor-pointer"
               >
