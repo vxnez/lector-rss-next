@@ -105,13 +105,16 @@ textarea:focus-visible {
   flex-shrink: 0;
 }
 .rss-check-list input[type="checkbox"]::after {
-  content: "\2714";
+  content: "";
+  width: 0.75rem;
+  height: 0.75rem;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZWNrIj48cGF0aCBkPSJNMjAgNiA5IDE3bC01LTUiLz48L3N2Zz4=");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   opacity: 0;
   transition: opacity 150ms ease-in-out;
   color: var(--_clr-checked);
-  font-size: 0.7rem;
-  line-height: 1;
-  font-family: inherit;
 }
 
 .rss-check-list label:hover,
