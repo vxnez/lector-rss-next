@@ -341,37 +341,7 @@ export async function POST(req) {
         if (feed?.items && feed.items.length > 0) {
           const existentes = await obtenerClasificacionesExistentes([source_id]);
           const clasificaciones = await prepararClasificaciones(source_id, feed.items, existentes);
-          for (const [itemIndex, item] of feed.items.entries()) {
-            const clasificacion = clasificaciones[itemIndex];
-            if (!clasificacion) continue;
-
-            let fechaPub = new Date();
-            if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
-              fechaPub = new Date(item.pubDate);
-            } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
-              fechaPub = new Date(item.isoDate);
-            }
-
-            if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
-              fechaPub = new Date();
-            }
-
-            const [result] = await db.query(
-              `INSERT IGNORE INTO articulos_publicados 
-               (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-              [source_id, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
-            );
-
-            if (result.affectedRows === 0) {
-              await db.query(
-                `UPDATE articulos_publicados 
-                 SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
-                 WHERE url_original = ? AND fuente_id = ?`,
-                [clasificacion.titulo, clasificacion.resumen, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza, clasificacion.link, source_id]
-              );
-            }
-          }
+          await persistirArticulos(source_id, feed.items, clasificaciones, limiteFecha);
         }
         const [restauradosFuente] = await db.query(
           `UPDATE articulos_publicados
@@ -403,39 +373,8 @@ export async function POST(req) {
           const feed = await intentarParsearFeed(fuente.url_feed);
           if (feed?.items && feed.items.length > 0) {
             const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes);
-            for (const [itemIndex, item] of feed.items.entries()) {
-              const clasificacion = clasificaciones[itemIndex];
-              if (!clasificacion) continue;
-
-              let fechaPub = new Date();
-              if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
-                fechaPub = new Date(item.pubDate);
-              } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
-                fechaPub = new Date(item.isoDate);
-              }
-
-              if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
-                fechaPub = new Date();
-              }
-
-              const [result] = await db.query(
-                `INSERT IGNORE INTO articulos_publicados 
-                 (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-                [fuente.id, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
-              );
-
-              if (result.affectedRows > 0) {
-                totalNuevas++;
-              } else {
-                await db.query(
-                  `UPDATE articulos_publicados 
-                   SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
-                   WHERE url_original = ? AND fuente_id = ?`,
-                  [clasificacion.titulo, clasificacion.resumen, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza, clasificacion.link, fuente.id]
-                );
-              }
-            }
+            const { insertados } = await persistirArticulos(fuente.id, feed.items, clasificaciones, limiteFecha);
+            totalNuevas += insertados;
           }
         } catch (e) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
@@ -472,32 +411,10 @@ export async function POST(req) {
     );
 
     const fuenteId = resFuente.insertId;
-    let totalNuevas = 0;
 
     const clasificaciones = await prepararClasificaciones(fuenteId, feed.items, new Map());
-    for (const [itemIndex, item] of feed.items.entries()) {
-      const clasificacion = clasificaciones[itemIndex];
-      if (!clasificacion) continue;
-
-      let fechaPub = new Date();
-      if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
-        fechaPub = new Date(item.pubDate);
-      } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
-        fechaPub = new Date(item.isoDate);
-      }
-
-      if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
-        fechaPub = new Date();
-      }
-
-      const [result] = await db.query(
-          `INSERT IGNORE INTO articulos_publicados 
-           (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-          [fuenteId, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
-        );
-      totalNuevas += result.affectedRows;
-    }
+    const { insertados } = await persistirArticulos(fuenteId, feed.items, clasificaciones, limiteFecha, { soloInsertar: true });
+    const totalNuevas = insertados;
 
     if (totalNuevas === 0) {
       await db.query("DELETE FROM fuentes_rss WHERE id = ? AND usuario_id = ?", [fuenteId, userId]);
@@ -888,7 +805,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
     if (!normalizado) return;
     const previo = existentes.get(`${fuenteId}\u0000${normalizado.link}`);
     if (previo && previo.metodo !== "sin-ia") {
-      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen };
+      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen, esNuevo: false };
     } else {
       nuevos.push({ posicion, ...normalizado });
     }
@@ -908,7 +825,69 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
       link: nuevo.link,
       titulo: nuevo.titulo,
       resumen: nuevo.resumen,
+      esNuevo: true,
     };
   });
   return resultados;
+}
+
+function calcularFechaPublicacion(item = {}, limiteFecha) {
+  let fechaPub = new Date();
+  if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
+    fechaPub = new Date(item.pubDate);
+  } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
+    fechaPub = new Date(item.isoDate);
+  }
+
+  if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
+    fechaPub = new Date();
+  }
+  return fechaPub;
+}
+
+async function bulkUpdateArticulos(fuenteId, filas, conCategoria) {
+  if (filas.length === 0) return;
+  const params = [];
+  const agregarCasos = (obtenerValor) => {
+    for (const fila of filas) params.push(fila.link, obtenerValor(fila));
+    return `CASE url_original ${filas.map(() => "WHEN ? THEN ?").join(" ")} END`;
+  };
+  let sql = `UPDATE articulos_publicados SET
+    titulo = ${agregarCasos((fila) => fila.titulo)},
+    resumen = ${agregarCasos((fila) => fila.resumen)},
+    fecha_publicacion = ${agregarCasos((fila) => fila.fechaPub)},`;
+  if (conCategoria) {
+    sql += `
+    categoria = ${agregarCasos((fila) => fila.categoria)},
+    clasificacion_metodo = ${agregarCasos((fila) => fila.metodo)},
+    clasificacion_confianza = ${agregarCasos((fila) => fila.confianza)},`;
+  }
+  sql += `
+    descartado = 0
+    WHERE fuente_id = ? AND url_original IN (${filas.map(() => "?").join(", ")})`;
+  params.push(fuenteId, ...filas.map((fila) => fila.link));
+  await db.query(sql, params);
+}
+
+async function persistirArticulos(fuenteId, items = [], clasificaciones = [], limiteFecha, { soloInsertar = false } = {}) {
+  const filas = [];
+  items.forEach((item, indice) => {
+    const clasificacion = clasificaciones[indice];
+    if (!clasificacion) return;
+    filas.push({ ...clasificacion, fechaPub: calcularFechaPublicacion(item, limiteFecha) });
+  });
+  if (filas.length === 0) return { insertados: 0 };
+
+  const [insertRes] = await db.query(
+    `INSERT IGNORE INTO articulos_publicados
+     (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado)
+     VALUES ${filas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)").join(", ")}`,
+    filas.flatMap((fila) => [fuenteId, fila.titulo, fila.resumen, fila.link, fila.fechaPub, fila.categoria, fila.metodo, fila.confianza])
+  );
+
+  if (!soloInsertar) {
+    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => !fila.esNuevo), false);
+    await bulkUpdateArticulos(fuenteId, filas.filter((fila) => fila.esNuevo), true);
+  }
+  return { insertados: insertRes.affectedRows || 0 };
 }
