@@ -78,6 +78,29 @@ function limpiarUrl(urlRaw) {
   }
 }
 
+function normalizarUrlComparacion(rawUrl = "") {
+  const valor = rawUrl.trim();
+  if (!valor) return "";
+  try {
+    const url = new URL(/^https?:\/\//i.test(valor) ? valor : `https://${valor}`);
+    url.hash = "";
+    for (const param of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+      url.searchParams.delete(param);
+    }
+    const ruta = url.pathname.replace(/\/+$/, "") || "/";
+    return `${url.protocol.toLowerCase()}//${url.hostname.toLowerCase()}${url.port ? `:${url.port}` : ""}${ruta}${url.search}`;
+  } catch {
+    return valor.toLowerCase();
+  }
+}
+
+async function buscarFuenteDuplicada(userId, candidatas = []) {
+  const objetivos = new Set(candidatas.map(normalizarUrlComparacion).filter(Boolean));
+  if (objetivos.size === 0) return null;
+  const [fuentes] = await db.query("SELECT id, titulo, url_feed FROM fuentes_rss WHERE usuario_id = ?", [userId]);
+  return fuentes.find((fuente) => objetivos.has(normalizarUrlComparacion(fuente.url_feed))) || null;
+}
+
 const RSS_TIMEOUT_MS = 8000;
 const HTML_TIMEOUT_MS = 12000;
 const MAX_FEED_CANDIDATES = 80;
@@ -448,10 +471,26 @@ export async function POST(req) {
       return NextResponse.json({ error: "La URL es obligatoria" }, { status: 400 });
     }
 
+    const duplicadaEntrada = await buscarFuenteDuplicada(userId, [url_feed]);
+    if (duplicadaEntrada) {
+      return NextResponse.json(
+        { error: `Esta fuente RSS ya está registrada en tu cuenta como "${duplicadaEntrada.titulo}".` },
+        { status: 409 }
+      );
+    }
+
     const { feed, urlFinal } = await buscarFeedRSS(url_feed);
 
     if (!feed.items || feed.items.length === 0) {
       throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");
+    }
+
+    const duplicadaFinal = await buscarFuenteDuplicada(userId, [urlFinal, url_feed]);
+    if (duplicadaFinal) {
+      return NextResponse.json(
+        { error: `Esta fuente RSS ya está registrada en tu cuenta como "${duplicadaFinal.titulo}".` },
+        { status: 409 }
+      );
     }
 
     const [resFuente] = await db.query(
