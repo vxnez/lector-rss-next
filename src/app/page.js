@@ -665,30 +665,30 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="category-filter-list max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm text-gray-200 hover:bg-gray-900 cursor-pointer">
+                  <div className="rss-check-list grid grid-cols-2 gap-1.5">
+                    <div className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900">
                       <input
+                        id="filtro-cat-todas"
                         type="checkbox"
                         checked={categoriasSeleccionadas.length === 0}
                         onChange={() => setCategoriasSeleccionadas([])}
-                        className="h-4 w-4 accent-sky-500 shrink-0"
                       />
-                      <span className="truncate">Todas</span>
-                    </label>
+                      <label htmlFor="filtro-cat-todas" className="truncate">Todas</label>
+                    </div>
 
-                    {categoriasDisponibles.map((categoria) => (
-                      <label
+                    {categoriasDisponibles.map((categoria, indice) => (
+                      <div
                         key={categoria}
-                        className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm text-gray-300 hover:bg-gray-900 cursor-pointer"
+                        className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900"
                       >
                         <input
+                          id={`filtro-cat-${indice}`}
                           type="checkbox"
                           checked={categoriasSeleccionadas.includes(categoria)}
                           onChange={() => alternarCategoria(categoria)}
-                          className="h-4 w-4 accent-sky-500 shrink-0"
                         />
-                        <span className="truncate">{categoria}</span>
-                      </label>
+                        <label htmlFor={`filtro-cat-${indice}`} className="truncate">{categoria}</label>
+                      </div>
                     ))}
                   </div>
 

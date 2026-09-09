@@ -72,3 +72,65 @@ textarea:focus-visible {
   background: #1b6f9b;
   color: #ffffff;
 }
+
+/* Checkboxes del filtro de categorías (basado en Uiverse.io by cbolson) */
+.rss-check-list {
+  --_clr-primary: #6b7280;
+  --_clr-hover: #38bdf8;
+  --_clr-checked: #27a9e8;
+}
+.rss-check-list > div {
+  --_clr-current: var(--_clr-primary);
+}
+.rss-check-list label {
+  cursor: pointer;
+  color: var(--_clr-current);
+  transition: color 150ms ease-in-out;
+}
+
+/* styled checkbox */
+.rss-check-list input[type="checkbox"] {
+  appearance: none;
+  outline: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  aspect-ratio: 1;
+  padding: 0.2rem;
+  background: transparent;
+  border: 1px solid var(--_clr-current);
+  border-radius: 2px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.rss-check-list input[type="checkbox"]::after {
+  content: "\2714";
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+  color: var(--_clr-checked);
+  font-size: 0.7rem;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.rss-check-list label:hover,
+.rss-check-list input[type="checkbox"]:focus-visible,
+.rss-check-list input[type="checkbox"]:focus-visible + label,
+.rss-check-list input[type="checkbox"]:hover,
+.rss-check-list input[type="checkbox"]:hover + label {
+  --_clr-current: var(--_clr-hover);
+}
+.rss-check-list input[type="checkbox"]:focus-visible::after,
+.rss-check-list input[type="checkbox"]:hover::after {
+  opacity: 0.5;
+  color: var(--_clr-hover);
+}
+
+.rss-check-list input[type="checkbox"]:checked + label:not(:hover),
+.rss-check-list input[type="checkbox"]:checked:not(:hover) {
+  --_clr-current: var(--_clr-checked);
+}
+.rss-check-list input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
