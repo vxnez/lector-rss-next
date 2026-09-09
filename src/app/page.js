@@ -726,7 +726,7 @@ export default function HomePage() {
                 <div>
                   <strong className="text-white block mb-0.5">Explora un directorio de feeds</strong>
                   <p className="text-gray-400 mb-2">
-                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/joshuawalcher/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">joshuawalcher/rssfeeds <ExternalLink size={12} /></a>.
+                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/vxnez/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">joshuawalcher/rssfeeds <ExternalLink size={12} /></a>.
                   </p>
                 </div>
               </div>
