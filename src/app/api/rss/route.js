@@ -339,14 +339,12 @@ export async function POST(req) {
       try {
         const feed = await intentarParsearFeed(url);
         if (feed?.items && feed.items.length > 0) {
-          const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+          const existentes = await obtenerClasificacionesExistentes([source_id]);
+          const clasificaciones = await prepararClasificaciones(source_id, feed.items, existentes);
           for (const [itemIndex, item] of feed.items.entries()) {
-            const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
-            if (!linkNormalizado) continue;
+            const clasificacion = clasificaciones[itemIndex];
+            if (!clasificacion) continue;
 
-            const rawResumen = item.contentSnippet || item.summary || item.content || item.description || "";
-            const resumenLimpio = rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300);
-            
             let fechaPub = new Date();
             if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
               fechaPub = new Date(item.pubDate);
@@ -358,14 +356,11 @@ export async function POST(req) {
               fechaPub = new Date();
             }
 
-            const clasificacion = clasificaciones[itemIndex];
-            const categoriaArticulo = clasificacion.categoria;
-
             const [result] = await db.query(
               `INSERT IGNORE INTO articulos_publicados 
                (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-              [source_id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
+              [source_id, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
             );
 
             if (result.affectedRows === 0) {
@@ -373,7 +368,7 @@ export async function POST(req) {
                 `UPDATE articulos_publicados 
                  SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
                  WHERE url_original = ? AND fuente_id = ?`,
-               [item.title || "Sin título", resumenLimpio, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza, linkNormalizado, source_id]
+                [clasificacion.titulo, clasificacion.resumen, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza, clasificacion.link, source_id]
               );
             }
           }
@@ -402,18 +397,16 @@ export async function POST(req) {
       }
 
       let totalNuevas = 0;
+      const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
       await Promise.all(fuentes.map(async (fuente) => {
         try {
           const feed = await intentarParsearFeed(fuente.url_feed);
           if (feed?.items && feed.items.length > 0) {
-            const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+            const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes);
             for (const [itemIndex, item] of feed.items.entries()) {
-              const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
-              if (!linkNormalizado) continue;
+              const clasificacion = clasificaciones[itemIndex];
+              if (!clasificacion) continue;
 
-              const rawResumen = item.contentSnippet || item.summary || item.content || item.description || "";
-              const resumenLimpio = rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300);
-              
               let fechaPub = new Date();
               if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
                 fechaPub = new Date(item.pubDate);
@@ -425,14 +418,11 @@ export async function POST(req) {
                 fechaPub = new Date();
               }
 
-              const clasificacion = clasificaciones[itemIndex];
-              const categoriaArticulo = clasificacion.categoria;
-
               const [result] = await db.query(
                 `INSERT IGNORE INTO articulos_publicados 
                  (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-                [fuente.id, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
+                [fuente.id, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
               );
 
               if (result.affectedRows > 0) {
@@ -442,7 +432,7 @@ export async function POST(req) {
                   `UPDATE articulos_publicados 
                    SET titulo = ?, resumen = ?, fecha_publicacion = ?, categoria = ?, clasificacion_metodo = ?, clasificacion_confianza = ?, descartado = 0 
                    WHERE url_original = ? AND fuente_id = ?`,
-                  [item.title || "Sin título", resumenLimpio, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza, linkNormalizado, fuente.id]
+                  [clasificacion.titulo, clasificacion.resumen, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza, clasificacion.link, fuente.id]
                 );
               }
             }
@@ -484,33 +474,27 @@ export async function POST(req) {
     const fuenteId = resFuente.insertId;
     let totalNuevas = 0;
 
-    const clasificaciones = await clasificarItemsEnParalelo(feed.items);
+    const clasificaciones = await prepararClasificaciones(fuenteId, feed.items, new Map());
     for (const [itemIndex, item] of feed.items.entries()) {
-      const linkNormalizado = limpiarUrlNoticia(item.link || item.guid || item.id || "");
-      if (!linkNormalizado) continue;
+      const clasificacion = clasificaciones[itemIndex];
+      if (!clasificacion) continue;
 
-        const rawResumen = item.contentSnippet || item.summary || item.content || item.description || "";
-        const resumenLimpio = rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300);
-        
-        let fechaPub = new Date();
-        if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
-          fechaPub = new Date(item.pubDate);
-        } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
-          fechaPub = new Date(item.isoDate);
-        }
+      let fechaPub = new Date();
+      if (item.pubDate && !isNaN(Date.parse(item.pubDate))) {
+        fechaPub = new Date(item.pubDate);
+      } else if (item.isoDate && !isNaN(Date.parse(item.isoDate))) {
+        fechaPub = new Date(item.isoDate);
+      }
 
-        if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
-          fechaPub = new Date();
-        }
-
-        const clasificacion = clasificaciones[itemIndex];
-        const categoriaArticulo = clasificacion.categoria;
+      if (isNaN(fechaPub.getTime()) || fechaPub < limiteFecha) {
+        fechaPub = new Date();
+      }
 
       const [result] = await db.query(
           `INSERT IGNORE INTO articulos_publicados 
            (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
-          [fuenteId, item.title || "Sin título", resumenLimpio, linkNormalizado, fechaPub, categoriaArticulo, clasificacion.metodo, clasificacion.confianza]
+          [fuenteId, clasificacion.titulo, clasificacion.resumen, clasificacion.link, fechaPub, clasificacion.categoria, clasificacion.metodo, clasificacion.confianza]
         );
       totalNuevas += result.affectedRows;
     }
@@ -694,32 +678,42 @@ const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0
 
 // Modelos probados en orden: si uno fue retirado, está saturado o sin cuota, se intenta con el siguiente.
 const MODELOS_GEMINI = ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
-const GEMINI_TIMEOUT_MS = 8000;
-const GEMINI_MAX_TOKENS = 300;
+const GEMINI_LOTE_TAMANO = 12;
+const GEMINI_LOTE_MAX_TOKENS = 1200;
+const GEMINI_LOTE_TIMEOUT_MS = 15000;
 
-function construirInstruccionClasificacion(titulo = "", resumen = "") {
-  return `Eres un clasificador de noticias. A partir del Título y del Resumen de una noticia, elige la ÚNICA categoría del siguiente catálogo que mejor describa la noticia.
+function construirInstruccionLote(noticias = []) {
+  const listado = noticias
+    .map((noticia, indice) => `[${indice}] Título: ${(noticia.titulo || "").slice(0, 300)}\n[${indice}] Resumen: ${(noticia.resumen || "").slice(0, 500)}`)
+    .join("\n");
+  return `Eres un clasificador de noticias. Clasifica CADA una de las siguientes noticias eligiendo la ÚNICA categoría del catálogo que mejor la describa.
 
 Catálogo de categorías:
 ${CATALOGO_PROMPT}
 
 Reglas:
-- Responde únicamente JSON válido con esta forma exacta: {"categoria":"<nombre exacto de una categoría del catálogo>","confianza":<número entre 0 y 1>}
-- "confianza" indica qué tan seguro estás de la categoría elegida.
+- Responde únicamente un arreglo JSON válido con esta forma exacta: [{"i":0,"categoria":"<nombre exacto de una categoría del catálogo>","confianza":0.9}]
+- Incluye un objeto por cada noticia, con su índice "i".
+- "confianza" es un número entre 0 y 1 que indica qué tan seguro estás.
 - No inventes ni combines categorías; usa exactamente un nombre del catálogo.
 
-Título: ${titulo.slice(0, 500)}
-Resumen: ${resumen.slice(0, 1000)}`;
+Noticias:
+${listado}`;
 }
 
-function extraerJsonPropuesta(texto = "") {
+function extraerArregloPropuesta(texto = "") {
   const limpio = texto.replace(/^```json\s*|\s*```$/g, "").trim();
+  const validar = (fragmento) => {
+    const arreglo = JSON.parse(fragmento);
+    if (!Array.isArray(arreglo)) throw new Error("Gemini no devolvió un arreglo JSON válido");
+    return arreglo;
+  };
   try {
-    return JSON.parse(limpio);
+    return validar(limpio);
   } catch {
-    const coincidencia = limpio.match(/\{[\s\S]*\}/);
-    if (coincidencia) return JSON.parse(coincidencia[0]);
-    throw new Error("Gemini no devolvió un JSON válido");
+    const coincidencia = limpio.match(/\[[\s\S]*\]/);
+    if (coincidencia) return validar(coincidencia[0]);
+    throw new Error("Gemini no devolvió un arreglo JSON válido");
   }
 }
 
@@ -732,9 +726,9 @@ function extraerEsperaReintento(texto = "") {
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function solicitarModelo(apiKey, modelo, titulo = "", resumen = "") {
+async function llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
@@ -743,10 +737,10 @@ async function solicitarModelo(apiKey, modelo, titulo = "", resumen = "") {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
-          generationConfig: { temperature: 0, maxOutputTokens: GEMINI_MAX_TOKENS },
+          generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
           contents: [{
             parts: [{
-              text: construirInstruccionClasificacion(titulo, resumen),
+              text: textoPrompt,
             }],
           }],
         }),
@@ -762,29 +756,19 @@ async function solicitarModelo(apiKey, modelo, titulo = "", resumen = "") {
     }
     if (!response.ok) throw new Error(`Gemini respondió HTTP ${response.status} con ${modelo}`);
     const data = await response.json();
-    const propuestaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!propuestaTexto) throw new Error(`Gemini no devolvió contenido con ${modelo}`);
-    const propuesta = extraerJsonPropuesta(propuestaTexto);
-    const categoriaValida = CATEGORIAS_DISPONIBLES.find(
-      (categoria) => normalizarCategoria(categoria) === normalizarCategoria(propuesta.categoria)
-    );
-    if (!categoriaValida) throw new Error(`Gemini devolvió una categoría no permitida con ${modelo}`);
-    const confianzaNumerica = Number(propuesta.confianza);
-    return {
-      categoria: categoriaValida,
-      metodo: "gemini",
-      confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
-    };
+    const textoRespuesta = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!textoRespuesta) throw new Error(`Gemini no devolvió contenido con ${modelo}`);
+    return textoRespuesta;
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-async function solicitarCategoriaGemini(apiKey, titulo = "", resumen = "") {
+async function ejecutarCadenaGemini(apiKey, textoPrompt, maxTokens, timeoutMs) {
   let ultimoError = new Error("Gemini no respondió correctamente");
   for (const modelo of MODELOS_GEMINI) {
     try {
-      return await solicitarModelo(apiKey, modelo, titulo, resumen);
+      return await llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs);
     } catch (error) {
       ultimoError = error;
       if (error?.cause === "fatal") break;
@@ -793,7 +777,7 @@ async function solicitarCategoriaGemini(apiKey, titulo = "", resumen = "") {
         console.warn(`Cuota excedida en ${modelo}; reintentando en ${Math.round(esperaMs / 1000)}s...`);
         await esperar(esperaMs);
         try {
-          return await solicitarModelo(apiKey, modelo, titulo, resumen);
+          return await llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs);
         } catch (errorReintento) {
           ultimoError = errorReintento;
           if (errorReintento?.cause === "fatal") break;
@@ -805,42 +789,126 @@ async function solicitarCategoriaGemini(apiKey, titulo = "", resumen = "") {
   throw ultimoError;
 }
 
-async function clasificarCategoriaConIA(titulo = "", resumen = "") {
-  const cacheKey = `${titulo.trim()}\u0000${resumen.trim()}`;
-  const cached = clasificacionCache.get(cacheKey);
-  if (cached) return cached;
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    clasificacionCache.set(cacheKey, SIN_CLASIFICACION);
-    return SIN_CLASIFICACION;
-  }
-
-  try {
-    const resultado = await solicitarCategoriaGemini(apiKey, titulo, resumen);
-    clasificacionCache.set(cacheKey, resultado);
-    return resultado;
-  } catch (error) {
-    console.warn("Clasificación con Gemini falló; se usará 'General':", error.message);
-    clasificacionCache.set(cacheKey, SIN_CLASIFICACION);
-    return SIN_CLASIFICACION;
-  }
+function validarPropuestaCategoria(propuesta) {
+  const nombre = propuesta && typeof propuesta.categoria === "string" ? propuesta.categoria : "";
+  const categoriaValida = CATEGORIAS_DISPONIBLES.find(
+    (categoria) => normalizarCategoria(categoria) === normalizarCategoria(nombre)
+  );
+  if (!categoriaValida) return null;
+  const confianzaNumerica = Number(propuesta.confianza);
+  return {
+    categoria: categoriaValida,
+    metodo: "gemini",
+    confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
+  };
 }
 
-async function clasificarItemsEnParalelo(items, limite = 4) {
-  const resultados = new Array(items.length);
-  let siguiente = 0;
-  const worker = async () => {
-    while (siguiente < items.length) {
-      const indice = siguiente++;
-      const item = items[indice];
-      const resumen = (item.contentSnippet || item.summary || item.content || item.description || "")
-        .replace(/<[^>]*>?/gm, "")
-        .substring(0, 300);
-      resultados[indice] = await clasificarCategoriaConIA(item.title || "", resumen);
+async function clasificarLoteConIA(apiKey, noticias) {
+  const resultados = new Array(noticias.length);
+  const grupos = new Map();
+  noticias.forEach((noticia, indice) => {
+    const key = `${(noticia.titulo || "").trim()}\u0000${(noticia.resumen || "").trim()}`;
+    const cached = clasificacionCache.get(key);
+    if (cached) {
+      resultados[indice] = cached;
+      return;
     }
-  };
+    if (!grupos.has(key)) {
+      grupos.set(key, { titulo: noticia.titulo || "", resumen: noticia.resumen || "", key, indices: [] });
+    }
+    grupos.get(key).indices.push(indice);
+  });
 
-  await Promise.all(Array.from({ length: Math.min(limite, items.length) }, worker));
+  const unicos = [...grupos.values()];
+  for (let inicio = 0; inicio < unicos.length; inicio += GEMINI_LOTE_TAMANO) {
+    const lote = unicos.slice(inicio, inicio + GEMINI_LOTE_TAMANO);
+    try {
+      const texto = await ejecutarCadenaGemini(apiKey, construirInstruccionLote(lote), GEMINI_LOTE_MAX_TOKENS, GEMINI_LOTE_TIMEOUT_MS);
+      const propuestas = extraerArregloPropuesta(texto);
+      const porIndice = new Map();
+      for (const propuesta of propuestas) {
+        if (propuesta && Number.isInteger(Number(propuesta.i))) porIndice.set(Number(propuesta.i), propuesta);
+      }
+      lote.forEach((item, posicion) => {
+        const validada = validarPropuestaCategoria(porIndice.get(posicion));
+        const resultado = validada || { ...SIN_CLASIFICACION };
+        if (validada) clasificacionCache.set(item.key, resultado);
+        item.indices.forEach((indice) => {
+          resultados[indice] = resultado;
+        });
+      });
+    } catch (error) {
+      console.warn("Clasificación por lote falló; se usará 'General':", error.message);
+      lote.forEach((item) => {
+        item.indices.forEach((indice) => {
+          resultados[indice] = { ...SIN_CLASIFICACION };
+        });
+      });
+    }
+  }
+  return resultados;
+}
+
+async function obtenerClasificacionesExistentes(fuenteIds = []) {
+  const mapa = new Map();
+  const ids = [...new Set(fuenteIds.filter((id) => id !== undefined && id !== null))];
+  if (ids.length === 0) return mapa;
+  const [filas] = await db.query(
+    `SELECT fuente_id, url_original, categoria, clasificacion_metodo, clasificacion_confianza
+     FROM articulos_publicados WHERE fuente_id IN (?)`,
+    [ids]
+  );
+  for (const fila of filas) {
+    const confianza = Number(fila.clasificacion_confianza);
+    mapa.set(`${fila.fuente_id}\u0000${fila.url_original}`, {
+      categoria: fila.categoria || "General",
+      metodo: fila.clasificacion_metodo || "sin-ia",
+      confianza: Number.isFinite(confianza) ? confianza : 0.5,
+    });
+  }
+  return mapa;
+}
+
+function normalizarItemNoticia(item = {}) {
+  const link = limpiarUrlNoticia(item.link || item.guid || item.id || "");
+  if (!link) return null;
+  const rawResumen = item.contentSnippet || item.summary || item.content || item.description || "";
+  return {
+    link,
+    titulo: item.title || "Sin título",
+    resumen: rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300),
+  };
+}
+
+async function prepararClasificaciones(fuenteId, items = [], existentes = new Map()) {
+  const resultados = new Array(items.length).fill(null);
+  const nuevos = [];
+  items.forEach((item, posicion) => {
+    const normalizado = normalizarItemNoticia(item);
+    if (!normalizado) return;
+    const previo = existentes.get(`${fuenteId}\u0000${normalizado.link}`);
+    if (previo && previo.metodo !== "sin-ia") {
+      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen };
+    } else {
+      nuevos.push({ posicion, ...normalizado });
+    }
+  });
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  let resultadosIA = nuevos.map(() => ({ ...SIN_CLASIFICACION }));
+  if (apiKey && nuevos.length > 0) {
+    resultadosIA = await clasificarLoteConIA(apiKey, nuevos);
+  }
+  nuevos.forEach((nuevo, k) => {
+    const clasificacion = resultadosIA[k] || { ...SIN_CLASIFICACION };
+    resultados[nuevo.posicion] = {
+      categoria: clasificacion.categoria,
+      metodo: clasificacion.metodo,
+      confianza: clasificacion.confianza,
+      link: nuevo.link,
+      titulo: nuevo.titulo,
+      resumen: nuevo.resumen,
+    };
+  });
   return resultados;
 }
