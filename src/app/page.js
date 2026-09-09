@@ -716,7 +716,7 @@ export default function HomePage() {
                 ¡Bienvenido a tu Feed de Noticias!
               </h3>
               <p className="text-sm text-gray-400 leading-relaxed">
-                Este programa te permite centralizar artículos de tus sitios web favoritos mediante enlaces <strong className="text-gray-200">RSS</strong>. Como no todas las páginas web cuentan con RSS o es difícil encontrar su ruta exacta, te enseñamos un método rápido para hallarlas.
+                Este programa te permite centralizar artículos de tus sitios web favoritos mediante enlaces <strong className="text-gray-200">RSS</strong>. Como no todas las páginas web cuentan con RSS visible, puedes consultar una excelente colección de feeds públicos y organizados.
               </p>
             </div>
 
@@ -724,9 +724,9 @@ export default function HomePage() {
               <div className="flex items-start gap-3">
                 <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">1</span>
                 <div>
-                  <strong className="text-white block mb-0.5">Usa una herramienta buscadora de RSS</strong>
+                  <strong className="text-white block mb-0.5">Explora un directorio de feeds</strong>
                   <p className="text-gray-400 mb-2">
-                    Te recomendamos visitar la herramienta web gratuita <a href="https://lighthouseapp.io/tools/feed-finder" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">Lighthouse RSS Feed Finder <ExternalLink size={12} /></a>.
+                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/joshuawalcher/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">joshuawalcher/rssfeeds <ExternalLink size={12} /></a>.
                   </p>
                 </div>
               </div>
@@ -734,9 +734,9 @@ export default function HomePage() {
               <div className="flex items-start gap-3">
                 <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">2</span>
                 <div>
-                  <strong className="text-white block mb-0.5">Pega el enlace principal de tu web favorita</strong>
+                  <strong className="text-white block mb-0.5">Encuentra tus fuentes de interés</strong>
                   <p className="text-gray-400">
-                    Copia la URL principal de tu página de noticias o blog preferido (ejemplo: <code className="bg-gray-900 px-1.5 py-0.5 rounded text-sky-300">https://elpais.com</code>) y pégala en esa página buscadora.
+                    Navega a través de las categorías y listas de sitios web disponibles en el repositorio para descubrir URLs directas de feeds RSS y atom.
                   </p>
                 </div>
               </div>
@@ -744,9 +744,9 @@ export default function HomePage() {
               <div className="flex items-start gap-3">
                 <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">3</span>
                 <div>
-                  <strong className="text-white block mb-0.5">Obtén la URL final y añádela al programa</strong>
+                  <strong className="text-white block mb-0.5">Copia el enlace y añádelo al programa</strong>
                   <p className="text-gray-400">
-                    Espera a que el buscador te arroje el enlace RSS válido (suele terminar en <code className="bg-gray-900 px-1.5 py-0.5 rounded text-sky-300">/feed</code> o <code className="bg-gray-900 px-1.5 py-0.5 rounded text-sky-300">.xml</code>). ¡Cópialo, pégalo en el botón <strong>&quot;Agregar Feed&quot;</strong> de este programa web y listo para obtener tus noticias fácilmente!
+                    Copia la URL del feed que te interese, pégala en el botón <strong>&quot;Agregar Feed&quot;</strong> de este programa web y ¡listo para obtener tus noticias fácilmente!
                   </p>
                 </div>
               </div>
