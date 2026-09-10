@@ -82,7 +82,7 @@ export default function HomePage() {
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const [fuentesDisponibles, setSourcesList] = useState([]);
-  const [selectedSourceId, setSelectedSourceId] = useState("todas");
+  const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
   const [toast, setToast] = useState(null);
@@ -418,6 +418,15 @@ export default function HomePage() {
     ));
   };
 
+  const alternarFuente = (fuenteId) => {
+    const id = String(fuenteId);
+    setFuentesSeleccionadas((actuales) => (
+      actuales.includes(id)
+        ? actuales.filter((actual) => actual !== id)
+        : [...actuales, id]
+    ));
+  };
+
   const articulosFiltrados = useMemo(() => {
     let base = articulos;
     if (activeTab === "guardadas") {
@@ -432,10 +441,9 @@ export default function HomePage() {
       base = base.filter((art) => categoriasSeleccionadas.includes(art.categoria));
     }
 
-    if (selectedSourceId !== "todas") {
-      base = base.filter((art) => {
-        return String(art.fuente_id) === String(selectedSourceId);
-      });
+    if (fuentesSeleccionadas.length > 0) {
+      const idsSeleccionados = new Set(fuentesSeleccionadas.map((id) => String(id)));
+      base = base.filter((art) => idsSeleccionados.has(String(art.fuente_id)));
     }
 
     const query = searchQuery.trim().toLocaleLowerCase("es");
@@ -444,7 +452,7 @@ export default function HomePage() {
     }
 
     return base;
-  }, [articulos, activeTab, categoriasSeleccionadas, selectedSourceId, searchQuery]);
+  }, [articulos, activeTab, categoriasSeleccionadas, fuentesSeleccionadas, searchQuery]);
 
   const articulosOrdenados = useMemo(() => {
     return [...articulosFiltrados].sort((a, b) => {
@@ -737,32 +745,39 @@ export default function HomePage() {
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs font-medium text-gray-400">Fuente RSS</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-gray-400">Fuente RSS</span>
+                  {fuentesSeleccionadas.length > 0 && (
+                    <span className="text-[11px] text-sky-400">
+                      {fuentesSeleccionadas.length} seleccionada{fuentesSeleccionadas.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
                 <div ref={filtroFuenteRef} tabIndex={-1} className="flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60">
                   <button
                     key="todas"
                     type="button"
-                    aria-pressed={selectedSourceId === "todas"}
-                    onClick={() => setSelectedSourceId("todas")}
+                    aria-pressed={fuentesSeleccionadas.length === 0}
+                    onClick={() => setFuentesSeleccionadas([])}
                     title="Todas las fuentes"
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 max-w-44 ${
-                      selectedSourceId === "todas"
+                      fuentesSeleccionadas.length === 0
                         ? "border-sky-500 bg-sky-500/15 text-sky-300"
                         : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                     }`}
                   >
-                    {selectedSourceId === "todas" && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                    {fuentesSeleccionadas.length === 0 && <Check size={13} strokeWidth={3} className="shrink-0" />}
                     <span className="truncate">Todas las fuentes</span>
                   </button>
                   {fuentesDisponibles.map((fuente) => {
-                    const activa = String(selectedSourceId) === String(fuente.id);
+                    const activa = fuentesSeleccionadas.includes(String(fuente.id));
                     return (
                       <button
                         key={fuente.id}
                         type="button"
                         aria-pressed={activa}
                         title={fuente.nombre}
-                        onClick={() => setSelectedSourceId(String(fuente.id))}
+                        onClick={() => alternarFuente(fuente.id)}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 max-w-44 ${
                           activa
                             ? "border-sky-500 bg-sky-500/15 text-sky-300"
@@ -824,9 +839,9 @@ export default function HomePage() {
                 )}
               </div>
 
-              {(searchQuery || categoriasSeleccionadas.length > 0 || selectedSourceId !== "todas") && (
+              {(searchQuery || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0) && (
                 <button
-                  onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setSelectedSourceId("todas"); }}
+                  onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setFuentesSeleccionadas([]); }}
                   className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
                 >
                   <XCircle size={15} /> Limpiar filtros
