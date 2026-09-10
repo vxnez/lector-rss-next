@@ -791,21 +791,6 @@ export default function HomePage() {
                   )}
                 </div>
                 <div ref={filtroFuenteRef} tabIndex={-1} className="flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60">
-                  <button
-                    key="todas"
-                    type="button"
-                    aria-pressed={fuentesSeleccionadas.length === 0}
-                    onClick={() => setFuentesSeleccionadas([])}
-                    title="Todas las fuentes"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 max-w-44 ${
-                      fuentesSeleccionadas.length === 0
-                        ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                        : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-                    }`}
-                  >
-                    {fuentesSeleccionadas.length === 0 && <Check size={13} strokeWidth={3} className="shrink-0" />}
-                    <span className="truncate">Todas las fuentes</span>
-                  </button>
                   {fuentesDisponibles.map((fuente) => {
                     const activa = fuentesSeleccionadas.includes(String(fuente.id));
                     return (
