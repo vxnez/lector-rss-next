@@ -1,7 +1,7 @@
 // src/app/page.js
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import AddFeedModal from "./components/AddFeedModal";
 import GitHubCard from "./components/GitHubCard";
@@ -10,7 +10,6 @@ import PerfilModal from "./components/PerfilModal";
 import NewsFeed from "./components/NewsFeed";
 import {
   Rss,
-  Star,
   Settings,
   Plus,
   LogOut,
@@ -57,6 +56,16 @@ export default function HomePage() {
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 4200);
+  }, []);
+
+  const filtroFuenteRef = useRef(null);
+
+  const irAFiltroFuentes = useCallback(() => {
+    setFiltersOpen(true);
+    window.setTimeout(() => {
+      filtroFuenteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      filtroFuenteRef.current?.focus({ preventScroll: true });
+    }, 60);
   }, []);
 
   const recargarSesion = useCallback(async () => {
@@ -506,15 +515,29 @@ export default function HomePage() {
             <div className="contents lg:col-span-3 lg:block lg:space-y-6">
               <div className="order-1 lg:order-none grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                 {[
-                  ["Pendientes", totalPendientes, "text-sky-300"],
-                  ["Leídas", totalLeidos, "text-emerald-300"],
-                  ["Guardadas", totalGuardados, "text-amber-300"],
-                  ["Fuentes activas", fuentesDisponibles.length, "text-cyan-300"],
-                ].map(([label, value, color]) => (
-                  <div key={label} className="border border-gray-800 bg-gray-900/70 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 min-w-0">
-                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 truncate">{label}</p>
-                    <p className={`text-xl sm:text-2xl font-semibold ${color}`}>{value}</p>
-                  </div>
+                  { label: "Pendientes", value: totalPendientes, color: "text-sky-300", tab: "todas", titulo: "Ver noticias pendientes", activo: "border-sky-500/60 ring-1 ring-sky-500/40" },
+                  { label: "Leídas", value: totalLeidos, color: "text-emerald-300", tab: "leidas", titulo: "Ver noticias leídas", activo: "border-emerald-500/60 ring-1 ring-emerald-500/40" },
+                  { label: "Guardadas", value: totalGuardados, color: "text-amber-300", tab: "guardadas", titulo: "Ver noticias guardadas", activo: "border-amber-500/60 ring-1 ring-amber-500/40" },
+                  { label: "Fuentes activas", value: fuentesDisponibles.length, color: "text-cyan-300", tab: null, titulo: "Ir al filtro de fuentes RSS", activo: "" },
+                ].map((tarjeta) => (
+                  <button
+                    key={tarjeta.label}
+                    type="button"
+                    title={tarjeta.titulo}
+                    aria-pressed={tarjeta.tab ? activeTab === tarjeta.tab : undefined}
+                    onClick={() => {
+                      if (tarjeta.tab) {
+                        setActiveTab(tarjeta.tab);
+                        setCategoriasSeleccionadas([]);
+                      } else {
+                        irAFiltroFuentes();
+                      }
+                    }}
+                    className={`border border-gray-800 bg-gray-900/70 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 min-w-0 text-left transition cursor-pointer hover:border-gray-600 ${tarjeta.tab && activeTab === tarjeta.tab ? tarjeta.activo : ""}`}
+                  >
+                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 truncate">{tarjeta.label}</p>
+                    <p className={`text-xl sm:text-2xl font-semibold ${tarjeta.color}`}>{tarjeta.value}</p>
+                  </button>
                 ))}
               </div>
 
@@ -592,39 +615,6 @@ export default function HomePage() {
                 {controlsOpen && (
                   <div className="space-y-4 border-t border-gray-800 pt-4">
                     <section className="space-y-3">
-                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Estado de lectura</h2>
-                      <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    onClick={() => { setActiveTab("todas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
-                      activeTab === "todas" ? "bg-sky-600 text-white border-sky-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
-                    }`}
-                  >
-                    <Rss size={14} />
-                    <span className="truncate">Pendientes</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("leidas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
-                      activeTab === "leidas" ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
-                    }`}
-                  >
-                    <Check size={14} />
-                    <span className="truncate">Leídas</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab("guardadas"); setCategoriasSeleccionadas([]); }}
-                    className={`min-w-0 rounded-lg border px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium transition flex items-center justify-center gap-1 ${
-                      activeTab === "guardadas" ? "bg-amber-600 text-white border-amber-500" : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
-                    }`}
-                  >
-                    <Star size={14} className={activeTab === "guardadas" ? "fill-white" : ""} />
-                    <span className="truncate">Guardadas</span>
-                      </button>
-                      </div>
-                    </section>
-
-                    <section className="space-y-3 border-t border-gray-800 pt-4">
                       <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
@@ -704,6 +694,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">Fuente RSS</label>
                 <select
+                  ref={filtroFuenteRef}
                   value={selectedSourceId}
                   onChange={(e) => setSelectedSourceId(e.target.value)}
                   className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
