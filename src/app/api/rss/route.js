@@ -237,6 +237,32 @@ async function buscarFuenteDuplicada(userId, candidatas = []) {
   return fuentes.find((fuente) => objetivos.has(normalizarUrlComparacion(fuente.url_feed))) || null;
 }
 
+function derivarNombreFuente(feed = {}, urlFinal = "") {
+  let nombre = String(feed.title || "").replace(/\s+/g, " ").trim();
+  nombre = nombre
+    .replace(/\s*[|•·–—\/-]\s*(latest[^|•·–—\/-]*|últimas[^|•·–—\/-]*|ultimas[^|•·–—\/-]*)$/i, "")
+    .replace(/\s*\b(latest articles|latest news|latest updates|rss feed|atom feed|feed)\s*$/i, "")
+    .replace(/\s*[|•·–—\/-]\s*$/, "")
+    .trim();
+
+  if (nombre && nombre.length <= 40) return nombre;
+
+  const sitio = feed.link || urlFinal || "";
+  try {
+    const etiqueta = new URL(sitio).hostname.replace(/^www\./i, "").split(".")[0];
+    if (etiqueta) return etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
+  } catch {
+    // Sin sitio válido: se usa el título recortado.
+  }
+
+  if (nombre) {
+    const corte = nombre.slice(0, 37);
+    const ultimoEspacio = corte.lastIndexOf(" ");
+    return `${(ultimoEspacio > 10 ? corte.slice(0, ultimoEspacio) : corte).trim()}…`;
+  }
+  return "Fuente RSS";
+}
+
 const RSS_TIMEOUT_MS = 8000;
 const HTML_TIMEOUT_MS = 12000;
 const MAX_FEED_CANDIDATES = 80;
@@ -667,7 +693,7 @@ export async function POST(req) {
 
     const [resFuente] = await db.query(
       "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision) VALUES (?, ?, ?, ?, ?, ?, NOW())",
-      [userId, feed.title || "Fuente RSS", urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null]
+      [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null]
     );
 
     const fuenteId = resFuente.insertId;

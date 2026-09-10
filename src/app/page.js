@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import AddFeedModal from "./components/AddFeedModal";
-import FuenteSelect from "./components/FuenteSelect";
 import GitHubCard from "./components/GitHubCard";
 import ManageSourcesModal from "./components/ManageSourcesModal";
 import PerfilModal from "./components/PerfilModal";
@@ -31,6 +30,41 @@ import {
   User,
 } from "lucide-react";
 
+function dominioDeFuente(urlFeed = "") {
+  try {
+    return new URL(urlFeed).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function IconoFuentePildora({ fuente }) {
+  const [fallo, setFallo] = useState(false);
+  const dominio = dominioDeFuente(fuente?.url_feed || "");
+  if (!dominio || fallo) {
+    return (
+      <span
+        aria-hidden="true"
+        className="grid h-4 w-4 shrink-0 place-content-center rounded-full bg-gray-800 text-[9px] font-bold text-sky-400"
+      >
+        {(fuente?.nombre || "?").trim().charAt(0).toUpperCase() || "?"}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${dominio}&sz=64`}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFallo(true)}
+      className="h-4 w-4 shrink-0 rounded-full object-cover"
+    />
+  );
+}
+
 export default function HomePage() {
   const [session, setSession] = useState(null);
   const [articulos, setArticulos] = useState([]);
@@ -46,6 +80,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("todas"); // "todas" | "guardadas" | "leidas"
   const [orden, setOrden] = useState("recientes");
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [selectedSourceId, setSelectedSourceId] = useState("todas");
   const [searchQuery, setSearchQuery] = useState("");
@@ -590,7 +625,7 @@ export default function HomePage() {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="dashboard-control-sidebar order-2 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+            <aside className="dashboard-control-sidebar order-5 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
               <section className="border-b border-gray-800 pb-4 space-y-4">
                 <button
                   type="button"
@@ -672,26 +707,75 @@ export default function HomePage() {
                 <div className="space-y-5 sm:space-y-6">
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-400">Ordenar por</label>
-                <select
-                  value={orden}
-                  onChange={(e) => setOrden(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-800 text-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-sky-600 transition cursor-pointer"
-                >
-                  <option value="recientes">Recientes primero</option>
-                  <option value="az">Alfabético (A - Z)</option>
-                  <option value="za">Alfabético (Z - A)</option>
-                </select>
+                <span className="text-xs font-medium text-gray-400">Ordenar por</span>
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Ordenar por">
+                  {[
+                    { valor: "recientes", etiqueta: "Recientes primero" },
+                    { valor: "az", etiqueta: "Alfabético (A - Z)" },
+                    { valor: "za", etiqueta: "Alfabético (Z - A)" },
+                  ].map((opcion) => {
+                    const activo = orden === opcion.valor;
+                    return (
+                      <button
+                        key={opcion.valor}
+                        type="button"
+                        role="radio"
+                        aria-checked={activo}
+                        onClick={() => setOrden(opcion.valor)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
+                          activo
+                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        {activo && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        {opcion.etiqueta}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-400">Fuente RSS</label>
-                <FuenteSelect
-                  fuentes={fuentesDisponibles}
-                  valor={selectedSourceId}
-                  onChange={(id) => setSelectedSourceId(id)}
-                  buttonRef={filtroFuenteRef}
-                />
+                <span className="text-xs font-medium text-gray-400">Fuente RSS</span>
+                <div ref={filtroFuenteRef} tabIndex={-1} className="flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60">
+                  <button
+                    key="todas"
+                    type="button"
+                    aria-pressed={selectedSourceId === "todas"}
+                    onClick={() => setSelectedSourceId("todas")}
+                    title="Todas las fuentes"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 max-w-44 ${
+                      selectedSourceId === "todas"
+                        ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                        : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                    }`}
+                  >
+                    {selectedSourceId === "todas" && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                    <span className="truncate">Todas las fuentes</span>
+                  </button>
+                  {fuentesDisponibles.map((fuente) => {
+                    const activa = String(selectedSourceId) === String(fuente.id);
+                    return (
+                      <button
+                        key={fuente.id}
+                        type="button"
+                        aria-pressed={activa}
+                        title={fuente.nombre}
+                        onClick={() => setSelectedSourceId(String(fuente.id))}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 max-w-44 ${
+                          activa
+                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        <IconoFuentePildora fuente={fuente} />
+                        <span className="truncate">{fuente.nombre}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -703,7 +787,7 @@ export default function HomePage() {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className={`flex flex-wrap gap-1.5 ${categoriasExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
                   {categoriasDisponibles.map((categoria) => {
                     const activa = categoriasSeleccionadas.includes(categoria);
                     return (
@@ -724,6 +808,16 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+
+                {categoriasDisponibles.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setCategoriasExpandidas((expandida) => !expandida)}
+                    className="lg:hidden text-xs text-sky-400 hover:text-sky-300 font-medium px-1 py-1 text-left"
+                  >
+                    {categoriasExpandidas ? "Ver menos" : `Ver todas (${categoriasDisponibles.length})`}
+                  </button>
+                )}
 
                 {categoriasDisponibles.length === 0 && (
                   <p className="px-1 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
