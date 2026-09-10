@@ -22,6 +22,12 @@ const clasificacionCache = new Map();
 const imagenPaginaCache = new Map();
 
 async function extraerImagenDePagina(url) {
+  const directa = await extraerImagenDirecta(url);
+  if (directa) return directa;
+  return extraerImagenScreenshot(url);
+}
+
+async function extraerImagenDirecta(url) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
   try {
@@ -37,6 +43,7 @@ async function extraerImagenDePagina(url) {
     const $ = cheerio.load(html);
     const candidatas = [
       $('meta[property="og:image"]').attr("content"),
+      $('meta[property="og:image:secure_url"]').attr("content"),
       $('meta[name="twitter:image"]').attr("content"),
       $('meta[name="twitter:image:src"]').attr("content"),
       $('link[rel="image_src"]').attr("href"),
@@ -51,6 +58,26 @@ async function extraerImagenDePagina(url) {
         }
       }
     }
+    return null;
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
+
+async function extraerImagenScreenshot(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(
+      `https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=true&meta=false`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    const captura = data?.data?.screenshot?.url;
+    if (typeof captura === "string" && /^https?:\/\//i.test(captura)) return captura;
     return null;
   } catch {
     clearTimeout(timeoutId);
