@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { useEffect, useState } from "react";
 
@@ -102,6 +102,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [categorias, setCategorias] = useState([]);
   const [vistaLocal, setVistaLocal] = useState(null);
   const [imagenRota, setImagenRota] = useState(false);
+  const [imagenOculta, setImagenOculta] = useState(false);
   const [imagenRemota, setImagenRemota] = useState(null);
   const [cargandoImagen, setCargandoImagen] = useState(
     () => Boolean(article?.url_original) && !article?.imagen_url
@@ -314,6 +315,17 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {posicion} / {total}
                 </span>
               ) : null}
+              {imagenVisible && !imagenRota && (
+                <button
+                  onClick={() => setImagenOculta((oculta) => !oculta)}
+                  title={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
+                  aria-label={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
+                  aria-pressed={imagenOculta}
+                  className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+                >
+                  {imagenOculta ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              )}
               <button
                 onClick={onClose}
                 aria-label="Cerrar lector de noticia"
@@ -380,7 +392,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
       </div>
-      {(imagenVisible || cargandoImagen) && !imagenRota && (
+      {(imagenVisible || cargandoImagen) && !imagenRota && !imagenOculta && (
         <div className="order-first sm:order-none sm:absolute sm:inset-y-0 sm:right-0 sm:w-1/2 shrink-0 sm:rounded-r-2xl sm:overflow-hidden" aria-hidden="true">
           {imagenVisible ? (
             <>
