@@ -3,7 +3,7 @@
 
 import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Función para asignar colores distintivos a las categorías
 const getCategoryColor = (categoria) => {
@@ -107,6 +107,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [cargandoImagen, setCargandoImagen] = useState(
     () => Boolean(article?.url_original) && !article?.imagen_url
   );
+  const clicIniciadoEnFondo = useRef(false);
+
+  const manejarClickFondo = (event) => {
+    if (clicIniciadoEnFondo.current && event.target === event.currentTarget) {
+      onClose();
+    }
+    clicIniciadoEnFondo.current = false;
+  };
 
   useEffect(() => {
     if (!article) return undefined;
@@ -212,9 +220,19 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const fechaFormateada = formatFecha(article.fecha_publicacion);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+      role="presentation"
+      onMouseDown={(event) => {
+        clicIniciadoEnFondo.current = event.target === event.currentTarget;
+      }}
+      onClick={manejarClickFondo}
+    >
       <button
-        onClick={() => anteriorId != null && onIrAId(anteriorId)}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (anteriorId != null) onIrAId(anteriorId);
+        }}
         disabled={anteriorId == null}
         title="Noticia anterior"
         aria-label="Noticia anterior"
@@ -223,7 +241,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronLeft size={22} />
       </button>
       <button
-        onClick={() => siguienteId != null && onIrAId(siguienteId)}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (siguienteId != null) onIrAId(siguienteId);
+        }}
         disabled={siguienteId == null}
         title="Noticia siguiente"
         aria-label="Noticia siguiente"
@@ -231,7 +252,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       >
         <ChevronRight size={22} />
       </button>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col">
+      <div
+        className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col"
+        onClick={(event) => event.stopPropagation()}
+      >
       <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
         {/* Cabecera del modal */}
         <div>
