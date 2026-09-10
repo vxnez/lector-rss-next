@@ -1,308 +1,96 @@
-# Informe del proyecto: Feed Dashboard
+# Informe del proyecto: RSS Dashboard (Feed Dashboard)
 
-## 1. Descripcion general
+## 1. Descripcion
 
-Feed Dashboard es una aplicacion web para reunir, organizar y leer noticias provenientes de fuentes RSS. Permite que cada usuario registre sus propios feeds, consulte sus articulos en un dashboard, los clasifique por categorias, los marque como leidos, los guarde para despues y administre sus fuentes.
+Aplicacion web full-stack para centralizar, organizar y leer noticias de fuentes RSS por usuario. Permite registrar feeds, consultar un dashboard de articulos, clasificarlos automaticamente con IA, marcarlos como leidos, guardarlos, descartarlos y administrar las fuentes. Despliegue en Vercel con MySQL en Aiven.
 
-El proyecto esta construido con Next.js y utiliza una base de datos MySQL para conservar usuarios, fuentes RSS y articulos publicados.
+## 2. Stack tecnico
 
-## 2. Tecnologias utilizadas
+| Capa | Tecnologia |
+|---|---|
+| Framework | Next.js 16.3.4 (App Router), React 19, JavaScript |
+| Estilos | Tailwind CSS 4, tema oscuro propio, checkboxes personalizados |
+| Iconos | lucide-react |
+| Tipografia | Geist y Geist Mono (`next/font`) |
+| Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `mysql2/promise`, `bcryptjs`) |
+| Autenticacion | NextAuth 5 beta: credenciales, Google OAuth y GitHub OAuth |
+| Base de datos | MySQL en Aiven (pool de 10, SSL, `utf8mb4`) |
+| IA | Gemini REST (`gemini-3.5-flash-lite` primero, `gemini-2.5-flash` alterno) |
+| CI | GitHub Actions (build + lint en Node 20.x y 22.x) |
 
-### Frontend
-
-- React 19.
-- Next.js 16.3.4 con App Router.
-- Tailwind CSS 4 mediante PostCSS.
-- Lucide React para iconos.
-- Geist y Geist Mono mediante `next/font/google`.
-- Interfaz completamente adaptable para escritorio, tablet y movil.
-
-### Backend
-
-- Route Handlers de Next.js.
-- Node.js para operaciones de servidor.
-- `rss-parser` para interpretar RSS y Atom.
-- `cheerio` para descubrir feeds dentro del HTML de una pagina.
-- `mysql2/promise` para conectarse a MySQL.
-- `bcryptjs` para verificar contrasenas.
-- NextAuth 5 beta para autenticacion.
-
-### Servicios externos
-
-- MySQL/Aiven para persistencia.
-- Gemini (3.5 Flash-Lite como principal y modelos alternos) para clasificacion mediante IA.
-- Proveedores OAuth de Google y GitHub, configurables mediante variables de entorno.
-
-## 3. Estructura principal
+## 3. Estructura del proyecto
 
 ```text
 src/
-  auth.js                         Configuracion de NextAuth
-  middleware.js                   Middleware ligero compatible con Next.js
+  auth.js                         NextAuth: credenciales, Google, GitHub, sesion con id real
+  middleware.js                   Passthrough ligero
   app/
-    layout.js                     Layout, metadata, idioma y tipografia
-    page.js                       Dashboard principal
-    globals.css                   Tema global, accesibilidad y estilos base
-    api/
-      auth/                       Inicio de sesion y registro
-      rss/                        Alta, lectura, refresco y clasificacion RSS
-      sources/                    Administracion de fuentes
+    layout.js                     Layout raiz, metadata, lang="es", tipografia
+    page.js                       Dashboard: filtros, polling de cola IA, modales
+    globals.css                   Tema, accesibilidad y estilos rss-check
+    login/ - register/            Paginas de acceso y registro
     components/
-      AddFeedModal.js             Modal para agregar feeds
-      ArticleReaderModal.js       Lector detallado de una noticia
-      ManageSourcesModal.js       Gestion, edicion y eliminacion de fuentes
+      AddFeedModal.js             Alta de feeds (propaga pendientes de IA)
+      ManageSourcesModal.js       Editar, refrescar y eliminar fuentes
       NewsFeed.js                 Tarjetas de noticias
+      ArticleReaderModal.js       Lector modal con badge IA/Sin IA y confianza
+    api/
+      auth/                       Registro y handlers de NextAuth
+      rss/                        Alta, lectura, refresco, borrado y clasificacion
+      sources/                    CRUD de fuentes con borrado transaccional
   lib/
-    db.js                         Pool de conexion MySQL
-    categoryClassifier.js         Catalogo de categorias para la clasificacion IA
-    categoryStyles.js             Colores deterministas por categoria
+    db.js                         Pool MySQL
+    categoryClassifier.js         Catalogo cerrado de 23 categorias con descripcion
+    categoryStyles.js             Colores deterministas por hash del nombre
 ```
 
-## 4. Autenticacion y usuarios
+## 4. Detalles tecnicos relevantes
 
-El sistema permite autenticarse mediante:
+### 4.1 Autenticacion y aislamiento por cuenta
 
-- Correo y contrasena.
-- Google OAuth, si se configuran sus credenciales.
-- GitHub OAuth, si se configuran sus credenciales.
+Tres proveedores (correo+contrasena con bcrypt, Google, GitHub) con registro automatico OAuth. La sesion resuelve el `id` real desde MySQL y todas las consultas de fuentes y articulos se filtran por `usuario_id`.
 
-Las contrasenas se validan con `bcryptjs`. La sesion recupera el identificador real del usuario desde MySQL, lo que permite separar las fuentes y articulos de cada cuenta.
+### 4.2 Alta y descubrimiento de fuentes
 
-La informacion de cada usuario se mantiene aislada mediante `usuario_id` en las consultas de fuentes y mediante la relacion entre fuentes y articulos.
+Acepta URL directa de feed o pagina principal, con estrategias en cascada: parseo directo (RSS, Atom, JSON Feed), etiquetas `<link>` y `meta` via Cheerio, enlaces con texto RSS, URLs embebidas en scripts y rutas tipicas de CMS (`/feed/`, `/rss.xml`, `/atom.xml`, `?feed=rss2`, etc.), con encabezados de navegador y timeouts.
 
-## 5. Gestion de fuentes RSS
+Si la URL ya existe en la cuenta (comparacion normalizada: minusculas, sin slash final, sin `utm_*`, sin hash), responde **409** con el nombre de la fuente duplicada.
 
-El usuario puede:
+### 4.3 Clasificacion 100% IA
 
-- Agregar una fuente usando una URL.
-- Introducir una URL de feed RSS o Atom directamente.
-- Introducir la pagina principal de un sitio para intentar descubrir automaticamente su feed.
-- Editar nombre, URL y categoria de una fuente.
-- Consultar la URL completa de cada fuente.
-- Ver la cantidad de articulos asociados.
-- Ver la fecha de la ultima actualizacion registrada.
-- Refrescar una fuente individual.
-- Refrescar todas las fuentes.
-- Eliminar una fuente y sus articulos relacionados.
+Sin clasificador local. Gemini recibe titulo, resumen y el catalogo cerrado con descripciones, y solo puede elegir una categoria existente (validacion insensible a acentos). Cadena de modelos con reintento ante 429 (espera sugerida por la API), timeout de 25s y `maxDuration = 60` en la ruta.
 
-El detector de feeds intenta varias estrategias:
+### 4.4 Sincronizacion optimizada
 
-1. Interpretar directamente la URL como RSS o Atom.
-2. Analizar enlaces `link` con tipos RSS o Atom dentro del HTML.
-3. Analizar enlaces de la pagina que contengan rutas como `feed`, `rss`, `atom` o `.xml`.
-4. Probar rutas frecuentes de WordPress y otros CMS, como `/feed/`, `/rss.xml`, `/atom.xml`, `/feed.xml`, `/rss/` y `?feed=rss2`.
-5. Utilizar encabezados de navegador y de feed para reducir bloqueos HTTP de algunos sitios.
+- **Respuesta inmediata**: las noticias se guardan con categoria provisional, sin bloquear en IA.
+- **Solo-nuevas**: un SELECT previo reutiliza categorias ya guardadas; las marcadas `sin-ia` se reclasifican (autorreparacion).
+- **Lotes de 12** por llamada IA, con cache en memoria (solo exitos) y deduplicacion.
+- **Persistencia masiva**: maximo 3 consultas por fuente (INSERT multivalor + UPDATEs con `CASE`), sin tocar `leido`/`guardado`.
+- **Cola con progreso**: la accion `clasificar_pendientes` clasifica 12 y devuelve `restantes`; el panel la solicita en ciclo corto hasta agotarla (pausa de 30s si no hay cuota). Compatible con serverless.
+- **Restauracion**: Refrescar recupera las descartadas del dia (`restore_today`).
 
-Cuando la URL no es valida, no responde, no contiene un feed o no contiene articulos con enlaces validos, el usuario recibe un mensaje explicativo dentro del modal.
+Tiempos estimados: refresco sin novedades ~2-4s; fuente nueva de 40 ~9s + cola visible; 100 noticias ~25-30s (hasta ~2.5 min con cuota limitada).
 
-## 6. Lectura y organizacion de noticias
+### 4.5 Persistencia
 
-El dashboard permite:
+`usuarios` (identidad, hash, proveedor) · `fuentes_rss` (propietario, titulo, URL, categoria, creacion) · `articulos_publicados` (fuente, titulo, resumen, URL, fecha, categoria, metodo y confianza, leido, guardado, descartado). Columnas de clasificacion creadas de forma idempotente. Soporte UTF-8/ISO-8859-1/Windows-1252 con reparacion de mojibake.
 
-- Visualizar noticias en tarjetas.
-- Abrir una noticia en un lector modal.
-- Consultar titulo, resumen, fuente, categoria y fecha.
-- Abrir la noticia original en el sitio oficial.
-- Marcar noticias como leidas.
-- Guardar noticias para despues.
-- Descartar noticias que no interesan.
-- Consultar pestañas separadas para pendientes, leidas y guardadas.
-- Ordenar por fecha o alfabeticamente.
-- Buscar por titulo y resumen.
-- Filtrar por categoria.
-- Filtrar por fuente RSS.
-- Limpiar todos los filtros activos.
+### 4.6 Interfaz y accesibilidad
 
-La pestaña principal excluye automaticamente noticias leidas y guardadas. Al marcar una noticia, esta desaparece de pendientes y pasa a su apartado correspondiente.
+Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto/categoria/fuente, checkboxes personalizados con icono Lucide real, `aria-labels`, `focus-visible`, cierre con Escape y `role="status"`.
 
-## 7. Clasificacion de categorias
+### 4.7 Seguridad
 
-La clasificacion de cada noticia la realiza exclusivamente la inteligencia artificial (Gemini); no existe clasificador heuristico local.
+Consultas parametrizadas (anti SQL injection), contrasenas con bcrypt, aislamiento por usuario, clave de Gemini solo en servidor y `.env*` ignorados en Git.
 
-El proyecto cuenta con un catalogo de categorias controlado por codigo en `src/lib/categoryClassifier.js`. Gemini no puede inventar categorias: recibe el catalogo completo con la descripcion de cada categoria y solo puede seleccionar una de ellas a partir del titulo y el resumen.
-
-Entre las categorias del catalogo se encuentran:
-
-- Politica.
-- Economia y Finanzas.
-- Seguridad y Justicia.
-- Tecnologia.
-- Celulares.
-- Computadoras.
-- Videojuegos.
-- Ciencia y Espacio.
-- Salud y Medicina.
-- Fitness y Nutricion.
-- Medio Ambiente.
-- Clima y Meteorologia.
-- Deportes.
-- Cultura y Arte.
-- Cine y Series.
-- Musica.
-- Gastronomia.
-- Viajes y Turismo.
-- Motor.
-- Educacion.
-- Moda y Belleza.
-- Hogar y Vida Diaria.
-- General, como categoria de respaldo.
-
-## 8. Clasificacion con Gemini
-
-Cuando existe `GEMINI_API_KEY` en `.env.local`, cada noticia se clasifica llamando a Gemini.
-
-Gemini recibe:
-
-- El titulo de la noticia.
-- El resumen breve.
-- El catalogo de categorias permitidas con una descripcion de cada una.
-
-La respuesta esperada contiene:
-
-- Nombre exacto de la categoria.
-- Nivel de confianza entre 0 y 1.
-
-La respuesta se valida contra `CATEGORIAS_DISPONIBLES`. Si Gemini responde una categoria inexistente, falla, excede el tiempo limite o no existe la clave de API, el articulo se guarda como `General` con clasificacion `sin-ia` (no se usa ningun clasificador local).
-
-Para mejorar el rendimiento:
-
-- Se utiliza una cache en memoria basada en titulo y resumen.
-- Las noticias nuevas se guardan de inmediato y su categoria se completa por lotes de 12 mediante la accion `clasificar_pendientes`, que el panel solicita en ciclo corto hasta agotar la cola (con pausa de 30s si la IA indica falta de cuota).
-- No se repite la llamada de IA para contenido identico durante la vida del proceso.
-
-En la base de datos se conservan:
-
-- `categoria`.
-- `clasificacion_metodo`: `gemini` o `sin-ia`.
-- `clasificacion_confianza`.
-
-Las columnas de metodo y confianza se crean de forma idempotente cuando la API verifica el esquema.
-
-## 9. Persistencia de datos
-
-Las entidades principales son:
-
-### Usuarios
-
-Conservan identidad, correo, contrasena cifrada, imagen y proveedor de autenticacion.
-
-### Fuentes RSS
-
-Conservan:
-
-- Usuario propietario.
-- Nombre.
-- URL del feed.
-- Categoria de la fuente.
-- Fecha de creacion.
-
-### Articulos publicados
-
-Conservan:
-
-- Fuente asociada.
-- Titulo.
-- Resumen.
-- URL original.
-- Fecha de publicacion.
-- Categoria.
-- Metodo y confianza de clasificacion.
-- Estado leido.
-- Estado guardado.
-- Estado descartado.
-
-La conexion MySQL usa `utf8mb4` para soportar acentos, simbolos y caracteres internacionales.
-
-## 10. Codificacion y normalizacion
-
-El lector intenta reconocer la codificacion declarada por cada feed y soporta UTF-8, ISO-8859-1 y Windows-1252. Tambien contiene una reparacion para textos antiguos almacenados como mojibake, por ejemplo `DistopÃ­a`.
-
-Durante un refresco, los titulos y resumenes existentes se actualizan con la version recien descargada, lo que permite corregir registros antiguos con caracteres dañados.
-
-## 11. Experiencia visual
-
-La interfaz utiliza un tema oscuro editorial con:
-
-- Tipografia Geist.
-- Variables globales de color.
-- Contraste controlado.
-- Estados de foco visibles.
-- Skeleton loaders durante la carga.
-- Tarjetas de estadisticas.
-- Toasts para operaciones exitosas o fallidas.
-- Colores automaticos por nombre de categoria.
-- Diseño adaptable a diferentes tamaños de pantalla.
-
-El color de una categoria se obtiene mediante un hash estable de su nombre. Por esa razon, cualquier categoria nueva recibe automaticamente un color consistente sin necesidad de agregar otro `case` manual.
-
-## 12. Accesibilidad
-
-Se incluyen:
-
-- `lang="es"` en el documento HTML.
-- `aria-label` en acciones de iconos.
-- Estados `focus-visible`.
-- Cierre de modales con la tecla Escape.
-- Mensajes de estado mediante elementos con `role="status"`.
-- Contraste de texto y controles sobre fondos oscuros.
-
-## 13. Seguridad
-
-- Las consultas MySQL utilizan parametros.
-- Las contraseñas se validan con bcrypt.
-- Las fuentes se consultan por usuario autenticado.
-- La clave de Gemini se utiliza solamente en servidor.
-- Las variables de entorno no deben subirse a Git.
-- Las credenciales compartidas anteriormente deben rotarse antes de un despliegue real.
-
-## 14. Comandos del proyecto
+## 5. Comandos y entorno
 
 ```bash
-npm run dev
+npm run dev | npm run build | npm start | npm run lint
 ```
 
-Inicia el servidor de desarrollo.
+Variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_ID/SECRET`, `GEMINI_API_KEY`.
 
-```bash
-npm run build
-```
+## 6. Validacion y limitaciones
 
-Genera la compilacion optimizada de produccion.
-
-```bash
-npm start
-```
-
-Inicia la aplicacion compilada.
-
-```bash
-npm run lint
-```
-
-Ejecuta ESLint.
-
-## 15. Validacion actual
-
-La aplicacion ha sido validada con:
-
-- `npm run lint`.
-- `npm run build`.
-- Inicio de produccion mediante `npm start`.
-- Consulta de la API RSS.
-- Verificacion de insercion y refresco de fuentes.
-- Verificacion de filtros de fuente y categoria.
-- Verificacion de clasificacion local y fallback de Gemini.
-
-## 16. Limitaciones conocidas
-
-- El estado de fuente se presenta actualmente como activa desde la consulta de fuentes; los errores de refresco se comunican mediante toast, pero no se conserva un historial persistente de errores.
-- La cache de Gemini vive en memoria y se pierde al reiniciar el servidor.
-- La clasificacion automatica depende de la calidad del titulo y resumen proporcionados por cada feed.
-- Algunos sitios pueden bloquear solicitudes automatizadas aunque se utilicen encabezados de navegador.
-- La migracion de las columnas de confianza ocurre al acceder a la API y debe contar con permisos de alteracion de tabla.
-
-## 17. Beneficio para el usuario
-
-El usuario obtiene un lector RSS personalizado que centraliza sus fuentes, reduce el tiempo de consulta de multiples paginas, organiza automaticamente las noticias, permite conservar lecturas importantes y facilita encontrar contenido mediante busqueda, filtros y categorias.
-
-El sistema combina reglas locales deterministas con inteligencia artificial opcional. Esto permite mantener el funcionamiento incluso sin Gemini y aprovechar una clasificacion mas contextual cuando la API esta configurada.
+Validado con `npm run lint` limpio y pruebas en vivo de clasificacion (lotes de 6 en ~1.4s con categoria correcta). Limites conocidos: cuota gratuita de Gemini (~20 RPM, con backoff automatico), cache IA solo en memoria y algunos sitios que bloquean scraping pese a los encabezados.

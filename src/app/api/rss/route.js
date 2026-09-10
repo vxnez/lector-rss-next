@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 
-export const maxDuration = 60;import * as cheerio from "cheerio";
+export const maxDuration = 60;
+import * as cheerio from "cheerio";
 import {
   CATALOGO_PROMPT,
   CATEGORIAS_DISPONIBLES,
