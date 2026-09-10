@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import AddFeedModal from "./components/AddFeedModal";
+import GitHubCard from "./components/GitHubCard";
 import ManageSourcesModal from "./components/ManageSourcesModal";
 import NewsFeed from "./components/NewsFeed";
 import {
@@ -866,6 +867,7 @@ export default function HomePage() {
         }}
         onNotify={notify}
       />
+      <GitHubCard />
       {toast && (
         <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
           {toast.message}

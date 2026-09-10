@@ -73,6 +73,108 @@ textarea:focus-visible {
   color: #ffffff;
 }
 
+/* Tarjeta flotante a GitHub (basada en Uiverse.io by SouravBandyopadhyay) */
+.github-float {
+  width: min(16rem, calc(100vw - 2.5rem));
+}
+.github-float-link {
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  position: relative;
+  width: 100%;
+  background: #29292c;
+  border-radius: 1rem;
+  overflow: hidden;
+  font-size: 14px;
+  --gradient: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);
+  --color: #32a6ff;
+}
+.github-float-link:before {
+  position: absolute;
+  content: "";
+  inset: 0.0625rem;
+  border-radius: 0.9375rem;
+  background: #18181b;
+  z-index: 2;
+}
+.github-float-link:after {
+  position: absolute;
+  content: "";
+  width: 0.25rem;
+  inset: 0.65rem auto 0.65rem 0.5rem;
+  border-radius: 0.125rem;
+  background: var(--gradient);
+  transition: transform 300ms ease;
+  z-index: 4;
+}
+.github-float-link:hover:after {
+  transform: translateX(0.15rem);
+}
+.github-float .notititle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color);
+  padding: 0.65rem 2rem 0.4rem 1.25rem;
+  font-weight: 500;
+  font-size: 1.05rem;
+  transition: transform 300ms ease;
+  z-index: 5;
+}
+.github-float-link:hover .notititle {
+  transform: translateX(0.15rem);
+}
+.github-float .notibody {
+  color: #99999d;
+  padding: 0 1.25rem 1rem;
+  transition: transform 300ms ease;
+  z-index: 5;
+}
+.github-float-link:hover .notibody {
+  transform: translateX(0.25rem);
+}
+.github-float .notiglow,
+.github-float .notiborderglow {
+  position: absolute;
+  width: 20rem;
+  height: 20rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle closest-side at center, white, transparent);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+.github-float .notiglow {
+  z-index: 3;
+}
+.github-float .notiborderglow {
+  z-index: 1;
+}
+.github-float-link:hover .notiglow {
+  opacity: 0.1;
+}
+.github-float-link:hover .notiborderglow {
+  opacity: 0.1;
+}
+.github-float-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 6;
+  display: grid;
+  place-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.5rem;
+  color: #71717a;
+  transition: color 150ms ease-in-out, background-color 150ms ease-in-out;
+}
+.github-float-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* Checkboxes del filtro de categorías (basado en Uiverse.io by cbolson) */
 .rss-check-list {
   --_clr-primary: #6b7280;
