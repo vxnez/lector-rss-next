@@ -95,6 +95,24 @@ export default function HomePage() {
     window.setTimeout(() => setToast(null), 4200);
   }, []);
 
+  // Modo invitado: sesión efímera en sessionStorage (se pierde al cerrar la
+  // ventana) sin cuenta en la base de datos; nada de lo que haga se guarda.
+  const esInvitado = Boolean(session?.user?.invitado);
+
+  const salirInvitado = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem("modo_invitado");
+    } catch {
+      // Sin almacenamiento disponible: solo se cierra la sesión local.
+    }
+    setSession(null);
+  }, []);
+
+  const exigirCuenta = useCallback(() => {
+    notify("En modo invitado los cambios no se guardan. Crea una cuenta para conservar tus datos.", "error");
+    return false;
+  }, [notify]);
+
   const filtroFuenteRef = useRef(null);
 
   const irAFiltroFuentes = useCallback(() => {
@@ -223,6 +241,21 @@ export default function HomePage() {
           if (!hasSeenWelcome) {
             setShowWelcomeModal(true);
           }
+        } else {
+          // Sin cuenta: solo se entra si hay bandera de invitado en esta pestaña.
+          let invitado = false;
+          try {
+            invitado = window.sessionStorage.getItem("modo_invitado") === "1";
+          } catch {
+            invitado = false;
+          }
+          if (invitado && !controller.signal.aborted) {
+            setSession({ user: { name: "Invitado", invitado: true } });
+            await Promise.all([
+              fetchArticles(controller.signal),
+              fetchSources(controller.signal),
+            ]);
+          }
         }
       } catch (err) {
         if (err.name !== "AbortError") {
@@ -251,6 +284,10 @@ export default function HomePage() {
   };
 
   const handleRefresh = async () => {
+    if (esInvitado) {
+      exigirCuenta();
+      return;
+    }
     setRefreshing(true);
     try {
       const response = await fetch("/api/rss", {
@@ -287,6 +324,10 @@ export default function HomePage() {
   };
 
   const handleEliminarTodas = async () => {
+    if (esInvitado) {
+      exigirCuenta();
+      return;
+    }
     if (!confirm("¿Estás seguro de que deseas eliminar todas las publicaciones del feed? Al hacer clic en 'Refrescar' se recuperarán las de hoy.")) {
       return;
     }
@@ -313,6 +354,9 @@ export default function HomePage() {
       prev.map((art) => (art.id === id ? { ...art, leido: leidoNuevo } : art))
     );
 
+    // Invitado: solo memoria local, nada se persiste en la base de datos.
+    if (esInvitado) return true;
+
     try {
       const res = await fetch("/api/rss", {
         method: "PUT",
@@ -337,6 +381,9 @@ export default function HomePage() {
     setArticulos((prev) =>
       prev.map((art) => (art.id === id ? { ...art, guardado: guardadoNuevo } : art))
     );
+
+    // Invitado: solo memoria local, nada se persiste en la base de datos.
+    if (esInvitado) return true;
 
     try {
       const res = await fetch("/api/rss", {
@@ -365,6 +412,9 @@ export default function HomePage() {
       )
     );
 
+    // Invitado: solo memoria local, nada se persiste en la base de datos.
+    if (esInvitado) return true;
+
     try {
       const res = await fetch("/api/rss", {
         method: "PUT",
@@ -387,6 +437,9 @@ export default function HomePage() {
   const descartarArticulo = async (id) => {
     const articuloCopia = articulos.find((art) => art.id === id);
     setArticulos((prev) => prev.filter((art) => art.id !== id));
+
+    // Invitado: solo memoria local, nada se persiste en la base de datos.
+    if (esInvitado) return;
 
     try {
       await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
@@ -523,7 +576,7 @@ export default function HomePage() {
           <span className="truncate">RSS Dashboard</span>
         </h1>
 
-        {session?.user && (
+        {session?.user && !esInvitado && (
           <p className="hidden md:block flex-1 text-center text-sm text-gray-300 truncate px-2">
             {session.user.genero === "mujer" ? "Bienvenida" : "Bienvenido"},{" "}
             <strong className="text-white">{session.user.name || session.user.email}</strong>
@@ -532,6 +585,28 @@ export default function HomePage() {
 
         <div className="flex items-center gap-4">
           {session?.user ? (
+            esInvitado ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium">
+                  Modo invitado
+                </span>
+                <button
+                  onClick={() => setShowWelcomeModal(true)}
+                  title="Ayuda sobre cómo buscar fuentes RSS"
+                  className="text-xs bg-gray-800 hover:bg-gray-700 text-sky-400 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+                >
+                  <HelpCircle size={14} />
+                  <span className="hidden sm:inline">Guía RSS</span>
+                </button>
+                <button
+                  onClick={salirInvitado}
+                  className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span className="hidden sm:inline">Salir</span>
+                </button>
+              </div>
+            ) : (
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowWelcomeModal(true)}
@@ -568,6 +643,7 @@ export default function HomePage() {
                 <span className="hidden sm:inline">Cerrar Sesión</span>
               </button>
             </div>
+            )
           ) : (
 
             <div className="flex gap-2 shrink-0">
@@ -589,6 +665,15 @@ export default function HomePage() {
           )}
         </div>
       </header>
+
+      {esInvitado && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:px-6 flex items-center justify-center gap-2 text-center">
+          <p className="text-xs text-amber-200">
+            Estás en <strong>modo invitado</strong>: al cerrar la ventana del navegador la sesión se perderá
+            y ningún dato se guardará. <Link href="/register" className="underline font-medium">Crea una cuenta</Link> para conservar todo.
+          </p>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="w-full px-3 py-4 sm:px-6 sm:py-6 flex-1">
@@ -659,7 +744,7 @@ export default function HomePage() {
                   </p>
                   {activeTab === "todas" && (
                     <button
-                      onClick={() => setIsAddModalOpen(true)}
+                      onClick={() => (esInvitado ? exigirCuenta() : setIsAddModalOpen(true))}
                       className="inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300 font-medium"
                     >
                       <Plus size={16} /> Agregar tu primera fuente RSS
@@ -731,7 +816,7 @@ export default function HomePage() {
                     <span className="truncate">{refreshing ? "Actualizando..." : "Refrescar"}</span>
                   </button>
                   <button
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => (esInvitado ? exigirCuenta() : setIsAddModalOpen(true))}
                     className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
                   >
                     <Plus size={14} />
@@ -752,7 +837,7 @@ export default function HomePage() {
                     <span className="truncate">Eliminar todo</span>
                   </button>
                   <button
-                    onClick={() => setIsManageModalOpen(true)}
+                    onClick={() => (esInvitado ? exigirCuenta() : setIsManageModalOpen(true))}
                     className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
                   >
                     <Settings size={14} />
@@ -1000,7 +1085,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Modales de la aplicación */}
+      {/* Modales de la aplicación (no disponibles en modo invitado) */}
+      {!esInvitado && (
+      <>
       <AddFeedModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -1033,6 +1120,8 @@ export default function HomePage() {
         onSuccess={() => recargarSesion()}
         onNotify={notify}
       />
+      </>
+      )}
       {toast && (
         <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
           {toast.message}

@@ -1,42 +1,82 @@
 // src/app/login/page.js
 "use client";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, UserRound, TriangleAlert, X } from "lucide-react";
+
+const RECORDAR_CORREO_CLAVE = "lector_recordar_correo";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
+  const [verPassword, setVerPassword] = useState(false);
+  const [recordarme, setRecordarme] = useState(false);
+  const [mostrarAvisoInvitado, setMostrarAvisoInvitado] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      const guardado = window.localStorage.getItem(RECORDAR_CORREO_CLAVE);
+      if (guardado) {
+        setForm((actual) => ({ ...actual, email: guardado }));
+        setRecordarme(true);
+      }
+    } catch {
+      // Sin almacenamiento disponible: se continúa sin recordar el correo.
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      email: form.email,
-      password: form.password,
-      redirect: false,
-    });
+    try {
+      try {
+        if (recordarme) window.localStorage.setItem(RECORDAR_CORREO_CLAVE, form.email);
+        else window.localStorage.removeItem(RECORDAR_CORREO_CLAVE);
+      } catch {
+        // Sin almacenamiento disponible: se continúa con el inicio de sesión.
+      }
 
-    if (res?.error) {
-      setError("Credenciales incorrectas");
+      const res = await signIn("credentials", {
+        email: form.email,
+        password: form.password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Credenciales incorrectas");
+        setLoading(false);
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
+  };
+
+  const entrarComoInvitado = () => {
+    try {
+      window.sessionStorage.setItem("modo_invitado", "1");
+    } catch {
+      // Sin almacenamiento de sesión: se continúa de todos modos.
+    }
+    setMostrarAvisoInvitado(false);
+    router.push("/");
+    router.refresh();
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
       <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
         <h2 className="text-2xl font-bold text-center mb-6 tracking-tight text-white">Iniciar Sesión</h2>
-        
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
             {error}
@@ -53,8 +93,10 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
-                placeholder="correo@ejemplo.com"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                value={form.email}
+                autoComplete="email"
+                placeholder="Correo electrónico"
+                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-sky-500 transition"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
@@ -63,31 +105,63 @@ export default function LoginPage() {
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-xs font-medium text-gray-300 uppercase tracking-wider">Contraseña</label>
-              <a href="#" className="text-xs text-sky-400 hover:underline">¿Olvidaste tu contraseña?</a>
+              <Link href="/recuperar" className="text-xs text-sky-400 hover:underline">¿Olvidaste tu contraseña?</Link>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                 <Lock size={18} />
               </span>
               <input
-                type="password"
+                type={verPassword ? "text" : "password"}
                 required
-                placeholder="••••••••"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                value={form.password}
+                autoComplete="current-password"
+                placeholder="Contraseña"
+                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-sky-500 transition"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
+              <button
+                type="button"
+                onClick={() => setVerPassword((v) => !v)}
+                title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-pressed={verPassword}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100 transition"
+              >
+                {verPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <input type="checkbox" id="remember" className="rounded bg-gray-950 border-gray-800 text-sky-600 focus:ring-sky-500 h-4 w-4 cursor-pointer" />
-            <label htmlFor="remember" className="text-xs text-gray-400 cursor-pointer">Recordarme</label>
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={recordarme}
+              onClick={() => setRecordarme((v) => !v)}
+              className="group flex items-center gap-2.5 cursor-pointer"
+            >
+              <span
+                aria-hidden="true"
+                className={`relative inline-flex w-10 shrink-0 items-center rounded-full border transition-colors duration-200 ${
+                  recordarme ? "bg-sky-600 border-sky-500" : "bg-gray-800 border-gray-700 group-hover:border-gray-600"
+                }`}
+                style={{ height: "1.375rem" }}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    recordarme ? "translate-x-[1.125rem]" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+              <span className="text-xs text-gray-400 group-hover:text-gray-200 transition">Recordarme</span>
+            </button>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm mt-2"
+            className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60"
           >
             {loading ? "Entrando..." : "Iniciar Sesión"}
           </button>
@@ -99,8 +173,8 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button 
-            onClick={() => signIn("google", { callbackUrl: "/" })} 
+          <button
+            onClick={() => signIn("google", { callbackUrl: "/" })}
             className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -111,8 +185,8 @@ export default function LoginPage() {
             </svg>
             Google
           </button>
-          <button 
-            onClick={() => signIn("github", { callbackUrl: "/" })} 
+          <button
+            onClick={() => signIn("github", { callbackUrl: "/" })}
             className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
           >
             <svg className="w-4 h-4 fill-current text-gray-200" viewBox="0 0 24 24">
@@ -122,6 +196,14 @@ export default function LoginPage() {
           </button>
         </div>
 
+        <button
+          onClick={() => setMostrarAvisoInvitado(true)}
+          className="w-full mt-3 bg-gray-950 hover:bg-gray-800 border border-dashed border-gray-700 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-300"
+        >
+          <UserRound size={16} className="text-gray-400" />
+          Continuar como invitado
+        </button>
+
         <p className="text-center text-xs text-gray-400 mt-6">
           ¿No tienes cuenta?{" "}
           <Link href="/register" className="text-sky-400 hover:underline font-medium">
@@ -129,6 +211,55 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {mostrarAvisoInvitado && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="aviso-invitado-titulo"
+          onClick={() => setMostrarAvisoInvitado(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="flex items-center gap-2 text-amber-300">
+                <TriangleAlert size={20} />
+                <strong id="aviso-invitado-titulo" className="text-sm font-semibold text-white">
+                  Entrar como invitado
+                </strong>
+              </span>
+              <button
+                onClick={() => setMostrarAvisoInvitado(false)}
+                aria-label="Cerrar aviso"
+                className="text-gray-400 hover:text-white transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              Al cerrar la ventana del navegador, esta sesión de invitado <strong className="text-white">se perderá por completo</strong> y
+              ninguno de tus datos se guardará en la base de datos.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setMostrarAvisoInvitado(false)}
+                className="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={entrarComoInvitado}
+                className="rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 transition"
+              >
+                Entendido, entrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
