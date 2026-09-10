@@ -79,7 +79,7 @@ Tiempos estimados: refresco sin novedades ~2-4s; fuente nueva de 40 ~9s + cola v
 
 ### 4.6 Interfaz y accesibilidad
 
-Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto/categoria/fuente, checkboxes personalizados con icono Lucide real, `aria-labels`, `focus-visible`, cierre con Escape y `role="status"`.
+Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto/categoria/fuente, checkboxes personalizados con icono Lucide real, imagen lateral del feed en el lector (solo visualizacion remota, se oculta si falla), `aria-labels`, `focus-visible`, cierre con Escape y `role="status"`.
 
 ### 4.7 Seguridad
 

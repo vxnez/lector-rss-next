@@ -101,6 +101,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [categoriaElegida, setCategoriaElegida] = useState("");
   const [categorias, setCategorias] = useState([]);
   const [vistaLocal, setVistaLocal] = useState(null);
+  const [imagenRota, setImagenRota] = useState(false);
 
   useEffect(() => {
     if (!article) return undefined;
@@ -205,7 +206,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       >
         <ChevronRight size={22} />
       </button>
-      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col justify-between">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col sm:flex-row">
+      <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between">
         {/* Cabecera del modal */}
         <div>
           <div className="flex justify-between items-start gap-4 mb-3">
@@ -355,6 +357,21 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             <ExternalLink size={14} />
           </a>
         </div>
+      </div>
+      {article.imagen_url && !imagenRota && (
+        <div className="order-first sm:order-none sm:w-1/4 shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={article.imagen_url}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setImagenRota(true)}
+            className="h-44 sm:h-full w-full object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl"
+          />
+        </div>
+      )}
       </div>
     </div>
   );

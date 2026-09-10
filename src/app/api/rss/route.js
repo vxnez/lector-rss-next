@@ -28,7 +28,7 @@ async function ensureClassificationSchema() {
         `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = 'articulos_publicados'
-           AND COLUMN_NAME IN ('clasificacion_metodo', 'clasificacion_confianza')`
+           AND COLUMN_NAME IN ('clasificacion_metodo', 'clasificacion_confianza', 'imagen_url')`
       );
       const existing = new Set(columns.map((column) => column.COLUMN_NAME));
       if (!existing.has("clasificacion_metodo")) {
@@ -36,6 +36,9 @@ async function ensureClassificationSchema() {
       }
       if (!existing.has("clasificacion_confianza")) {
         await db.query("ALTER TABLE articulos_publicados ADD COLUMN clasificacion_confianza DECIMAL(4,3) NOT NULL DEFAULT 0.500");
+      }
+      if (!existing.has("imagen_url")) {
+        await db.query("ALTER TABLE articulos_publicados ADD COLUMN imagen_url VARCHAR(500) NULL");
       }
     })().catch((error) => {
       classificationSchemaPromise = undefined;
@@ -627,6 +630,7 @@ export async function GET(req) {
         a.categoria,
         a.clasificacion_metodo,
         a.clasificacion_confianza,
+        a.imagen_url,
         a.fuente_id,
         f.titulo AS fuente_nombre,
         f.url_feed AS fuente_url
@@ -952,7 +956,7 @@ async function obtenerClasificacionesExistentes(fuenteIds = []) {
   const ids = [...new Set(fuenteIds.filter((id) => id !== undefined && id !== null))];
   if (ids.length === 0) return mapa;
   const [filas] = await db.query(
-    `SELECT fuente_id, url_original, categoria, clasificacion_metodo, clasificacion_confianza
+    `SELECT fuente_id, url_original, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url
      FROM articulos_publicados WHERE fuente_id IN (?)`,
     [ids]
   );
@@ -967,6 +971,40 @@ async function obtenerClasificacionesExistentes(fuenteIds = []) {
   return mapa;
 }
 
+function extraerImagenUrl(item = {}) {
+  const esUrlImagen = (valor) =>
+    typeof valor === "string" &&
+    /^https?:\/\//i.test(valor.trim()) &&
+    !/^data:/i.test(valor.trim()) &&
+    /\.(jpe?g|png|webp|gif|avif|bmp)(\?|#|$)/i.test(valor.trim());
+
+  const enclosure = item.enclosure;
+  if (enclosure && typeof enclosure.url === "string" && /^https?:\/\//i.test(enclosure.url.trim())) {
+    const tipo = String(enclosure.type || "").toLowerCase();
+    if (!tipo || tipo.startsWith("image/") || esUrlImagen(enclosure.url)) {
+      return enclosure.url.trim();
+    }
+  }
+
+  const mediaCandidates = [
+    item["media:content"]?.$?.url,
+    Array.isArray(item["media:content"]) ? item["media:content"][0]?.$?.url : null,
+    item["media:thumbnail"]?.$?.url,
+    item.image?.url,
+    item.itunes?.image,
+  ];
+  for (const url of mediaCandidates) {
+    if (typeof url === "string" && /^https?:\/\//i.test(url.trim())) return url.trim();
+  }
+
+  const html = item.content || item["content:encoded"] || "";
+  if (typeof html === "string") {
+    const coincidencia = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (coincidencia && esUrlImagen(coincidencia[1])) return coincidencia[1].trim();
+  }
+  return "";
+}
+
 function normalizarItemNoticia(item = {}) {
   const link = limpiarUrlNoticia(item.link || item.guid || item.id || "");
   if (!link) return null;
@@ -975,6 +1013,7 @@ function normalizarItemNoticia(item = {}) {
     link,
     titulo: item.title || "Sin título",
     resumen: rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300),
+    imagen: extraerImagenUrl(item),
   };
 }
 
@@ -986,7 +1025,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
     if (!normalizado) return;
     const previo = existentes.get(`${fuenteId}\u0000${normalizado.link}`);
     if (previo && previo.metodo !== "sin-ia") {
-      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen, esNuevo: false };
+      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen, imagen: normalizado.imagen, esNuevo: false };
     } else {
       nuevos.push({ posicion, ...normalizado });
     }
@@ -1006,6 +1045,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
       link: nuevo.link,
       titulo: nuevo.titulo,
       resumen: nuevo.resumen,
+      imagen: nuevo.imagen,
       esNuevo: true,
     };
   });
@@ -1037,6 +1077,7 @@ async function bulkUpdateArticulos(fuenteId, filas, { conCategoria = false } = {
     `titulo = ${agregarCasos((fila) => fila.titulo)}`,
     `resumen = ${agregarCasos((fila) => fila.resumen)}`,
     `fecha_publicacion = ${agregarCasos((fila) => fila.fechaPub)}`,
+    `imagen_url = ${agregarCasos((fila) => fila.imagen || null)}`,
   ];
   if (conCategoria) {
     asignaciones.push(
@@ -1063,9 +1104,9 @@ async function persistirArticulos(fuenteId, items = [], clasificaciones = [], li
 
   const [insertRes] = await db.query(
     `INSERT IGNORE INTO articulos_publicados
-     (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, leido, guardado, descartado)
-     VALUES ${filas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)").join(", ")}`,
-    filas.flatMap((fila) => [fuenteId, fila.titulo, fila.resumen, fila.link, fila.fechaPub, fila.categoria, fila.metodo, fila.confianza])
+     (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url, leido, guardado, descartado)
+     VALUES ${filas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)").join(", ")}`,
+    filas.flatMap((fila) => [fuenteId, fila.titulo, fila.resumen, fila.link, fila.fechaPub, fila.categoria, fila.metodo, fila.confianza, fila.imagen || null])
   );
 
   if (!soloInsertar) {
