@@ -236,6 +236,78 @@ textarea:focus-visible {
   }
 }
 
+/* Transiciones entre noticias del lector: entrada suave según la dirección.
+   Siguiente = entra desde la derecha, anterior = desde la izquierda. */
+@keyframes articulo-entrar-desde-derecha {
+  0% {
+    opacity: 0;
+    transform: translateX(56px) scale(0.985);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes articulo-entrar-desde-izquierda {
+  0% {
+    opacity: 0;
+    transform: translateX(-56px) scale(0.985);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes articulo-apertura {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.anim-articulo-siguiente {
+  animation: articulo-entrar-desde-derecha 0.45s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.anim-articulo-anterior {
+  animation: articulo-entrar-desde-izquierda 0.45s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.anim-articulo-apertura {
+  animation: articulo-apertura 0.35s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-articulo-siguiente,
+  .anim-articulo-anterior,
+  .anim-articulo-apertura {
+    animation: none;
+  }
+}
+
 /* Línea vertical cuando la tarjeta está minimizada */
 .github-float-min {
   background: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);

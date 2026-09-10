@@ -5,6 +5,12 @@ import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, C
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { useEffect, useRef, useState } from "react";
 
+// Dirección de la última navegación entre noticias (1 = siguiente, -1 = anterior, 0 = apertura).
+// Vive a nivel de módulo porque el modal se remontan con `key` por noticia y el estado se pierde.
+let direccionNavegacion = 0;
+// Marca temporal del último cambio por rueda para evitar saltos múltiples con un solo gesto.
+let ultimoCambioRueda = 0;
+
 // Función para asignar colores distintivos a las categorías
 const getCategoryColor = (categoria) => {
   return getCategoryStyle(categoria);
@@ -125,8 +131,20 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   );
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
+  const contenedorRef = useRef(null);
   const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(false);
   const ultimoAvisoContadoId = useRef(null);
+  // Dirección con la que se entró a esta noticia: define la animación de entrada.
+  const [direccionEntrada] = useState(() => direccionNavegacion);
+
+  // Navegación centralizada: registra la dirección para animar la entrada y el
+  // instante del cambio para el enfriamiento del scroll con rueda.
+  const navegar = (direccion, id) => {
+    if (id == null) return false;
+    direccionNavegacion = direccion;
+    ultimoCambioRueda = Date.now();
+    return onIrAId(id);
+  };
 
   const manejarInicioToque = (event) => {
     const toque = event.touches?.[0];
@@ -142,8 +160,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     const dx = toque.clientX - inicio.x;
     const dy = toque.clientY - inicio.y;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0 && siguienteId != null) onIrAId(siguienteId);
-      else if (dx > 0 && anteriorId != null) onIrAId(anteriorId);
+      if (dx < 0 && siguienteId != null) navegar(1, siguienteId);
+      else if (dx > 0 && anteriorId != null) navegar(-1, anteriorId);
     }
   };
 
@@ -168,22 +186,86 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       if (editandoCategoria || escribiendo || objetivo?.tagName === "SELECT") return;
       if (event.key === "ArrowLeft" && anteriorId != null) {
         event.preventDefault();
-        onIrAId(anteriorId);
+        navegar(-1, anteriorId);
       }
       if (event.key === "ArrowRight" && siguienteId != null) {
         event.preventDefault();
-        onIrAId(siguienteId);
+        navegar(1, siguienteId);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [article, onClose, onIrAId, anteriorId, siguienteId, editandoCategoria]);
 
+  // Scroll con rueda del mouse en PC: al llegar al borde del contenido, el gesto
+  // cambia de noticia (abajo = siguiente, arriba = anterior). Solo con puntero
+  // fino para no interferir con el gesto táctil en móvil.
   useEffect(() => {
     if (!article) return undefined;
-    const idNoticia = article.id ?? article.url_original ?? posicion;
-    // Evita contar dos veces la misma noticia (StrictMode / re-renders).
+    const contenedor = contenedorRef.current;
+    if (!contenedor || typeof window === "undefined") return undefined;
+    let punteroFino = false;
+    try {
+      punteroFino = window.matchMedia("(pointer: fine)").matches;
+    } catch {
+      punteroFino = false;
+    }
+    if (!punteroFino) return undefined;
+
+    const UMBRAL_PX = 60;
+    const ENFRIAMIENTO_MS = 900;
+    let acumulado = 0;
+    let temporizadorReposo = null;
+
+    const manejarRueda = (event) => {
+      // Enfriamiento global (sobrevive al remontaje por cambio de noticia).
+      if (Date.now() - ultimoCambioRueda < ENFRIAMIENTO_MS) return;
+      let delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      if (event.deltaMode === 1) delta *= 16; // líneas -> píxeles aproximados
+      if (!delta) return;
+      acumulado += delta;
+      if (temporizadorReposo) clearTimeout(temporizadorReposo);
+      temporizadorReposo = setTimeout(() => {
+        acumulado = 0;
+      }, 160);
+      if (Math.abs(acumulado) < UMBRAL_PX) return;
+      const haciaSiguiente = acumulado > 0;
+      const puedeBajar = contenedor.scrollHeight - contenedor.scrollTop - contenedor.clientHeight > 2;
+      const estaArriba = contenedor.scrollTop <= 0;
+      acumulado = 0;
+      if (haciaSiguiente) {
+        // Si queda contenido por leer, el scroll sigue su curso normal.
+        if (puedeBajar || siguienteId == null) return;
+        event.preventDefault();
+        navegar(1, siguienteId);
+      } else {
+        // Si no está al inicio, el scroll sigue su curso normal.
+        if (!estaArriba || anteriorId == null) return;
+        event.preventDefault();
+        navegar(-1, anteriorId);
+      }
+    };
+
+    contenedor.addEventListener("wheel", manejarRueda, { passive: false });
+    return () => {
+      contenedor.removeEventListener("wheel", manejarRueda);
+      if (temporizadorReposo) clearTimeout(temporizadorReposo);
+    };
+  }, [article, onIrAId, anteriorId, siguienteId]);
+
+  useEffect(() => {
+    if (!article) return undefined;
+    const idNoticia = String(article.id ?? article.url_original ?? posicion ?? "");
+    // Evita contar dos veces la misma noticia (StrictMode / remontajes).
     if (ultimoAvisoContadoId.current === idNoticia) return undefined;
+    try {
+      if (window.sessionStorage.getItem("lector_aviso_deslizar_ultimo_id") === idNoticia) {
+        ultimoAvisoContadoId.current = idNoticia;
+        return undefined;
+      }
+    } catch {
+      // Sin almacenamiento disponible: se continúa con el conteo en memoria.
+    }
     // Solo se muestra en móvil (donde las flechas están ocultas y el gesto es la vía de navegación).
     let esMovil = false;
     try {
@@ -206,6 +288,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     ultimoAvisoContadoId.current = idNoticia;
     try {
       window.sessionStorage.setItem("lector_aviso_deslizar_vistas", String(vistas + 1));
+      window.sessionStorage.setItem("lector_aviso_deslizar_ultimo_id", idNoticia);
     } catch {
       // Sin almacenamiento disponible: se muestra igual esta vez.
     }
@@ -304,7 +387,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       <button
         onClick={(event) => {
           event.stopPropagation();
-          if (anteriorId != null) onIrAId(anteriorId);
+          if (anteriorId != null) navegar(-1, anteriorId);
         }}
         disabled={anteriorId == null}
         title="Noticia anterior"
@@ -316,7 +399,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       <button
         onClick={(event) => {
           event.stopPropagation();
-          if (siguienteId != null) onIrAId(siguienteId);
+          if (siguienteId != null) navegar(1, siguienteId);
         }}
         disabled={siguienteId == null}
         title="Noticia siguiente"
@@ -326,7 +409,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronRight size={22} />
       </button>
       <div
-        className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        ref={contenedorRef}
+        className={`bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          direccionEntrada > 0
+            ? "anim-articulo-siguiente"
+            : direccionEntrada < 0
+              ? "anim-articulo-anterior"
+              : "anim-articulo-apertura"
+        }`}
         onClick={(event) => event.stopPropagation()}
         onTouchStart={manejarInicioToque}
         onTouchEnd={manejarFinToque}
