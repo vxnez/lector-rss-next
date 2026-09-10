@@ -102,7 +102,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [categorias, setCategorias] = useState([]);
   const [vistaLocal, setVistaLocal] = useState(null);
   const [imagenRota, setImagenRota] = useState(false);
-  const [imagenOculta, setImagenOculta] = useState(false);
+  const [imagenOculta, setImagenOculta] = useState(() => {
+    try {
+      return typeof window !== "undefined" && window.localStorage.getItem("lector_imagen_oculta") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const alternarImagen = () => {
+    const siguiente = !imagenOculta;
+    try {
+      window.localStorage.setItem("lector_imagen_oculta", siguiente ? "1" : "0");
+    } catch {
+      // Sin almacenamiento disponible: solo cambia en esta vista.
+    }
+    setImagenOculta(siguiente);
+  };
   const [imagenRemota, setImagenRemota] = useState(null);
   const [cargandoImagen, setCargandoImagen] = useState(
     () => Boolean(article?.url_original) && !article?.imagen_url
@@ -365,7 +381,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               ) : null}
               {imagenVisible && !imagenRota && (
                 <button
-                  onClick={() => setImagenOculta((oculta) => !oculta)}
+                  onClick={alternarImagen}
                   title={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
                   aria-label={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
                   aria-pressed={imagenOculta}
