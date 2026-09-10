@@ -703,33 +703,31 @@ export default function HomePage() {
                     </span>
                   )}
                 </div>
-                <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {categoriasDisponibles.map((categoria) => {
-                      const activa = categoriasSeleccionadas.includes(categoria);
-                      return (
-                        <button
-                          key={categoria}
-                          type="button"
-                          aria-pressed={activa}
-                          onClick={() => alternarCategoria(categoria)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
-                            activa
-                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                              : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-                          }`}
-                        >
-                          {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
-                          {categoria}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {categoriasDisponibles.length === 0 && (
-                    <p className="px-2.5 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
-                  )}
+                <div className="flex flex-wrap gap-1.5">
+                  {categoriasDisponibles.map((categoria) => {
+                    const activa = categoriasSeleccionadas.includes(categoria);
+                    return (
+                      <button
+                        key={categoria}
+                        type="button"
+                        aria-pressed={activa}
+                        onClick={() => alternarCategoria(categoria)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
+                          activa
+                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        {categoria}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {categoriasDisponibles.length === 0 && (
+                  <p className="px-1 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
+                )}
               </div>
 
               {(searchQuery || categoriasSeleccionadas.length > 0 || selectedSourceId !== "todas") && (
