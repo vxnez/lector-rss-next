@@ -856,6 +856,10 @@ export default function HomePage() {
       <ManageSourcesModal
         isOpen={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
+        onAgregarFuente={() => {
+          setIsManageModalOpen(false);
+          setIsAddModalOpen(true);
+        }}
         onChange={() => {
           fetchArticles();
           fetchSources();

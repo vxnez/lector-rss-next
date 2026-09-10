@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save } from "lucide-react";
+import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save, Plus } from "lucide-react";
 
-export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify }) {
+export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify, onAgregarFuente }) {
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -214,6 +214,15 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
+              title="Agregar feed"
+              aria-label="Agregar nueva fuente RSS"
+              className="bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shadow-lg shadow-sky-600/20"
+            >
+              <Plus size={14} />
+              <span className="hidden sm:inline">Agregar</span>
+            </button>
             <button
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
