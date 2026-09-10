@@ -6,6 +6,7 @@ import Link from "next/link";
 import AddFeedModal from "./components/AddFeedModal";
 import GitHubCard from "./components/GitHubCard";
 import ManageSourcesModal from "./components/ManageSourcesModal";
+import PerfilModal from "./components/PerfilModal";
 import NewsFeed from "./components/NewsFeed";
 import {
   Rss,
@@ -27,6 +28,7 @@ import {
   ArrowRight,
   Search,
   XCircle,
+  Pencil,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isPerfilOpen, setIsPerfilOpen] = useState(false);
   
   // Estado para el modal de bienvenida/tutorial de nuevos usuarios
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -54,6 +57,18 @@ export default function HomePage() {
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 4200);
+  }, []);
+
+  const recargarSesion = useCallback(async () => {
+    try {
+      const resAuth = await fetch("/api/auth/session", { cache: "no-store" });
+      const sessionData = await resAuth.json();
+      if (sessionData?.user) {
+        setSession(sessionData);
+      }
+    } catch (err) {
+      console.error("Error al recargar la sesión:", err);
+    }
   }, []);
 
   const fetchSources = useCallback(async (signal) => {
@@ -414,6 +429,12 @@ export default function HomePage() {
           <span className="truncate">RSS Dashboard</span>
         </h1>
 
+        {session?.user && (
+          <p className="hidden md:block flex-1 text-center text-sm text-gray-300 truncate px-2">
+            Bienvenido, <strong className="text-white">{session.user.name || session.user.email}</strong>
+          </p>
+        )}
+
         <div className="flex items-center gap-4">
           {session?.user ? (
             <div className="flex items-center gap-2 sm:gap-3">
@@ -426,9 +447,14 @@ export default function HomePage() {
                 <span className="hidden sm:inline">Guía RSS</span>
               </button>
 
-              <span className="text-sm text-gray-300 hidden sm:inline">
-                Hola, <strong className="text-white">{session.user.name || session.user.email}</strong>
-              </span>
+              <button
+                onClick={() => setIsPerfilOpen(true)}
+                title="Editar perfil"
+                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+              >
+                <Pencil size={14} />
+                <span className="hidden sm:inline">Editar perfil</span>
+              </button>
 
               {/* CAMBIAMOS ESTE LINK POR UN BOTÓN DIRECTO DE CIERRE DE SESIÓN */}
               <button
@@ -868,6 +894,13 @@ export default function HomePage() {
         onNotify={notify}
       />
       <GitHubCard />
+      <PerfilModal
+        key={isPerfilOpen ? "perfil-abierto" : "perfil-cerrado"}
+        isOpen={isPerfilOpen}
+        onClose={() => setIsPerfilOpen(false)}
+        onSuccess={() => recargarSesion()}
+        onNotify={notify}
+      />
       {toast && (
         <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
           {toast.message}

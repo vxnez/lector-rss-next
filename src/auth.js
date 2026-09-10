@@ -73,9 +73,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session }) {
       if (session?.user?.email) {
-        const [rows] = await db.query("SELECT id FROM usuarios WHERE email = ?", [session.user.email]);
+        const [rows] = await db.query("SELECT id, nombre, imagen_url FROM usuarios WHERE email = ?", [session.user.email]);
         if (rows[0]) {
           session.user.id = rows[0].id;
+          if (rows[0].nombre) session.user.name = rows[0].nombre;
+          session.user.image = rows[0].imagen_url || session.user.image || null;
         }
       }
       return session;
