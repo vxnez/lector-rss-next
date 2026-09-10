@@ -295,6 +295,33 @@ export default function HomePage() {
     }
   };
 
+  const actualizarCategoria = async (id, categoria) => {
+    const articuloCopia = articulos.find((art) => art.id === id);
+    setArticulos((prev) =>
+      prev.map((art) =>
+        art.id === id ? { ...art, categoria, clasificacion_metodo: "manual", clasificacion_confianza: 1 } : art
+      )
+    );
+
+    try {
+      const res = await fetch("/api/rss", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, categoria }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo actualizar la categoría.");
+      }
+      return true;
+    } catch {
+      if (articuloCopia) {
+        setArticulos((prev) => prev.map((art) => (art.id === id ? articuloCopia : art)));
+      }
+      return false;
+    }
+  };
+
   const descartarArticulo = async (id) => {
     const articuloCopia = articulos.find((art) => art.id === id);
     setArticulos((prev) => prev.filter((art) => art.id !== id));
@@ -511,6 +538,7 @@ export default function HomePage() {
                     articles={articulosOrdenados}
                     onToggleRead={toggleLeido}
                     onToggleSave={toggleGuardado}
+                    onUpdateCategory={actualizarCategoria}
                     onDelete={descartarArticulo}
                   />
                 )}

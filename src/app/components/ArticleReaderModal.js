@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar } from "lucide-react";
+import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { useEffect, useState } from "react";
 
@@ -94,9 +94,13 @@ const formatFecha = (fechaStr) => {
   }
 };
 
-export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave }) {
+export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory }) {
   const [savingAction, setSavingAction] = useState("");
   const [actionError, setActionError] = useState("");
+  const [editandoCategoria, setEditandoCategoria] = useState(false);
+  const [categoriaElegida, setCategoriaElegida] = useState("");
+  const [categorias, setCategorias] = useState([]);
+  const [vistaLocal, setVistaLocal] = useState(null);
 
   useEffect(() => {
     if (!article) return undefined;
@@ -108,6 +112,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   }, [article, onClose]);
 
   if (!article) return null;
+
+  const categoriaMostrada = vistaLocal?.categoria ?? article.categoria;
+  const metodoMostrado = vistaLocal?.metodo ?? article.clasificacion_metodo;
+  const confianzaMostrada = vistaLocal?.confianza ?? article.clasificacion_confianza;
 
   const handleMarcarLeido = async () => {
     setSavingAction("leido");
@@ -127,6 +135,36 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     else setActionError("No se pudo actualizar el estado guardado.");
   };
 
+  const iniciarEdicionCategoria = async () => {
+    setActionError("");
+    setCategoriaElegida(categoriaMostrada || "General");
+    setEditandoCategoria(true);
+    if (categorias.length > 0) return;
+    try {
+      const res = await fetch("/api/rss?tipo=categorias", { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (Array.isArray(data)) setCategorias(data);
+    } catch {
+      setActionError("No se pudo cargar el catálogo de categorías.");
+      setEditandoCategoria(false);
+    }
+  };
+
+  const guardarCategoria = async () => {
+    if (!categoriaElegida || !onUpdateCategory) return;
+    setSavingAction("categoria");
+    setActionError("");
+    const actualizado = await onUpdateCategory(article.id, categoriaElegida);
+    setSavingAction("");
+    if (actualizado) {
+      setVistaLocal({ categoria: categoriaElegida, metodo: "manual", confianza: 1 });
+      setEditandoCategoria(false);
+    } else {
+      setActionError("No se pudo actualizar la categoría.");
+    }
+  };
+
   const fechaFormateada = formatFecha(article.fecha_publicacion);
 
   return (
@@ -142,15 +180,62 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {article.fuente_nombre}
                 </span>
               )}
-              {article.categoria && (
-                <span style={getCategoryColor(article.categoria)} className="flex items-center gap-1 border px-2.5 py-1 rounded-md font-medium">
-                  <Tag size={12} className="opacity-75" />
-                  {article.categoria}
+              {editandoCategoria ? (
+                <span className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 px-2 py-1 rounded-md">
+                  <Tag size={12} className="opacity-75 shrink-0" />
+                  <select
+                    value={categoriaElegida}
+                    onChange={(event) => setCategoriaElegida(event.target.value)}
+                    disabled={Boolean(savingAction)}
+                    aria-label="Elegir categoría"
+                    className="bg-transparent text-xs text-white outline-none cursor-pointer max-w-40 disabled:opacity-50"
+                  >
+                    {categorias.map((nombre) => (
+                      <option key={nombre} value={nombre} className="bg-gray-900">
+                        {nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={guardarCategoria}
+                    disabled={Boolean(savingAction)}
+                    title="Guardar categoría"
+                    aria-label="Guardar categoría"
+                    className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50 shrink-0"
+                  >
+                    <Save size={13} />
+                  </button>
+                  <button
+                    onClick={() => setEditandoCategoria(false)}
+                    disabled={Boolean(savingAction)}
+                    title="Cancelar"
+                    aria-label="Cancelar edición de categoría"
+                    className="text-gray-400 hover:text-white disabled:opacity-50 shrink-0"
+                  >
+                    <X size={13} />
+                  </button>
                 </span>
+              ) : (
+                <>
+                  {categoriaMostrada && (
+                    <span style={getCategoryColor(categoriaMostrada)} className="flex items-center gap-1 border px-2.5 py-1 rounded-md font-medium">
+                      <Tag size={12} className="opacity-75" />
+                      {categoriaMostrada}
+                    </span>
+                  )}
+                  <button
+                    onClick={iniciarEdicionCategoria}
+                    title="Corregir categoría"
+                    aria-label="Corregir categoría"
+                    className="flex items-center border border-gray-700/60 bg-gray-800/60 px-2 py-1 rounded-md text-gray-400 hover:text-sky-400 hover:border-sky-600/50 transition"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                </>
               )}
-              {article.clasificacion_metodo && (
+              {metodoMostrado && (
                 <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2.5 py-1 rounded-md">
-                  {article.clasificacion_metodo === "gemini" ? "IA" : "Sin IA"} · {Math.round(Number(article.clasificacion_confianza || 0) * 100)}%
+                  {metodoMostrado === "gemini" ? "IA" : metodoMostrado === "manual" ? "Manual" : "Sin IA"} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (

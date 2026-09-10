@@ -116,7 +116,7 @@ const formatFecha = (fechaStr) => {
   }
 };
 
-export default function NewsFeed({ articles, onToggleRead, onToggleSave, onDelete }) {
+export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   const getFuenteNombre = (art) => {
@@ -254,10 +254,12 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onDelet
       </div>
 
       <ArticleReaderModal
+        key={selectedArticle?.id ?? "vacio"}
         article={selectedArticle}
         onClose={() => setSelectedArticle(null)}
         onToggleRead={onToggleRead}
         onToggleSave={onToggleSave}
+        onUpdateCategory={onUpdateCategory}
       />
     </>
   );

@@ -611,6 +611,10 @@ export async function GET(req) {
       return NextResponse.json(fuentes);
     }
 
+    if (tipo === "categorias") {
+      return NextResponse.json(CATEGORIAS_DISPONIBLES);
+    }
+
     const [rows] = await db.query(
       `SELECT 
         a.id,
@@ -665,6 +669,19 @@ export async function PUT(req) {
     }
     if (guardado !== undefined) {
       await db.query("UPDATE articulos_publicados SET guardado = ? WHERE id = ?", [guardado ? 1 : 0, id]);
+    }
+    if (categoria !== undefined) {
+      const categoriaValida = CATEGORIAS_DISPONIBLES.find(
+        (nombre) => normalizarCategoria(nombre) === normalizarCategoria(String(categoria))
+      );
+      if (!categoriaValida) {
+        return NextResponse.json({ error: "Categoría no válida" }, { status: 400 });
+      }
+      await db.query(
+        "UPDATE articulos_publicados SET categoria = ?, clasificacion_metodo = 'manual', clasificacion_confianza = 1 WHERE id = ?",
+        [categoriaValida, id]
+      );
+      return NextResponse.json({ message: "Categoría actualizada", categoria: categoriaValida });
     }
 
     return NextResponse.json({ message: "Artículo actualizado" });
