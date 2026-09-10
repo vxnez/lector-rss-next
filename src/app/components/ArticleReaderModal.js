@@ -230,8 +230,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       >
         <ChevronRight size={22} />
       </button>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col sm:flex-row">
-      <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col">
+      <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
         {/* Cabecera del modal */}
         <div>
           <div className="flex justify-between items-start gap-4 mb-3">
@@ -342,48 +342,46 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         )}
 
         {/* Acciones del pie */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-4 border-t border-gray-800">
-          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-            <button
-              onClick={handleMarcarLeido}
-              disabled={Boolean(savingAction)}
-              className={`px-2 sm:px-3.5 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition min-w-0 ${
-                article.leido
-                  ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
-                  : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              <Check size={14} />
-              <span>{savingAction === "leido" ? "Guardando..." : article.leido ? "Leído" : "Marcar como leído"}</span>
-            </button>
+        <div className="grid grid-cols-3 gap-2 mt-6 pt-4 border-t border-gray-800">
+          <button
+            onClick={handleMarcarLeido}
+            disabled={Boolean(savingAction)}
+            className={`px-2 sm:px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition min-w-0 ${
+              article.leido
+                ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
+                : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            <Check size={14} className="shrink-0" />
+            <span>{savingAction === "leido" ? "Guardando..." : article.leido ? "Leído" : "Marcar como leído"}</span>
+          </button>
 
-            <button
-              onClick={handleGuardar}
-              disabled={Boolean(savingAction)}
-              className={`px-2 sm:px-3.5 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition min-w-0 ${
-                article.guardado
-                  ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
-                  : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              <Bookmark size={14} />
-              <span>{savingAction === "guardado" ? "Guardando..." : article.guardado ? "Guardado" : "Guardar"}</span>
-            </button>
-          </div>
+          <button
+            onClick={handleGuardar}
+            disabled={Boolean(savingAction)}
+            className={`px-2 sm:px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition min-w-0 ${
+              article.guardado
+                ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
+                : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            <Bookmark size={14} className="shrink-0" />
+            <span>{savingAction === "guardado" ? "Guardando..." : article.guardado ? "Guardado" : "Guardar"}</span>
+          </button>
 
           <a
             href={article.url_original}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto justify-center px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-sky-600/20"
+            className="px-2 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition shadow-lg shadow-sky-600/20 min-w-0"
           >
             <span>Ir al sitio oficial</span>
-            <ExternalLink size={14} />
+            <ExternalLink size={14} className="shrink-0" />
           </a>
         </div>
       </div>
       {(imagenVisible || cargandoImagen) && !imagenRota && (
-        <div className="order-first sm:order-none sm:w-1/4 shrink-0">
+        <div className="order-first sm:order-none sm:absolute sm:inset-y-0 sm:right-0 sm:w-1/2 shrink-0 sm:rounded-r-2xl sm:overflow-hidden" aria-hidden="true">
           {imagenVisible ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -393,10 +391,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               loading="lazy"
               referrerPolicy="no-referrer"
               onError={() => setImagenRota(true)}
-              className="h-44 sm:h-full w-full object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl"
+              className="h-44 sm:h-full w-full object-cover rounded-t-2xl sm:rounded-none sm:[mask-image:linear-gradient(to_right,transparent_0%,black_50%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_50%,black_100%)]"
             />
           ) : (
-            <div aria-hidden="true" className="h-44 sm:h-full sm:min-h-64 w-full animate-pulse bg-gray-800 rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl" />
+            <div aria-hidden="true" className="h-44 sm:h-full w-full animate-pulse bg-gray-800 rounded-t-2xl sm:rounded-none" />
           )}
         </div>
       )}
