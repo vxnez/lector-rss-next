@@ -3,6 +3,7 @@
 // solicitar (genera código de 6 dígitos) -> verificar (valida el código) -> restablecer (nueva contraseña).
 // La tabla se crea de forma idempotente para no requerir migraciones manuales.
 import { db } from "@/lib/db";
+import { enviarCodigoRecuperacion, smtpConfigurado } from "@/lib/correo";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
@@ -62,11 +63,30 @@ export async function POST(req) {
         "INSERT INTO recuperacion_codigos (email, codigo_hash, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))",
         [correo, codigoHash, EXPIRACION_MINUTOS]
       );
+      // Sin SMTP configurado: modo demostración (se devuelve el código).
+      if (!smtpConfigurado()) {
+        console.warn("SMTP sin configurar: el código de recuperación se devuelve en modo demostración.");
+        return NextResponse.json({
+          ok: true,
+          codigo: codigoPlano,
+          expiraMinutos: EXPIRACION_MINUTOS,
+          mensaje: "Código de recuperación generado.",
+        });
+      }
+      try {
+        await enviarCodigoRecuperacion(correo, codigoPlano, EXPIRACION_MINUTOS);
+      } catch (error) {
+        console.error("Error al enviar el correo de recuperación:", error);
+        await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [correo]);
+        return NextResponse.json(
+          { error: "No se pudo enviar el correo. Inténtalo de nuevo." },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({
         ok: true,
-        codigo: codigoPlano,
         expiraMinutos: EXPIRACION_MINUTOS,
-        mensaje: "Código de recuperación generado.",
+        mensaje: `Hemos enviado un código de recuperación a ${correo}. Revisa tu bandeja (y el spam).`,
       });
     }
 
