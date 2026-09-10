@@ -25,6 +25,18 @@ body {
   overflow-x: hidden;
 }
 
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+}
+
+img,
+svg,
+table {
+  max-width: 100%;
+}
+
 @media (min-width: 1024px) {
   .dashboard-control-sidebar {
     max-height: calc(100vh - 7rem);

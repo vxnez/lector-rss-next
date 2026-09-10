@@ -18,6 +18,14 @@ export const metadata = {
   description: "Organiza, clasifica y lee tus fuentes RSS en un solo dashboard.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
