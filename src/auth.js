@@ -24,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GITHUB_SECRET,
       authorization: {
         params: {
-          prompt: "login", // Fuerza a GitHub a pedir credenciales o selector de cuenta nuevamente
+          prompt: "select_account", // Fuerza el selector de cuenta de GitHub en cada inicio de sesión
         },
       },
     }),
