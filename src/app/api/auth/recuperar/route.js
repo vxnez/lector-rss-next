@@ -76,12 +76,24 @@ export async function POST(req) {
       try {
         await enviarCodigoRecuperacion(correo, codigoPlano, EXPIRACION_MINUTOS);
       } catch (error) {
-        console.error("Error al enviar el correo de recuperación:", error);
+        console.error("Error al enviar el correo de recuperación:", error?.code || error);
         await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [correo]);
-        return NextResponse.json(
-          { error: "No se pudo enviar el correo. Inténtalo de nuevo." },
-          { status: 500 }
-        );
+        const codigoError = String(error?.code || "");
+        const respuesta = String(error?.response || "");
+        let detalle = "No se pudo enviar el correo. Inténtalo de nuevo.";
+        if (codigoError === "EAUTH" || respuesta.includes("535")) {
+          detalle =
+            "Gmail rechazó las credenciales SMTP. Revisa SMTP_USER y que SMTP_PASS sea una contraseña de aplicación válida (con verificación en 2 pasos activa).";
+        } else if (
+          codigoError === "ECONNECTION" ||
+          codigoError === "ETIMEDOUT" ||
+          codigoError === "ESOCKET" ||
+          codigoError === "EDNS"
+        ) {
+          detalle =
+            "No se pudo conectar al servidor SMTP. Revisa SMTP_HOST y SMTP_PORT en las variables de entorno.";
+        }
+        return NextResponse.json({ error: detalle }, { status: 500 });
       }
       return NextResponse.json({
         ok: true,
