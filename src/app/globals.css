@@ -175,6 +175,18 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Línea vertical cuando la tarjeta está minimizada */
+.github-float-min {
+  background: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);
+  cursor: pointer;
+  box-shadow: -2px 0 12px rgba(62, 131, 255, 0.35);
+  transition: width 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+.github-float-min:hover {
+  width: 1rem;
+  box-shadow: -2px 0 18px rgba(62, 131, 255, 0.55);
+}
+
 /* Checkboxes del filtro de categorías (basado en Uiverse.io by cbolson) */
 .rss-check-list {
   --_clr-primary: #6b7280;

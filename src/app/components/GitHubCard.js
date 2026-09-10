@@ -2,9 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Minus } from "lucide-react";
 
-const CLAVE_OCULTA = "github_card_oculta";
+const CLAVE_MINIMIZADA = "github_card_min";
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
 
 function GitHubIcon({ size = 18, className = "" }) {
@@ -23,24 +23,34 @@ function GitHubIcon({ size = 18, className = "" }) {
 }
 
 export default function GitHubCard() {
-  const [oculta, setOculta] = useState(() => {
+  const [minimizada, setMinimizada] = useState(() => {
     try {
-      return typeof window !== "undefined" && window.localStorage.getItem(CLAVE_OCULTA) === "1";
+      return typeof window !== "undefined" && window.localStorage.getItem(CLAVE_MINIMIZADA) === "1";
     } catch {
       return false;
     }
   });
 
-  if (oculta) return null;
-
-  const ocultar = () => {
+  const guardar = (valor) => {
+    setMinimizada(valor);
     try {
-      window.localStorage.setItem(CLAVE_OCULTA, "1");
+      window.localStorage.setItem(CLAVE_MINIMIZADA, valor ? "1" : "0");
     } catch {
-      // Sin almacenamiento disponible: solo se oculta en esta vista.
+      // Sin almacenamiento disponible: solo cambia en esta vista.
     }
-    setOculta(true);
   };
+
+  if (minimizada) {
+    return (
+      <button
+        type="button"
+        onClick={() => guardar(false)}
+        title="Mostrar tarjeta de GitHub"
+        aria-label="Mostrar tarjeta de GitHub"
+        className="github-float-min fixed right-0 top-1/2 z-40 h-44 w-2.5 -translate-y-1/2 rounded-l-md"
+      />
+    );
+  }
 
   return (
     <div className="github-float fixed bottom-5 right-5 z-40">
@@ -61,12 +71,12 @@ export default function GitHubCard() {
       </a>
       <button
         type="button"
-        onClick={ocultar}
-        aria-label="Ocultar tarjeta de GitHub"
-        title="Ocultar"
+        onClick={() => guardar(true)}
+        aria-label="Minimizar tarjeta de GitHub"
+        title="Minimizar"
         className="github-float-close"
       >
-        <X size={14} />
+        <Minus size={14} />
       </button>
     </div>
   );
