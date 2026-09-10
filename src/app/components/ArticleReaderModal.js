@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save } from "lucide-react";
+import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { useEffect, useState } from "react";
 
@@ -94,7 +94,7 @@ const formatFecha = (fechaStr) => {
   }
 };
 
-export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory }) {
+export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onAnterior, onSiguiente, posicion, total }) {
   const [savingAction, setSavingAction] = useState("");
   const [actionError, setActionError] = useState("");
   const [editandoCategoria, setEditandoCategoria] = useState(false);
@@ -105,11 +105,27 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   useEffect(() => {
     if (!article) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      const objetivo = event.target;
+      const escribiendo = Boolean(
+        objetivo && (objetivo.tagName === "INPUT" || objetivo.tagName === "TEXTAREA" || objetivo.isContentEditable)
+      );
+      if (editandoCategoria || escribiendo || objetivo?.tagName === "SELECT") return;
+      if (event.key === "ArrowLeft" && onAnterior) {
+        event.preventDefault();
+        onAnterior();
+      }
+      if (event.key === "ArrowRight" && onSiguiente) {
+        event.preventDefault();
+        onSiguiente();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [article, onClose]);
+  }, [article, onClose, onAnterior, onSiguiente, editandoCategoria]);
 
   if (!article) return null;
 
@@ -170,6 +186,24 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
       <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col justify-between">
+        <button
+          onClick={onAnterior}
+          disabled={!onAnterior}
+          title="Noticia anterior"
+          aria-label="Noticia anterior"
+          className="absolute top-1/2 -translate-y-1/2 -left-2 sm:-left-5 z-10 rounded-full bg-gray-800/90 border border-gray-700 p-2 sm:p-2.5 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <button
+          onClick={onSiguiente}
+          disabled={!onSiguiente}
+          title="Noticia siguiente"
+          aria-label="Noticia siguiente"
+          className="absolute top-1/2 -translate-y-1/2 -right-2 sm:-right-5 z-10 rounded-full bg-gray-800/90 border border-gray-700 p-2 sm:p-2.5 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl"
+        >
+          <ChevronRight size={20} />
+        </button>
         {/* Cabecera del modal */}
         <div>
           <div className="flex justify-between items-start gap-4 mb-3">
@@ -246,13 +280,20 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               )}
             </div>
 
-            <button
-              onClick={onClose}
-              aria-label="Cerrar lector de noticia"
-              className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {posicion && total ? (
+                <span className="text-xs text-gray-500 tabular-nums" aria-label={`Noticia ${posicion} de ${total}`}>
+                  {posicion} / {total}
+                </span>
+              ) : null}
+              <button
+                onClick={onClose}
+                aria-label="Cerrar lector de noticia"
+                className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Título completo */}

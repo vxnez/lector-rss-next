@@ -119,6 +119,22 @@ const formatFecha = (fechaStr) => {
 export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
 
+  const indiceSeleccionado = selectedArticle
+    ? articles.findIndex((art) => art.id === selectedArticle.id)
+    : -1;
+
+  const irAnterior = () => {
+    if (indiceSeleccionado > 0) {
+      setSelectedArticle(articles[indiceSeleccionado - 1]);
+    }
+  };
+
+  const irSiguiente = () => {
+    if (indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1) {
+      setSelectedArticle(articles[indiceSeleccionado + 1]);
+    }
+  };
+
   const getFuenteNombre = (art) => {
     if (art.fuente_nombre && art.fuente_nombre !== "Fuente RSS") {
       return art.fuente_nombre.toUpperCase();
@@ -260,6 +276,10 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
         onToggleRead={onToggleRead}
         onToggleSave={onToggleSave}
         onUpdateCategory={onUpdateCategory}
+        onAnterior={indiceSeleccionado > 0 ? irAnterior : null}
+        onSiguiente={indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1 ? irSiguiente : null}
+        posicion={indiceSeleccionado >= 0 ? indiceSeleccionado + 1 : null}
+        total={articles.length}
       />
     </>
   );
