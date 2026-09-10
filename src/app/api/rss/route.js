@@ -45,6 +45,44 @@ async function ensureClassificationSchema() {
   return classificationSchemaPromise;
 }
 
+let fuentesCacheSchemaPromise;
+
+async function ensureFuentesCacheSchema() {
+  if (!fuentesCacheSchemaPromise) {
+    fuentesCacheSchemaPromise = (async () => {
+      const [columns] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'fuentes_rss'
+           AND COLUMN_NAME IN ('etag', 'last_modified', 'ultima_revision')`
+      );
+      const existing = new Set(columns.map((column) => column.COLUMN_NAME));
+      if (!existing.has("etag")) {
+        await db.query("ALTER TABLE fuentes_rss ADD COLUMN etag VARCHAR(255) NULL");
+      }
+      if (!existing.has("last_modified")) {
+        await db.query("ALTER TABLE fuentes_rss ADD COLUMN last_modified VARCHAR(255) NULL");
+      }
+      if (!existing.has("ultima_revision")) {
+        await db.query("ALTER TABLE fuentes_rss ADD COLUMN ultima_revision DATETIME NULL");
+      }
+    })().catch((error) => {
+      fuentesCacheSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return fuentesCacheSchemaPromise;
+}
+
+async function actualizarValidadoresFuente(fuenteId, etag, lastModified) {
+  await db.query(
+    `UPDATE fuentes_rss
+     SET etag = COALESCE(?, etag), last_modified = COALESCE(?, last_modified), ultima_revision = NOW()
+     WHERE id = ?`,
+    [etag || null, lastModified || null, fuenteId]
+  );
+}
+
 const HEADERS_BROWSER = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -106,18 +144,24 @@ const RSS_TIMEOUT_MS = 8000;
 const HTML_TIMEOUT_MS = 12000;
 const MAX_FEED_CANDIDATES = 80;
 
-async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS) {
+async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validadores = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const headers = { ...HEADERS_BROWSER };
+    if (validadores.etag) headers["If-None-Match"] = validadores.etag;
+    if (validadores.lastModified) headers["If-Modified-Since"] = validadores.lastModified;
     const res = await fetch(url, {
-      headers: HEADERS_BROWSER,
+      headers,
       redirect: "follow",
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
+    if (res.status === 304) {
+      return { sinCambios: true, urlFinal: res.url || url };
+    }
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
 
     const buffer = await res.arrayBuffer();
@@ -135,6 +179,8 @@ async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS) {
       text: repararTextoMalDecodificado(text),
       urlFinal: res.url || url,
       contentType,
+      etag: res.headers.get("etag"),
+      lastModified: res.headers.get("last-modified"),
     };
   } catch (err) {
     clearTimeout(timeoutId);
@@ -145,9 +191,12 @@ async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS) {
   }
 }
 
-async function intentarParsearFeed(url) {
+async function intentarParsearFeed(url, validadores = {}) {
   try {
-    const respuesta = await obtenerTextoDecodificado(url);
+    const respuesta = await obtenerTextoDecodificado(url, RSS_TIMEOUT_MS, validadores);
+    if (respuesta.sinCambios) {
+      return { sinCambios: true, urlFinal: respuesta.urlFinal };
+    }
     const contenido = respuesta.text.trim();
     let feed;
 
@@ -171,7 +220,7 @@ async function intentarParsearFeed(url) {
     }
 
     if (feed && feed.items && feed.items.length > 0) {
-      return { feed, urlFinal: respuesta.urlFinal };
+      return { feed, urlFinal: respuesta.urlFinal, etag: respuesta.etag, lastModified: respuesta.lastModified };
     }
   } catch (e) {
     return null;
@@ -347,6 +396,7 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
+    await ensureFuentesCacheSchema();
 
     const limiteFecha = new Date();
     limiteFecha.setDate(limiteFecha.getDate() - 7);
@@ -406,13 +456,23 @@ export async function POST(req) {
       }
 
       try {
-        const feed = await intentarParsearFeed(url);
+        const [filasFuente] = await db.query("SELECT etag, last_modified FROM fuentes_rss WHERE id = ?", [source_id]);
+        const resultado = await intentarParsearFeed(url, {
+          etag: filasFuente[0]?.etag,
+          lastModified: filasFuente[0]?.last_modified,
+        });
+        if (resultado?.sinCambios) {
+          await actualizarValidadoresFuente(source_id, null, null);
+          return NextResponse.json({ message: "La fuente no tiene cambios nuevos", sinCambios: true, pendientes: 0, restaurados: 0, purgados: 0 });
+        }
+        const feed = resultado?.feed;
         let pendientes = 0;
         if (feed?.items && feed.items.length > 0) {
           const existentes = await obtenerClasificacionesExistentes([source_id]);
           const clasificaciones = await prepararClasificaciones(source_id, feed.items, existentes, { omitirIA: true });
           await persistirArticulos(source_id, feed.items, clasificaciones, limiteFecha);
           pendientes = extraerPendientes(clasificaciones).length;
+          await actualizarValidadoresFuente(source_id, resultado?.etag, resultado?.lastModified);
         }
         const [restauradosFuente] = await db.query(
           `UPDATE articulos_publicados
@@ -420,7 +480,8 @@ export async function POST(req) {
            WHERE fuente_id = ? AND descartado = 1 AND fecha_publicacion >= ?`,
           [source_id, inicioHoy]
         );
-        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0, pendientes });
+        const purgados = await purgarArticulosAntiguos({ fuenteId: source_id });
+        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0, pendientes, purgados });
       } catch (e) {
         console.error(`[RSS REFRESH SOURCE ERROR] Fuente ID ${source_id}:`, e.message);
         return NextResponse.json({ error: e.message || "No se pudo actualizar la fuente seleccionada" }, { status: 500 });
@@ -429,7 +490,7 @@ export async function POST(req) {
     
     if (body.action === "refresh") {
       const [fuentes] = await db.query(
-        "SELECT id, url_feed, titulo FROM fuentes_rss WHERE usuario_id = ?",
+        "SELECT id, url_feed, titulo, etag, last_modified FROM fuentes_rss WHERE usuario_id = ?",
         [userId]
       );
 
@@ -439,15 +500,26 @@ export async function POST(req) {
 
       let totalNuevas = 0;
       let totalPendientes = 0;
+      let totalOmitidas = 0;
       const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
       await Promise.all(fuentes.map(async (fuente) => {
         try {
-          const feed = await intentarParsearFeed(fuente.url_feed);
+          const resultado = await intentarParsearFeed(fuente.url_feed, {
+            etag: fuente.etag,
+            lastModified: fuente.last_modified,
+          });
+          if (resultado?.sinCambios) {
+            await actualizarValidadoresFuente(fuente.id, null, null);
+            totalOmitidas++;
+            return;
+          }
+          const feed = resultado?.feed;
           if (feed?.items && feed.items.length > 0) {
             const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes, { omitirIA: true });
             const { insertados } = await persistirArticulos(fuente.id, feed.items, clasificaciones, limiteFecha);
             totalNuevas += insertados;
             totalPendientes += extraerPendientes(clasificaciones).length;
+            await actualizarValidadoresFuente(fuente.id, resultado?.etag, resultado?.lastModified);
           }
         } catch (e) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
@@ -464,7 +536,8 @@ export async function POST(req) {
         );
         totalRestaurados = restaurados.affectedRows || 0;
       }
-      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados, pendientes: totalPendientes });
+      const purgados = await purgarArticulosAntiguos({ userId });
+      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados, pendientes: totalPendientes, omitidas: totalOmitidas, purgados });
     }
 
     const { url_feed } = body;
@@ -480,7 +553,7 @@ export async function POST(req) {
       );
     }
 
-    const { feed, urlFinal } = await buscarFeedRSS(url_feed);
+    const { feed, urlFinal, etag, lastModified } = await buscarFeedRSS(url_feed);
 
     if (!feed.items || feed.items.length === 0) {
       throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");
@@ -495,8 +568,8 @@ export async function POST(req) {
     }
 
     const [resFuente] = await db.query(
-      "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria) VALUES (?, ?, ?, ?)",
-      [userId, feed.title || "Fuente RSS", urlFinal, body.categoria?.trim() || "General"]
+      "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+      [userId, feed.title || "Fuente RSS", urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null]
     );
 
     const fuenteId = resFuente.insertId;
@@ -1000,6 +1073,36 @@ async function bulkUpdateCategoriasPorId(filas = []) {
   params.push(...filas.map((fila) => fila.id));
   const [resultado] = await db.query(sql, params);
   return resultado.affectedRows || 0;
+}
+
+async function purgarArticulosAntiguos({ userId = null, fuenteId = null } = {}) {
+  const limiteDescarte = new Date();
+  limiteDescarte.setDate(limiteDescarte.getDate() - 7);
+  const limiteLeidos = new Date();
+  limiteLeidos.setDate(limiteLeidos.getDate() - 60);
+
+  const alcanceFuente = fuenteId ? "AND a.fuente_id = ?" : "";
+  const alcanceUsuario = userId ? "AND f.usuario_id = ?" : "";
+  const consultas = [
+    [`DELETE a FROM articulos_publicados a
+      INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+      WHERE (a.guardado = 0 OR a.guardado IS NULL) AND a.descartado = 1 AND a.fecha_publicacion < ?
+      ${alcanceFuente} ${alcanceUsuario}`, limiteDescarte],
+    [`DELETE a FROM articulos_publicados a
+      INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+      WHERE (a.guardado = 0 OR a.guardado IS NULL) AND (a.descartado = 0 OR a.descartado IS NULL) AND a.leido = 1 AND a.fecha_publicacion < ?
+      ${alcanceFuente} ${alcanceUsuario}`, limiteLeidos],
+  ];
+
+  let purgados = 0;
+  for (const [sql, limite] of consultas) {
+    const params = [limite];
+    if (fuenteId) params.push(fuenteId);
+    if (userId) params.push(userId);
+    const [resultado] = await db.query(sql, params);
+    purgados += resultado.affectedRows || 0;
+  }
+  return purgados;
 }
 
 function extraerPendientes(clasificaciones = []) {

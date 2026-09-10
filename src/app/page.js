@@ -203,9 +203,13 @@ export default function HomePage() {
       await Promise.all([fetchArticles(), fetchSources()]);
       const restaurados = Number(data.restaurados) || 0;
       const pendientes = Number(data.pendientes) || 0;
+      const omitidas = Number(data.omitidas) || 0;
+      const purgados = Number(data.purgados) || 0;
       let mensaje = restaurados > 0
         ? `Fuentes actualizadas. Se recuperaron ${restaurados} noticias borradas.`
         : "Fuentes y noticias actualizadas.";
+      if (omitidas > 0) mensaje += ` ${omitidas} fuentes sin cambios.`;
+      if (purgados > 0) mensaje += ` Se liberaron ${purgados} noticias antiguas.`;
       if (pendientes > 0) {
         mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
         procesarColaClasificacion();

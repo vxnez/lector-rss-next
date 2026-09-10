@@ -68,6 +68,8 @@ Sin clasificador local. Gemini recibe titulo, resumen y el catalogo cerrado con 
 - **Persistencia masiva**: maximo 3 consultas por fuente (INSERT multivalor + UPDATEs con `CASE`), sin tocar `leido`/`guardado`.
 - **Cola con progreso**: la accion `clasificar_pendientes` clasifica 12 y devuelve `restantes`; el panel la solicita en ciclo corto hasta agotarla (pausa de 30s si no hay cuota). Compatible con serverless.
 - **Restauracion**: Refrescar recupera las descartadas del dia (`restore_today`).
+- **Descargas condicionales**: cada fuente guarda `etag`/`last_modified`; si el feed responde 304 se omite sin parsear, clasificar ni guardar.
+- **Poda automatica**: tras refrescar se eliminan descartadas de +7 dias y leidas no guardadas de +60 dias (nunca guardadas ni pendientes de leer).
 
 Tiempos estimados: refresco sin novedades ~2-4s; fuente nueva de 40 ~9s + cola visible; 100 noticias ~25-30s (hasta ~2.5 min con cuota limitada).
 

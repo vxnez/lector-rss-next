@@ -93,16 +93,13 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         const pendientes = Number(data.pendientes) || 0;
-        onNotify?.(
-          pendientes > 0
-            ? `Fuente actualizada. Completando ${pendientes} categorías en segundo plano...`
-            : "Fuente actualizada correctamente.",
-          "success"
-        );
-        if (onChange) onChange();
+        let mensaje = data.message || "Fuente actualizada correctamente.";
         if (pendientes > 0) {
+          mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
           procesarColaClasificacion();
         }
+        onNotify?.(mensaje, "success");
+        if (onChange) onChange();
       } else {
         onNotify?.("No se pudo refrescar la fuente seleccionada.", "error");
       }
@@ -130,9 +127,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         setSources(sourcesArr);
         const restaurados = Number(data.restaurados) || 0;
         const pendientes = Number(data.pendientes) || 0;
+        const omitidas = Number(data.omitidas) || 0;
         let mensaje = restaurados > 0
           ? `Todas las fuentes fueron actualizadas. Se recuperaron ${restaurados} noticias borradas.`
           : "Todas las fuentes fueron actualizadas.";
+        if (omitidas > 0) mensaje += ` ${omitidas} fuentes sin cambios.`;
         if (pendientes > 0) {
           mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
           procesarColaClasificacion();
