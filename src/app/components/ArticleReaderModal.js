@@ -185,25 +185,25 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col justify-between">
-        <button
-          onClick={onAnterior}
-          disabled={!onAnterior}
-          title="Noticia anterior"
-          aria-label="Noticia anterior"
-          className="absolute top-1/2 -translate-y-1/2 -left-2 sm:-left-5 z-10 rounded-full bg-gray-800/90 border border-gray-700 p-2 sm:p-2.5 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button
-          onClick={onSiguiente}
-          disabled={!onSiguiente}
-          title="Noticia siguiente"
-          aria-label="Noticia siguiente"
-          className="absolute top-1/2 -translate-y-1/2 -right-2 sm:-right-5 z-10 rounded-full bg-gray-800/90 border border-gray-700 p-2 sm:p-2.5 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl"
-        >
-          <ChevronRight size={20} />
-        </button>
+      <button
+        onClick={onAnterior}
+        disabled={!onAnterior}
+        title="Noticia anterior"
+        aria-label="Noticia anterior"
+        className="fixed top-1/2 -translate-y-1/2 left-3 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-2 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+      >
+        <ChevronLeft size={22} />
+      </button>
+      <button
+        onClick={onSiguiente}
+        disabled={!onSiguiente}
+        title="Noticia siguiente"
+        aria-label="Noticia siguiente"
+        className="fixed top-1/2 -translate-y-1/2 right-3 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-2 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+      >
+        <ChevronRight size={22} />
+      </button>
+      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col justify-between">
         {/* Cabecera del modal */}
         <div>
           <div className="flex justify-between items-start gap-4 mb-3">
