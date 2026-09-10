@@ -47,7 +47,7 @@ export default function GitHubCard() {
         onClick={() => guardar(false)}
         title="Mostrar tarjeta de GitHub"
         aria-label="Mostrar tarjeta de GitHub"
-        className="github-float-min fixed right-0 top-1/2 z-40 h-44 w-2.5 -translate-y-1/2 rounded-l-md"
+        className="github-float-min fixed right-0 bottom-5 z-40 h-28 w-2.5 rounded-l-md"
       />
     );
   }
