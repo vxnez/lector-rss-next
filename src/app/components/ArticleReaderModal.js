@@ -102,6 +102,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [categorias, setCategorias] = useState([]);
   const [vistaLocal, setVistaLocal] = useState(null);
   const [imagenRota, setImagenRota] = useState(false);
+  const [imagenRemota, setImagenRemota] = useState(null);
+  const [cargandoImagen, setCargandoImagen] = useState(
+    () => Boolean(article?.url_original) && !article?.imagen_url
+  );
 
   useEffect(() => {
     if (!article) return undefined;
@@ -128,7 +132,27 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [article, onClose, onIrAId, anteriorId, siguienteId, editandoCategoria]);
 
+  useEffect(() => {
+    if (!article || article.imagen_url || !article.url_original) return undefined;
+    let vivo = true;
+    fetch(`/api/rss?tipo=imagen&url=${encodeURIComponent(article.url_original)}`, { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!vivo) return;
+        if (data.imagen) setImagenRemota(data.imagen);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (vivo) setCargandoImagen(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [article]);
+
   if (!article) return null;
+
+  const imagenVisible = article.imagen_url || imagenRemota;
 
   const categoriaMostrada = vistaLocal?.categoria ?? article.categoria;
   const metodoMostrado = vistaLocal?.metodo ?? article.clasificacion_metodo;
@@ -358,18 +382,22 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
       </div>
-      {article.imagen_url && !imagenRota && (
+      {(imagenVisible || cargandoImagen) && !imagenRota && (
         <div className="order-first sm:order-none sm:w-1/4 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={article.imagen_url}
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() => setImagenRota(true)}
-            className="h-44 sm:h-full w-full object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl"
-          />
+          {imagenVisible ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imagenVisible}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImagenRota(true)}
+              className="h-44 sm:h-full w-full object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl"
+            />
+          ) : (
+            <div aria-hidden="true" className="h-44 sm:h-full sm:min-h-64 w-full animate-pulse bg-gray-800 rounded-t-2xl sm:rounded-t-none sm:rounded-r-2xl" />
+          )}
         </div>
       )}
       </div>

@@ -19,6 +19,44 @@ const parser = new Parser({
 });
 
 const clasificacionCache = new Map();
+const imagenPaginaCache = new Map();
+
+async function extraerImagenDePagina(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(url, {
+      headers: HEADERS_BROWSER,
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    if (!/html/i.test(res.headers.get("content-type") || "")) return null;
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    const candidatas = [
+      $('meta[property="og:image"]').attr("content"),
+      $('meta[name="twitter:image"]').attr("content"),
+      $('meta[name="twitter:image:src"]').attr("content"),
+      $('link[rel="image_src"]').attr("href"),
+    ];
+    for (const candidata of candidatas) {
+      if (typeof candidata === "string" && candidata.trim()) {
+        try {
+          const absoluta = new URL(candidata.trim(), res.url || url).href;
+          if (/^https?:\/\//i.test(absoluta)) return absoluta;
+        } catch {
+          // Probar con la siguiente candidata.
+        }
+      }
+    }
+    return null;
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
 let classificationSchemaPromise;
 
 async function ensureClassificationSchema() {
@@ -616,6 +654,27 @@ export async function GET(req) {
 
     if (tipo === "categorias") {
       return NextResponse.json(CATEGORIAS_DISPONIBLES);
+    }
+
+    if (tipo === "imagen") {
+      const cruda = (searchParams.get("url") || "").trim();
+      let verificada = "";
+      try {
+        const urlObj = new URL(cruda);
+        if (!/^https?:$/.test(urlObj.protocol)) throw new Error("Protocolo no válido");
+        verificada = urlObj.href;
+      } catch {
+        return NextResponse.json({ imagen: null });
+      }
+      if (imagenPaginaCache.has(verificada)) {
+        return NextResponse.json({ imagen: imagenPaginaCache.get(verificada) });
+      }
+      const encontrada = await extraerImagenDePagina(verificada);
+      imagenPaginaCache.set(verificada, encontrada);
+      if (imagenPaginaCache.size > 500) {
+        imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);
+      }
+      return NextResponse.json({ imagen: encontrada });
     }
 
     const [rows] = await db.query(
