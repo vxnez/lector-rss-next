@@ -1,6 +1,7 @@
 // src/app/api/rss/route.js
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 
@@ -515,7 +516,7 @@ async function buscarFeedRSS(urlIngresada) {
 export async function POST(req) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
 
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
@@ -722,7 +723,7 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
     await ensureClassificationSchema();
     const { searchParams } = new URL(req.url);
     const tipo = searchParams.get("tipo");
@@ -847,7 +848,7 @@ export async function DELETE(req) {
 
     if (deleteAll === "true") {
       const session = await auth();
-      const userId = session?.user?.id ? Number(session.user.id) : 1;
+      const userId = Number(await resolverUsuarioId(req, session));
       
       await connection.beginTransaction();
       try {

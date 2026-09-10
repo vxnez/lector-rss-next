@@ -1,12 +1,13 @@
 // src/app/api/sources/route.js
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
 
     const [rows] = await db.query(
       `SELECT
@@ -38,7 +39,7 @@ export async function GET() {
 export async function POST(req) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
 
     const { titulo, url_feed, categoria } = await req.json();
 
@@ -72,7 +73,7 @@ export async function POST(req) {
 export async function PUT(req) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
 
     const { id, titulo, url_feed, categoria } = await req.json();
 
@@ -111,7 +112,7 @@ export async function DELETE(req) {
   let connection;
   try {
     const session = await auth();
-    const userId = session?.user?.id || 1;
+    const userId = await resolverUsuarioId(req, session);
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

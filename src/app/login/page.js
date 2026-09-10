@@ -14,7 +14,9 @@ export default function LoginPage() {
   const [recordarme, setRecordarme] = useState(false);
   const [mostrarAvisoInvitado, setMostrarAvisoInvitado] = useState(false);
   const [error, setError] = useState("");
+  const [errorInvitado, setErrorInvitado] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingInvitado, setLoadingInvitado] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -61,15 +63,25 @@ export default function LoginPage() {
     }
   };
 
-  const entrarComoInvitado = () => {
+  const entrarComoInvitado = async () => {
+    setErrorInvitado("");
+    setLoadingInvitado(true);
     try {
-      window.sessionStorage.setItem("modo_invitado", "1");
-    } catch {
-      // Sin almacenamiento de sesión: se continúa de todos modos.
+      const res = await fetch("/api/auth/invitado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "crear" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo iniciar como invitado.");
+      setMostrarAvisoInvitado(false);
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      setErrorInvitado(err.message || "No se pudo iniciar como invitado.");
+    } finally {
+      setLoadingInvitado(false);
     }
-    setMostrarAvisoInvitado(false);
-    router.push("/");
-    router.refresh();
   };
 
   return (
@@ -240,21 +252,29 @@ export default function LoginPage() {
               </button>
             </div>
             <p className="text-sm text-gray-300 leading-relaxed">
-              Al cerrar la ventana del navegador, esta sesión de invitado <strong className="text-white">se perderá por completo</strong> y
-              ninguno de tus datos se guardará en la base de datos.
+              Podrás agregar fuentes, refrescar, filtrar y leer noticias con normalidad. Al salir
+              o cerrar la ventana del navegador, <strong className="text-white">toda tu información se elimina</strong> y
+              nada de lo que modificaste se conserva.
             </p>
+            {errorInvitado && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm">
+                {errorInvitado}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setMostrarAvisoInvitado(false)}
-                className="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 transition"
+                disabled={loadingInvitado}
+                className="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 transition disabled:opacity-60"
               >
                 Cancelar
               </button>
               <button
                 onClick={entrarComoInvitado}
-                className="rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 transition"
+                disabled={loadingInvitado}
+                className="rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 transition disabled:opacity-60"
               >
-                Entendido, entrar
+                {loadingInvitado ? "Entrando..." : "Entendido, entrar"}
               </button>
             </div>
           </div>

@@ -95,23 +95,21 @@ export default function HomePage() {
     window.setTimeout(() => setToast(null), 4200);
   }, []);
 
-  // Modo invitado: sesión efímera en sessionStorage (se pierde al cerrar la
-  // ventana) sin cuenta en la base de datos; nada de lo que haga se guarda.
+  // Modo invitado: usuario temporal en la BD con cookie de sesión (muere al
+  // cerrar el navegador). Puede usar todo; al salir se elimina su información.
   const esInvitado = Boolean(session?.user?.invitado);
 
-  const salirInvitado = useCallback(() => {
+  const salirInvitado = useCallback(async () => {
     try {
-      window.sessionStorage.removeItem("modo_invitado");
+      await fetch("/api/auth/invitado", { method: "DELETE" });
     } catch {
-      // Sin almacenamiento disponible: solo se cierra la sesión local.
+      // Aunque falle la limpieza, se cierra la sesión local.
     }
     setSession(null);
+    setArticulos([]);
   }, []);
 
-  const exigirCuenta = useCallback(() => {
-    notify("En modo invitado los cambios no se guardan. Crea una cuenta para conservar tus datos.", "error");
-    return false;
-  }, [notify]);
+
 
   const filtroFuenteRef = useRef(null);
 
@@ -242,19 +240,27 @@ export default function HomePage() {
             setShowWelcomeModal(true);
           }
         } else {
-          // Sin cuenta: solo se entra si hay bandera de invitado en esta pestaña.
-          let invitado = false;
+          // Sin cuenta: se entra como invitado si hay cookie de sesión válida.
           try {
-            invitado = window.sessionStorage.getItem("modo_invitado") === "1";
-          } catch {
-            invitado = false;
-          }
-          if (invitado && !controller.signal.aborted) {
+            const resInvitado = await fetch("/api/auth/invitado", {
+              cache: "no-store",
+              signal: controller.signal,
+            });
+            if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
             await Promise.all([
               fetchArticles(controller.signal),
               fetchSources(controller.signal),
             ]);
+            if (controller.signal.aborted) return;
+            const hasSeenWelcome = localStorage.getItem("welcome_seen_invitado");
+            if (!hasSeenWelcome) {
+              setShowWelcomeModal(true);
+            }
+          } catch (err) {
+            if (err.name !== "AbortError") {
+              console.error("Error al cargar invitado:", err);
+            }
           }
         }
       } catch (err) {
@@ -278,16 +284,19 @@ export default function HomePage() {
 
   const closeWelcomeModal = () => {
     if (session?.user) {
-      localStorage.setItem(`welcome_seen_${session.user.email || session.user.id}`, "true");
+      const clave = esInvitado ? "invitado" : (session.user.email || session.user.id);
+      if (clave) {
+        try {
+          localStorage.setItem(`welcome_seen_${clave}`, "true");
+        } catch {
+          // Sin almacenamiento disponible: solo se cierra el modal.
+        }
+      }
     }
     setShowWelcomeModal(false);
   };
 
   const handleRefresh = async () => {
-    if (esInvitado) {
-      exigirCuenta();
-      return;
-    }
     setRefreshing(true);
     try {
       const response = await fetch("/api/rss", {
@@ -324,10 +333,6 @@ export default function HomePage() {
   };
 
   const handleEliminarTodas = async () => {
-    if (esInvitado) {
-      exigirCuenta();
-      return;
-    }
     if (!confirm("¿Estás seguro de que deseas eliminar todas las publicaciones del feed? Al hacer clic en 'Refrescar' se recuperarán las de hoy.")) {
       return;
     }
@@ -354,9 +359,6 @@ export default function HomePage() {
       prev.map((art) => (art.id === id ? { ...art, leido: leidoNuevo } : art))
     );
 
-    // Invitado: solo memoria local, nada se persiste en la base de datos.
-    if (esInvitado) return true;
-
     try {
       const res = await fetch("/api/rss", {
         method: "PUT",
@@ -381,9 +383,6 @@ export default function HomePage() {
     setArticulos((prev) =>
       prev.map((art) => (art.id === id ? { ...art, guardado: guardadoNuevo } : art))
     );
-
-    // Invitado: solo memoria local, nada se persiste en la base de datos.
-    if (esInvitado) return true;
 
     try {
       const res = await fetch("/api/rss", {
@@ -412,9 +411,6 @@ export default function HomePage() {
       )
     );
 
-    // Invitado: solo memoria local, nada se persiste en la base de datos.
-    if (esInvitado) return true;
-
     try {
       const res = await fetch("/api/rss", {
         method: "PUT",
@@ -437,9 +433,6 @@ export default function HomePage() {
   const descartarArticulo = async (id) => {
     const articuloCopia = articulos.find((art) => art.id === id);
     setArticulos((prev) => prev.filter((art) => art.id !== id));
-
-    // Invitado: solo memoria local, nada se persiste en la base de datos.
-    if (esInvitado) return;
 
     try {
       await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
@@ -669,8 +662,8 @@ export default function HomePage() {
       {esInvitado && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:px-6 flex items-center justify-center gap-2 text-center">
           <p className="text-xs text-amber-200">
-            Estás en <strong>modo invitado</strong>: al cerrar la ventana del navegador la sesión se perderá
-            y ningún dato se guardará. <Link href="/register" className="underline font-medium">Crea una cuenta</Link> para conservar todo.
+            Estás en <strong>modo invitado</strong>: puedes usar todo con normalidad, pero al salir
+            o cerrar la ventana tu información se elimina y nada se conserva. <Link href="/register" className="underline font-medium">Crea una cuenta</Link> para conservar todo.
           </p>
         </div>
       )}
@@ -744,7 +737,7 @@ export default function HomePage() {
                   </p>
                   {activeTab === "todas" && (
                     <button
-                      onClick={() => (esInvitado ? exigirCuenta() : setIsAddModalOpen(true))}
+                      onClick={() => setIsAddModalOpen(true)}
                       className="inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300 font-medium"
                     >
                       <Plus size={16} /> Agregar tu primera fuente RSS
@@ -816,7 +809,7 @@ export default function HomePage() {
                     <span className="truncate">{refreshing ? "Actualizando..." : "Refrescar"}</span>
                   </button>
                   <button
-                    onClick={() => (esInvitado ? exigirCuenta() : setIsAddModalOpen(true))}
+                    onClick={() => setIsAddModalOpen(true)}
                     className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
                   >
                     <Plus size={14} />
@@ -837,7 +830,7 @@ export default function HomePage() {
                     <span className="truncate">Eliminar todo</span>
                   </button>
                   <button
-                    onClick={() => (esInvitado ? exigirCuenta() : setIsManageModalOpen(true))}
+                    onClick={() => setIsManageModalOpen(true)}
                     className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
                   >
                     <Settings size={14} />
@@ -1085,9 +1078,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Modales de la aplicación (no disponibles en modo invitado) */}
-      {!esInvitado && (
-      <>
+      {/* Modales de la aplicación (el perfil no aplica en modo invitado) */}
       <AddFeedModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -1113,6 +1104,7 @@ export default function HomePage() {
         onNotify={notify}
       />
       {!panelMovilAbierto && <GitHubCard />}
+      {!esInvitado && (
       <PerfilModal
         key={isPerfilOpen ? "perfil-abierto" : "perfil-cerrado"}
         isOpen={isPerfilOpen}
@@ -1120,7 +1112,6 @@ export default function HomePage() {
         onSuccess={() => recargarSesion()}
         onNotify={notify}
       />
-      </>
       )}
       {toast && (
         <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
