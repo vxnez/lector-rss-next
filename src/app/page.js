@@ -81,6 +81,7 @@ export default function HomePage() {
   const [orden, setOrden] = useState("recientes");
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
+  const [panelMovilAbierto, setPanelMovilAbierto] = useState(false);
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -427,6 +428,20 @@ export default function HomePage() {
     ));
   };
 
+  const hayFiltrosActivos = Boolean(
+    searchQuery.trim() || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0
+  );
+
+  const abrirPanelMovil = useCallback(() => {
+    setControlsOpen(true);
+    setFiltersOpen(true);
+    setPanelMovilAbierto(true);
+  }, []);
+
+  const cerrarPanelMovil = useCallback(() => {
+    setPanelMovilAbierto(false);
+  }, []);
+
   const articulosFiltrados = useMemo(() => {
     let base = articulos;
     if (activeTab === "guardadas") {
@@ -633,7 +648,29 @@ export default function HomePage() {
             </div>
 
             {/* Columna Derecha: Filtros y Orden */}
-            <aside className="dashboard-control-sidebar order-5 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24">
+            {panelMovilAbierto && (
+              <div
+                aria-hidden="true"
+                onClick={cerrarPanelMovil}
+                className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] lg:hidden"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => (panelMovilAbierto ? cerrarPanelMovil() : abrirPanelMovil())}
+              title="Abrir controles y filtros"
+              aria-label="Abrir controles y filtros"
+              aria-expanded={panelMovilAbierto}
+              className="lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm transition hover:bg-sky-500"
+            >
+              <span className="relative block">
+                <Settings size={20} />
+                {hayFiltrosActivos && (
+                  <span aria-hidden="true" className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" />
+                )}
+              </span>
+            </button>
+            <aside className={`dashboard-control-sidebar order-5 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:shadow-2xl" : "max-lg:hidden"}`}>
               <section className="border-b border-gray-800 pb-4 space-y-4">
                 <button
                   type="button"
@@ -972,7 +1009,7 @@ export default function HomePage() {
         }}
         onNotify={notify}
       />
-      <GitHubCard />
+      {!panelMovilAbierto && <GitHubCard />}
       <PerfilModal
         key={isPerfilOpen ? "perfil-abierto" : "perfil-cerrado"}
         isOpen={isPerfilOpen}
