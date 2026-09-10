@@ -126,6 +126,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
   const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(false);
+  const ultimoAvisoContadoId = useRef(null);
 
   const manejarInicioToque = (event) => {
     const toque = event.touches?.[0];
@@ -180,6 +181,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   useEffect(() => {
     if (!article) return undefined;
+    const idNoticia = article.id ?? article.url_original ?? posicion;
+    // Evita contar dos veces la misma noticia (StrictMode / re-renders).
+    if (ultimoAvisoContadoId.current === idNoticia) return undefined;
     // Solo se muestra en móvil (donde las flechas están ocultas y el gesto es la vía de navegación).
     let esMovil = false;
     try {
@@ -188,6 +192,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       esMovil = false;
     }
     if (!esMovil) return undefined;
+    // Solo en las 3 primeras noticias vistas por sesión (se reinicia al cerrar sesión / pestaña).
+    let vistas = 0;
+    try {
+      vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
+    } catch {
+      vistas = 0;
+    }
+    if (vistas >= 3) {
+      setMostrarAyudaDeslizar(false);
+      return undefined;
+    }
+    ultimoAvisoContadoId.current = idNoticia;
+    try {
+      window.sessionStorage.setItem("lector_aviso_deslizar_vistas", String(vistas + 1));
+    } catch {
+      // Sin almacenamiento disponible: se muestra igual esta vez.
+    }
     setMostrarAyudaDeslizar(true);
     const temporizador = setTimeout(() => setMostrarAyudaDeslizar(false), 2500);
     return () => clearTimeout(temporizador);
@@ -305,7 +326,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronRight size={22} />
       </button>
       <div
-        className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col"
+        className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onClick={(event) => event.stopPropagation()}
         onTouchStart={manejarInicioToque}
         onTouchEnd={manejarFinToque}
@@ -313,12 +334,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
         {/* Cabecera del modal */}
         <div>
-          <div className="flex justify-between items-start gap-4 mb-3">
-            <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
+          <div className="flex justify-between items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 flex-wrap text-[11px] sm:text-xs text-gray-400">
               {article.fuente_nombre && (
-                <span className="flex items-center gap-1 bg-gray-800 border border-gray-700 text-sky-400 px-2.5 py-1 rounded-md font-medium">
-                  <Globe size={12} />
-                  {article.fuente_nombre}
+                <span className="flex min-w-0 max-w-[52vw] sm:max-w-none items-center gap-1 bg-gray-800 border border-gray-700 text-sky-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium">
+                  <Globe size={12} className="shrink-0" />
+                  <span className="truncate">{article.fuente_nombre}</span>
                 </span>
               )}
               {editandoCategoria ? (
@@ -359,8 +380,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               ) : (
                 <>
                   {categoriaMostrada && (
-                    <span style={getCategoryColor(categoriaMostrada)} className="flex items-center gap-1 border px-2.5 py-1 rounded-md font-medium">
-                      <Tag size={12} className="opacity-75" />
+                    <span style={getCategoryColor(categoriaMostrada)} className="flex items-center gap-1 border px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium whitespace-nowrap">
+                      <Tag size={12} className="opacity-75 shrink-0" />
                       {categoriaMostrada}
                     </span>
                   )}
@@ -368,20 +389,20 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                     onClick={iniciarEdicionCategoria}
                     title="Corregir categoría"
                     aria-label="Corregir categoría"
-                    className="flex items-center border border-gray-700/60 bg-gray-800/60 px-2 py-1 rounded-md text-gray-400 hover:text-sky-400 hover:border-sky-600/50 transition"
+                    className="flex items-center border border-gray-700/60 bg-gray-800/60 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-gray-400 hover:text-sky-400 hover:border-sky-600/50 transition shrink-0"
                   >
                     <Pencil size={12} />
                   </button>
                 </>
               )}
               {metodoMostrado && (
-                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2.5 py-1 rounded-md">
+                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap">
                   {metodoMostrado === "gemini" ? "IA" : metodoMostrado === "manual" ? "Manual" : "Sin IA"} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (
-                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2.5 py-1 rounded-md">
-                  <Calendar size={12} className="opacity-75" />
+                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap">
+                  <Calendar size={12} className="opacity-75 shrink-0" />
                   {fechaFormateada}
                 </span>
               )}
@@ -419,8 +440,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen de la noticia */}
-          <div className="text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[45vh] pr-2 space-y-3">
+          {/* Cuerpo / Resumen de la noticia (sin scroll interno: usa el scroll del modal) */}
+          <div className="text-gray-300 text-sm md:text-base leading-relaxed space-y-3 break-words">
             <p>{article.resumen || "Sin resumen disponible para esta noticia."}</p>
           </div>
         </div>
@@ -496,7 +517,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <div
           role="status"
           aria-live="polite"
-          className="sm:hidden fixed top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm animate-fadeIn pointer-events-none whitespace-nowrap"
+          className="sm:hidden fixed top-8 left-1/2 -translate-x-1/2 z-20 flex max-w-[calc(100vw-2rem)] items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm animate-fadeIn pointer-events-none whitespace-nowrap"
         >
           <MoveHorizontal size={16} className="text-sky-400 shrink-0" />
           <span>Desliza para cambiar de noticia</span>

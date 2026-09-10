@@ -528,6 +528,11 @@ export default function HomePage() {
               {/* CAMBIAMOS ESTE LINK POR UN BOTÓN DIRECTO DE CIERRE DE SESIÓN */}
               <button
                 onClick={async () => {
+                  try {
+                    window.sessionStorage.removeItem("lector_aviso_deslizar_vistas");
+                  } catch {
+                    // Sin almacenamiento disponible: continuar con el cierre de sesión.
+                  }
                   const { signOut } = await import("next-auth/react");
                   await signOut({ callbackUrl: "/login" });
                 }}
