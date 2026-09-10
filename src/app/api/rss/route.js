@@ -113,6 +113,35 @@ async function ensureClassificationSchema() {
   return classificationSchemaPromise;
 }
 
+let articulosUnicidadPromise;
+
+async function ensureArticulosUnicidad() {
+  if (!articulosUnicidadPromise) {
+    articulosUnicidadPromise = (async () => {
+      const [indices] = await db.query(
+        `SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS columnas
+         FROM INFORMATION_SCHEMA.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'articulos_publicados'
+           AND NON_UNIQUE = 0
+         GROUP BY INDEX_NAME`
+      );
+      const tieneGlobal = indices.some((indice) => indice.INDEX_NAME === "unique_url");
+      const tienePar = indices.some((indice) => indice.columnas === "fuente_id,url_original");
+      if (tieneGlobal) {
+        await db.query("ALTER TABLE articulos_publicados DROP INDEX unique_url");
+      }
+      if (!tienePar) {
+        await db.query("ALTER TABLE articulos_publicados ADD UNIQUE KEY unique_fuente_url (fuente_id, url_original)");
+      }
+    })().catch((error) => {
+      articulosUnicidadPromise = undefined;
+      throw error;
+    });
+  }
+  return articulosUnicidadPromise;
+}
+
 let fuentesCacheSchemaPromise;
 
 async function ensureFuentesCacheSchema() {
@@ -465,6 +494,7 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
     await ensureFuentesCacheSchema();
+    await ensureArticulosUnicidad();
 
     const limiteFecha = new Date();
     limiteFecha.setDate(limiteFecha.getDate() - 7);
