@@ -582,7 +582,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         </div>
       </div>
       {(imagenVisible || cargandoImagen) && !imagenRota && !imagenOculta && (
-        <div className="order-first sm:order-none sm:absolute sm:inset-y-0 sm:right-0 sm:w-1/2 shrink-0 sm:rounded-r-2xl sm:overflow-hidden" aria-hidden="true">
+        <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden rounded-t-2xl sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:h-auto sm:w-1/2 sm:rounded-none sm:rounded-r-2xl" aria-hidden="true">
           {imagenVisible ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -593,12 +593,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 onError={() => setImagenRota(true)}
-                className="h-44 sm:h-full w-full object-cover opacity-60 rounded-t-2xl sm:rounded-none sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
               />
-              <div aria-hidden="true" className="hidden sm:block absolute inset-0 bg-linear-to-r from-gray-900 via-gray-900/70 to-transparent" />
+              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900 sm:bg-linear-to-r sm:from-gray-900 sm:via-gray-900/70 sm:to-transparent" />
             </>
           ) : (
-            <div aria-hidden="true" className="h-44 sm:h-full w-full animate-pulse bg-gray-800 rounded-t-2xl sm:rounded-none" />
+            <div aria-hidden="true" className="h-full w-full animate-pulse bg-gray-800 rounded-t-2xl sm:rounded-none" />
           )}
         </div>
       )}
