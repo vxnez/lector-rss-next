@@ -496,7 +496,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <div
           role="status"
           aria-live="polite"
-          className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm animate-fadeIn pointer-events-none whitespace-nowrap"
+          className="sm:hidden fixed top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm animate-fadeIn pointer-events-none whitespace-nowrap"
         >
           <MoveHorizontal size={16} className="text-sky-400 shrink-0" />
           <span>Desliza para cambiar de noticia</span>
