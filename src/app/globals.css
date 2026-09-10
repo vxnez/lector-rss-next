@@ -300,6 +300,31 @@ textarea:focus-visible {
   will-change: transform, opacity, filter;
 }
 
+/* En móvil el mismo desvanecido pero en vertical: entra desde arriba. */
+@keyframes articulo-entrar-desde-arriba {
+  0% {
+    opacity: 0;
+    transform: translateY(-48px) scale(0.985);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (max-width: 639px) {
+  .anim-articulo-siguiente,
+  .anim-articulo-anterior {
+    animation-name: articulo-entrar-desde-arriba;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-articulo-siguiente,
   .anim-articulo-anterior,
