@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { useEffect, useRef, useState } from "react";
 
@@ -125,6 +125,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   );
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
+  const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(false);
 
   const manejarInicioToque = (event) => {
     const toque = event.touches?.[0];
@@ -176,6 +177,21 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [article, onClose, onIrAId, anteriorId, siguienteId, editandoCategoria]);
+
+  useEffect(() => {
+    if (!article) return undefined;
+    // Solo se muestra en móvil (donde las flechas están ocultas y el gesto es la vía de navegación).
+    let esMovil = false;
+    try {
+      esMovil = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+    } catch {
+      esMovil = false;
+    }
+    if (!esMovil) return undefined;
+    setMostrarAyudaDeslizar(true);
+    const temporizador = setTimeout(() => setMostrarAyudaDeslizar(false), 2500);
+    return () => clearTimeout(temporizador);
+  }, [article?.id]);
 
   useEffect(() => {
     if (!article || article.imagen_url || !article.url_original) return undefined;
@@ -272,10 +288,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         disabled={anteriorId == null}
         title="Noticia anterior"
         aria-label="Noticia anterior"
-        className="fixed top-1/2 -translate-y-1/2 left-2 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/60 sm:bg-gray-800/80 border border-gray-700 p-1.5 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+        className="hidden sm:block fixed top-1/2 -translate-y-1/2 left-2 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
-        <ChevronLeft size={18} className="sm:hidden" />
-        <ChevronLeft size={22} className="hidden sm:block" />
+        <ChevronLeft size={22} />
       </button>
       <button
         onClick={(event) => {
@@ -285,10 +300,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         disabled={siguienteId == null}
         title="Noticia siguiente"
         aria-label="Noticia siguiente"
-        className="fixed top-1/2 -translate-y-1/2 right-2 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/60 sm:bg-gray-800/80 border border-gray-700 p-1.5 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+        className="hidden sm:block fixed top-1/2 -translate-y-1/2 right-2 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
-        <ChevronRight size={18} className="sm:hidden" />
-        <ChevronRight size={22} className="hidden sm:block" />
+        <ChevronRight size={22} />
       </button>
       <div
         className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden flex flex-col"
@@ -478,6 +492,16 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         </div>
       )}
       </div>
+      {mostrarAyudaDeslizar && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm animate-fadeIn pointer-events-none whitespace-nowrap"
+        >
+          <MoveHorizontal size={16} className="text-sky-400 shrink-0" />
+          <span>Desliza para cambiar de noticia</span>
+        </div>
+      )}
     </div>
   );
 }
