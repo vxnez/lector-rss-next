@@ -28,7 +28,7 @@ import {
   ArrowRight,
   Search,
   XCircle,
-  Pencil,
+  User,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -431,7 +431,8 @@ export default function HomePage() {
 
         {session?.user && (
           <p className="hidden md:block flex-1 text-center text-sm text-gray-300 truncate px-2">
-            Bienvenido, <strong className="text-white">{session.user.name || session.user.email}</strong>
+            {session.user.genero === "mujer" ? "Bienvenida" : "Bienvenido"},{" "}
+            <strong className="text-white">{session.user.name || session.user.email}</strong>
           </p>
         )}
 
@@ -452,7 +453,7 @@ export default function HomePage() {
                 title="Editar perfil"
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
               >
-                <Pencil size={14} />
+                <User size={14} />
                 <span className="hidden sm:inline">Editar perfil</span>
               </button>
 

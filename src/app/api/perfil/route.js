@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 const LIMITE_IMAGEN_CHARS = 60000;
+const GENEROS_VALIDOS = ["hombre", "mujer", "no_mencionarlo"];
 
 let perfilSchemaPromise;
 
@@ -11,13 +12,17 @@ async function ensurePerfilSchema() {
   if (!perfilSchemaPromise) {
     perfilSchemaPromise = (async () => {
       const [columns] = await db.query(
-        `SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+        `SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = 'usuarios'
-           AND COLUMN_NAME = 'imagen_url'`
+           AND COLUMN_NAME IN ('imagen_url', 'genero')`
       );
-      if (columns[0] && columns[0].DATA_TYPE !== "text") {
+      const porNombre = new Map(columns.map((column) => [column.COLUMN_NAME, column.DATA_TYPE]));
+      if (porNombre.get("imagen_url") && porNombre.get("imagen_url") !== "text") {
         await db.query("ALTER TABLE usuarios MODIFY COLUMN imagen_url TEXT NULL");
+      }
+      if (!porNombre.has("genero")) {
+        await db.query("ALTER TABLE usuarios ADD COLUMN genero VARCHAR(20) NULL");
       }
     })().catch((error) => {
       perfilSchemaPromise = undefined;
@@ -48,7 +53,7 @@ export async function GET() {
     await ensurePerfilSchema();
 
     const [rows] = await db.query(
-      "SELECT id, nombre, email, imagen_url, proveedor, creado_en FROM usuarios WHERE id = ?",
+      "SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero FROM usuarios WHERE id = ?",
       [userId]
     );
     if (!rows[0]) {
@@ -83,10 +88,18 @@ export async function PUT(req) {
       return NextResponse.json({ error: "La imagen debe ser una URL válida o un archivo ligero" }, { status: 400 });
     }
 
-    await db.query("UPDATE usuarios SET nombre = ?, imagen_url = ? WHERE id = ?", [nombre, imagen.valor, userId]);
+    let genero = null;
+    if (body.genero !== undefined) {
+      if (!GENEROS_VALIDOS.includes(body.genero)) {
+        return NextResponse.json({ error: "Género no válido" }, { status: 400 });
+      }
+      genero = body.genero;
+    }
+
+    await db.query("UPDATE usuarios SET nombre = ?, imagen_url = ?, genero = COALESCE(?, genero) WHERE id = ?", [nombre, imagen.valor, genero, userId]);
 
     const [rows] = await db.query(
-      "SELECT id, nombre, email, imagen_url, proveedor, creado_en FROM usuarios WHERE id = ?",
+      "SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero FROM usuarios WHERE id = ?",
       [userId]
     );
     return NextResponse.json({ message: "Perfil actualizado correctamente", perfil: rows[0] });

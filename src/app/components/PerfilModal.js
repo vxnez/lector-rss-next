@@ -10,6 +10,12 @@ const NOMBRE_PROVEEDOR = {
   credentials: "Correo y contraseña",
 };
 
+const OPCIONES_GENERO = [
+  { valor: "hombre", etiqueta: "Hombre" },
+  { valor: "mujer", etiqueta: "Mujer" },
+  { valor: "no_mencionarlo", etiqueta: "Prefiero no mencionarlo" },
+];
+
 function dividirNombre(nombreCompleto = "") {
   const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
   return { nombre: partes[0] || "", apellido: partes.slice(1).join(" ") };
@@ -74,6 +80,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
   const [error, setError] = useState("");
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
+  const [genero, setGenero] = useState("no_mencionarlo");
   const [imagen, setImagen] = useState(null);
   const [urlImagen, setUrlImagen] = useState("");
   const [perfil, setPerfil] = useState(null);
@@ -90,6 +97,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
         const partes = dividirNombre(data.nombre || "");
         setNombre(partes.nombre);
         setApellido(partes.apellido);
+        setGenero(data.genero || "no_mencionarlo");
         setImagen(data.imagen_url || null);
         setUrlImagen("");
         setPerfil(data);
@@ -161,7 +169,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
       const res = await fetch("/api/perfil", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombreCompleto, imagen_url: imagen }),
+        body: JSON.stringify({ nombre: nombreCompleto, imagen_url: imagen, genero }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar el perfil.");
@@ -297,6 +305,33 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
                   onChange={(event) => setApellido(event.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
                 />
+              </div>
+            </div>
+
+            <div>
+              <span className="block text-sm font-medium mb-1 text-gray-300" id="etiqueta-genero">
+                Género
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-labelledby="etiqueta-genero">
+                {OPCIONES_GENERO.map((opcion) => {
+                  const activa = genero === opcion.valor;
+                  return (
+                    <button
+                      key={opcion.valor}
+                      type="button"
+                      role="radio"
+                      aria-checked={activa}
+                      onClick={() => setGenero(opcion.valor)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border transition ${
+                        activa
+                          ? "border-sky-500 bg-sky-500/10 text-sky-300"
+                          : "border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700"
+                      }`}
+                    >
+                      {opcion.etiqueta}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
