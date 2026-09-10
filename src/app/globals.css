@@ -36,14 +36,6 @@ body {
   .dashboard-control-sidebar::-webkit-scrollbar {
     display: none;
   }
-
-  .category-filter-list {
-    scrollbar-width: none;
-  }
-
-  .category-filter-list::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 button,
@@ -235,64 +227,4 @@ textarea:focus-visible {
 }
 .fuente-menu .value.seleccionada {
   color: #7dd3fc;
-}
-
-/* Checkboxes del filtro de categorías (basado en Uiverse.io by cbolson) */
-.rss-check-list {
-  --_clr-primary: #6b7280;
-  --_clr-hover: #38bdf8;
-  --_clr-checked: #27a9e8;
-}
-.rss-check-list > div {
-  --_clr-current: var(--_clr-primary);
-}
-.rss-check-list label {
-  cursor: pointer;
-  color: var(--_clr-current);
-  transition: color 150ms ease-in-out;
-}
-
-/* caja visible del checkbox con icono Lucide real */
-.rss-check-list input.sr-only:focus-visible {
-  outline: none;
-}
-.rss-check-list .rss-check-box {
-  width: 1.15rem;
-  height: 1.15rem;
-  aspect-ratio: 1;
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--_clr-current);
-  border-radius: 2px;
-  display: inline-grid;
-  place-content: center;
-  transition: border-color 150ms ease-in-out;
-}
-.rss-check-list .rss-check-box svg {
-  opacity: 0;
-  transition: opacity 150ms ease-in-out;
-  color: var(--_clr-checked);
-}
-
-.rss-check-list label:hover,
-.rss-check-list input:focus-visible ~ label,
-.rss-check-list input:hover ~ label {
-  --_clr-current: var(--_clr-hover);
-}
-.rss-check-list input:focus-visible ~ label .rss-check-box,
-.rss-check-list input:hover ~ label .rss-check-box {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.rss-check-list input:focus-visible ~ label .rss-check-box svg,
-.rss-check-list input:hover ~ label .rss-check-box svg {
-  opacity: 0.5;
-  color: var(--_clr-hover);
-}
-
-.rss-check-list input:checked ~ label:not(:hover) {
-  --_clr-current: var(--_clr-checked);
-}
-.rss-check-list input:checked ~ label .rss-check-box svg {
-  opacity: 1;
 }

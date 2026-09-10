@@ -553,14 +553,6 @@ export default function HomePage() {
                     className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-sky-600"
                   />
                 </label>
-                {(searchQuery || categoriasSeleccionadas.length > 0 || selectedSourceId !== "todas") && (
-                  <button
-                    onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setSelectedSourceId("todas"); }}
-                    className="text-xs text-gray-300 hover:text-white border border-gray-800 rounded-xl px-3 py-2.5 flex items-center justify-center gap-2"
-                  >
-                    <XCircle size={15} /> Limpiar filtros
-                  </button>
-                )}
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   {lastUpdated ? `Actualizado ${lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}` : "Sin actualizar"}
                 </span>
@@ -711,44 +703,27 @@ export default function HomePage() {
                     </span>
                   )}
                 </div>
-                <div className="category-filter-list max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
-                  <div className="rss-check-list grid grid-cols-2 gap-1.5">
-                    <div className="flex min-w-0 items-center rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900">
-                      <input
-                        id="filtro-cat-todas"
-                        type="checkbox"
-                        className="sr-only"
-                        checked={categoriasSeleccionadas.length === 0}
-                        onChange={() => setCategoriasSeleccionadas([])}
-                      />
-                      <label htmlFor="filtro-cat-todas" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                        <span className="rss-check-box" aria-hidden="true">
-                          <Check size={12} strokeWidth={3} />
-                        </span>
-                        <span className="truncate">Todas</span>
-                      </label>
-                    </div>
-
-                    {categoriasDisponibles.map((categoria, indice) => (
-                      <div
-                        key={categoria}
-                        className="flex min-w-0 items-center rounded-lg border border-gray-800 px-2.5 py-2 text-sm hover:bg-gray-900"
-                      >
-                        <input
-                          id={`filtro-cat-${indice}`}
-                          type="checkbox"
-                          className="sr-only"
-                          checked={categoriasSeleccionadas.includes(categoria)}
-                          onChange={() => alternarCategoria(categoria)}
-                        />
-                        <label htmlFor={`filtro-cat-${indice}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                          <span className="rss-check-box" aria-hidden="true">
-                            <Check size={12} strokeWidth={3} />
-                          </span>
-                          <span className="truncate">{categoria}</span>
-                        </label>
-                      </div>
-                    ))}
+                <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 p-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {categoriasDisponibles.map((categoria) => {
+                      const activa = categoriasSeleccionadas.includes(categoria);
+                      return (
+                        <button
+                          key={categoria}
+                          type="button"
+                          aria-pressed={activa}
+                          onClick={() => alternarCategoria(categoria)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
+                            activa
+                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                              : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                          }`}
+                        >
+                          {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                          {categoria}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {categoriasDisponibles.length === 0 && (
@@ -756,6 +731,15 @@ export default function HomePage() {
                   )}
                 </div>
               </div>
+
+              {(searchQuery || categoriasSeleccionadas.length > 0 || selectedSourceId !== "todas") && (
+                <button
+                  onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setSelectedSourceId("todas"); }}
+                  className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
+                >
+                  <XCircle size={15} /> Limpiar filtros
+                </button>
+              )}
                 </div>
               )}
             </aside>
