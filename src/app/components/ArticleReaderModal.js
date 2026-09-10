@@ -94,7 +94,7 @@ const formatFecha = (fechaStr) => {
   }
 };
 
-export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onAnterior, onSiguiente, posicion, total }) {
+export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
   const [savingAction, setSavingAction] = useState("");
   const [actionError, setActionError] = useState("");
   const [editandoCategoria, setEditandoCategoria] = useState(false);
@@ -114,18 +114,18 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         objetivo && (objetivo.tagName === "INPUT" || objetivo.tagName === "TEXTAREA" || objetivo.isContentEditable)
       );
       if (editandoCategoria || escribiendo || objetivo?.tagName === "SELECT") return;
-      if (event.key === "ArrowLeft" && onAnterior) {
+      if (event.key === "ArrowLeft" && anteriorId != null) {
         event.preventDefault();
-        onAnterior();
+        onIrAId(anteriorId);
       }
-      if (event.key === "ArrowRight" && onSiguiente) {
+      if (event.key === "ArrowRight" && siguienteId != null) {
         event.preventDefault();
-        onSiguiente();
+        onIrAId(siguienteId);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [article, onClose, onAnterior, onSiguiente, editandoCategoria]);
+  }, [article, onClose, onIrAId, anteriorId, siguienteId, editandoCategoria]);
 
   if (!article) return null;
 
@@ -138,8 +138,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setActionError("");
     const actualizado = await onToggleRead(article.id, Boolean(article.leido));
     setSavingAction("");
-    if (actualizado) onClose();
-    else setActionError("No se pudo actualizar el estado de lectura.");
+    if (actualizado) {
+      if (siguienteId == null || !onIrAId(siguienteId)) onClose();
+    } else setActionError("No se pudo actualizar el estado de lectura.");
   };
 
   const handleGuardar = async () => {
@@ -147,8 +148,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setActionError("");
     const actualizado = await onToggleSave(article.id, Boolean(article.guardado));
     setSavingAction("");
-    if (actualizado) onClose();
-    else setActionError("No se pudo actualizar el estado guardado.");
+    if (actualizado) {
+      if (siguienteId == null || !onIrAId(siguienteId)) onClose();
+    } else setActionError("No se pudo actualizar el estado guardado.");
   };
 
   const iniciarEdicionCategoria = async () => {
@@ -186,8 +188,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
       <button
-        onClick={onAnterior}
-        disabled={!onAnterior}
+        onClick={() => anteriorId != null && onIrAId(anteriorId)}
+        disabled={anteriorId == null}
         title="Noticia anterior"
         aria-label="Noticia anterior"
         className="fixed top-1/2 -translate-y-1/2 left-3 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-2 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
@@ -195,8 +197,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronLeft size={22} />
       </button>
       <button
-        onClick={onSiguiente}
-        disabled={!onSiguiente}
+        onClick={() => siguienteId != null && onIrAId(siguienteId)}
+        disabled={siguienteId == null}
         title="Noticia siguiente"
         aria-label="Noticia siguiente"
         className="fixed top-1/2 -translate-y-1/2 right-3 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-2 sm:p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"

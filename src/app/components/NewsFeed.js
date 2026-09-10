@@ -1,7 +1,7 @@
 // src/app/components/NewsFeed.js
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar } from "lucide-react";
 import ArticleReaderModal from "./ArticleReaderModal";
 import { getCategoryStyle } from "@/lib/categoryStyles";
@@ -123,17 +123,26 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
     ? articles.findIndex((art) => art.id === selectedArticle.id)
     : -1;
 
-  const irAnterior = () => {
-    if (indiceSeleccionado > 0) {
-      setSelectedArticle(articles[indiceSeleccionado - 1]);
-    }
-  };
+  const articlesRef = useRef(articles);
 
-  const irSiguiente = () => {
-    if (indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1) {
-      setSelectedArticle(articles[indiceSeleccionado + 1]);
+  useEffect(() => {
+    articlesRef.current = articles;
+  });
+
+  const irAId = useCallback((id) => {
+    const item = (articlesRef.current || []).find((art) => art.id === id);
+    if (item) {
+      setSelectedArticle(item);
+      return true;
     }
-  };
+    return false;
+  }, []);
+
+  const anteriorId = indiceSeleccionado > 0 ? articles[indiceSeleccionado - 1].id : null;
+  const siguienteId =
+    indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1
+      ? articles[indiceSeleccionado + 1].id
+      : null;
 
   const getFuenteNombre = (art) => {
     if (art.fuente_nombre && art.fuente_nombre !== "Fuente RSS") {
@@ -276,8 +285,9 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
         onToggleRead={onToggleRead}
         onToggleSave={onToggleSave}
         onUpdateCategory={onUpdateCategory}
-        onAnterior={indiceSeleccionado > 0 ? irAnterior : null}
-        onSiguiente={indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1 ? irSiguiente : null}
+        onIrAId={irAId}
+        anteriorId={anteriorId}
+        siguienteId={siguienteId}
         posicion={indiceSeleccionado >= 0 ? indiceSeleccionado + 1 : null}
         total={articles.length}
       />
