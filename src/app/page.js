@@ -407,9 +407,35 @@ export default function HomePage() {
       baseList = articulos.filter((art) => !art.leido && !art.guardado);
     }
 
+    // Las categorías se limitan a las fuentes seleccionadas (1, 2 o más).
+    if (fuentesSeleccionadas.length > 0) {
+      const idsSeleccionados = new Set(fuentesSeleccionadas.map((id) => String(id)));
+      baseList = baseList.filter((art) => idsSeleccionados.has(String(art.fuente_id)));
+    }
+
+    const query = searchQuery.trim().toLocaleLowerCase("es");
+    if (query) {
+      baseList = baseList.filter((art) =>
+        `${art.titulo || ""} ${art.resumen || ""}`.toLocaleLowerCase("es").includes(query)
+      );
+    }
+
     const categorias = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
-    return categorias.sort((a, b) => a.localeCompare(b, "es"));
-  }, [articulos, activeTab]);
+    categorias.sort((a, b) => a.localeCompare(b, "es"));
+    if (orden === "za") categorias.reverse();
+    return categorias;
+  }, [articulos, activeTab, fuentesSeleccionadas, searchQuery, orden]);
+
+  // Si al cambiar de fuentes una categoría seleccionada ya no existe, se retira
+  // para no dejar el feed vacío con un filtro imposible.
+  useEffect(() => {
+    setCategoriasSeleccionadas((actuales) => {
+      if (actuales.length === 0) return actuales;
+      const disponibles = new Set(categoriasDisponibles);
+      const vigentes = actuales.filter((categoria) => disponibles.has(categoria));
+      return vigentes.length === actuales.length ? actuales : vigentes;
+    });
+  }, [categoriasDisponibles]);
 
   const alternarCategoria = (categoria) => {
     setCategoriasSeleccionadas((actuales) => (
