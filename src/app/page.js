@@ -3,11 +3,14 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import AddFeedModal from "./components/AddFeedModal";
+import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
-import ManageSourcesModal from "./components/ManageSourcesModal";
-import PerfilModal from "./components/PerfilModal";
 import NewsFeed from "./components/NewsFeed";
+
+// Modales diferidos: no entran al bundle inicial, se cargan al abrirse.
+const AddFeedModal = dynamic(() => import("./components/AddFeedModal"), { ssr: false });
+const ManageSourcesModal = dynamic(() => import("./components/ManageSourcesModal"), { ssr: false });
+const PerfilModal = dynamic(() => import("./components/PerfilModal"), { ssr: false });
 import {
   Rss,
   Settings,

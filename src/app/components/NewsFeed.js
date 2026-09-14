@@ -2,9 +2,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar } from "lucide-react";
-import ArticleReaderModal from "./ArticleReaderModal";
 import { getCategoryStyle } from "@/lib/categoryStyles";
+
+// El lector solo se necesita cuando se abre una noticia: fuera del bundle inicial.
+const ArticleReaderModal = dynamic(() => import("./ArticleReaderModal"), { ssr: false });
 
 const DOMAIN_COLOR_PALETTES = [
   { bg: "bg-sky-950/60", text: "text-sky-400", border: "border-sky-800/50" },

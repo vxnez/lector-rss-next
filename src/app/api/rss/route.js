@@ -815,17 +815,33 @@ export async function GET(req) {
 
 export async function PUT(req) {
   try {
+    const session = await auth();
+    const userId = await resolverUsuarioId(req, session);
     const body = await req.json();
     const { id, leido, guardado, titulo, categoria, tipo } = body;
 
     if (!id) return NextResponse.json({ error: "ID requerido" }, { status: 400 });
 
     if (tipo === "fuente") {
-      await db.query(
-        "UPDATE fuentes_rss SET titulo = COALESCE(?, titulo), categoria = COALESCE(?, categoria) WHERE id = ?",
-        [titulo, categoria, id]
+      const [result] = await db.query(
+        "UPDATE fuentes_rss SET titulo = COALESCE(?, titulo), categoria = COALESCE(?, categoria) WHERE id = ? AND usuario_id = ?",
+        [titulo, categoria, id, userId]
       );
+      if (result.affectedRows === 0) {
+        return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+      }
       return NextResponse.json({ message: "Fuente actualizada correctamente" });
+    }
+
+    // Ownership: el artículo debe pertenecer a una fuente del usuario.
+    const [[propio]] = await db.query(
+      `SELECT a.id FROM articulos_publicados a
+       INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+       WHERE a.id = ? AND f.usuario_id = ?`,
+      [id, userId]
+    );
+    if (!propio) {
+      return NextResponse.json({ error: "Artículo no encontrado o no autorizado" }, { status: 404 });
     }
 
     if (leido !== undefined) {
@@ -856,63 +872,71 @@ export async function PUT(req) {
 }
 
 export async function DELETE(req) {
-  const connection = await db.getConnection();
+  let connection;
   try {
+    const session = await auth();
+    const userId = Number(await resolverUsuarioId(req, session));
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const tipo = searchParams.get("tipo");
     const deleteAll = searchParams.get("delete_all");
 
     if (deleteAll === "true") {
-      const session = await auth();
-      const userId = Number(await resolverUsuarioId(req, session));
-      
+      connection = await db.getConnection();
       await connection.beginTransaction();
-      try {
-        await connection.query(
-          `UPDATE articulos_publicados a 
-           INNER JOIN fuentes_rss f ON a.fuente_id = f.id 
-           SET a.descartado = 1 
-           WHERE f.usuario_id = ?`,
-          [userId]
-        );
-        await connection.commit();
-      } catch (txError) {
-        await connection.rollback();
-        throw txError;
-      } finally {
-        connection.release();
-      }
+      await connection.query(
+        `UPDATE articulos_publicados a
+         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+         SET a.descartado = 1
+         WHERE f.usuario_id = ?`,
+        [userId]
+      );
+      await connection.commit();
       return NextResponse.json({ message: "Todas las publicaciones fueron descartadas" });
     }
 
     if (!id) {
-      connection.release();
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
     }
 
     if (tipo === "fuente") {
+      connection = await db.getConnection();
       await connection.beginTransaction();
-      try {
-        await connection.query("DELETE FROM articulos_publicados WHERE fuente_id = ?", [id]);
-        await connection.query("DELETE FROM fuentes_rss WHERE id = ?", [id]);
-        await connection.commit();
-      } catch (txError) {
+      await connection.query(
+        `DELETE a FROM articulos_publicados a
+         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+         WHERE a.fuente_id = ? AND f.usuario_id = ?`,
+        [id, userId]
+      );
+      const [result] = await connection.query(
+        "DELETE FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
+        [id, userId]
+      );
+      if (result.affectedRows === 0) {
         await connection.rollback();
-        throw txError;
-      } finally {
-        connection.release();
+        return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
       }
+      await connection.commit();
       return NextResponse.json({ message: "Fuente y sus artículos eliminados por completo" });
     }
 
-    connection.release();
-    await db.query("UPDATE articulos_publicados SET descartado = 1 WHERE id = ?", [id]);
+    const [result] = await db.query(
+      `UPDATE articulos_publicados a
+       INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+       SET a.descartado = 1
+       WHERE a.id = ? AND f.usuario_id = ?`,
+      [id, userId]
+    );
+    if (result.affectedRows === 0) {
+      return NextResponse.json({ error: "Artículo no encontrado o no autorizado" }, { status: 404 });
+    }
     return NextResponse.json({ message: "Artículo descartado" });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("Error al eliminar:", error);
-    connection.release();
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  } finally {
+    if (connection) connection.release();
   }
 }
 
