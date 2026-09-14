@@ -10,32 +10,13 @@ import { tiempoLecturaMinutos } from "@/lib/lectura";
 // El lector solo se necesita cuando se abre una noticia: fuera del bundle inicial.
 const ArticleReaderModal = dynamic(() => import("./ArticleReaderModal"), { ssr: false });
 
-const DOMAIN_COLOR_PALETTES = [
-  { bg: "bg-sky-950/60", text: "text-sky-400", border: "border-sky-800/50" },
-  { bg: "bg-emerald-950/60", text: "text-emerald-400", border: "border-emerald-800/50" },
-  { bg: "bg-purple-950/60", text: "text-purple-400", border: "border-purple-800/50" },
-  { bg: "bg-amber-950/60", text: "text-amber-400", border: "border-amber-800/50" },
-  { bg: "bg-rose-950/60", text: "text-rose-400", border: "border-rose-800/50" },
-  { bg: "bg-indigo-950/60", text: "text-indigo-400", border: "border-indigo-800/50" },
-  { bg: "bg-teal-950/60", text: "text-teal-400", border: "border-teal-800/50" },
-  { bg: "bg-orange-950/60", text: "text-orange-400", border: "border-orange-800/50" },
-  { bg: "bg-fuchsia-950/60", text: "text-fuchsia-400", border: "border-fuchsia-800/50" },
-  { bg: "bg-cyan-950/60", text: "text-cyan-400", border: "border-cyan-800/50" },
-];
-
-const domainColorCache = new Map();
-
-const getDomainColor = (domainName) => {
-  const cached = domainColorCache.get(domainName);
-  if (cached) return cached;
-  let hash = 0;
-  for (let i = 0; i < domainName.length; i++) {
-    hash = domainName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % DOMAIN_COLOR_PALETTES.length;
-  const palette = DOMAIN_COLOR_PALETTES[index];
-  domainColorCache.set(domainName, palette);
-  return palette;
+// Píldora de fuente teñida con el acento del tema activo: se adapta sola a
+// los 8 temas (claros incluidos). El color por categoría lo sigue dando
+// getCategoryStyle, así se conserva la codificación visual.
+const pillDominioStyle = {
+  backgroundColor: "color-mix(in srgb, var(--accent) 16%, transparent)",
+  color: "var(--accent-ink)",
+  borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
 };
 
 // Fuente única de verdad: lib/categoryStyles. (Se eliminó el switch duplicado muerto.)
@@ -58,8 +39,16 @@ const formatFecha = (fechaStr) => {
   }
 };
 
-export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete }) {
+export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete, autoMarcarLeida = false }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
+
+  // Abrir una noticia (y marcarla leída sola si el ajuste está activo).
+  const abrirArticulo = (art) => {
+    setSelectedArticle(art);
+    if (autoMarcarLeida && !art.leido) {
+      onToggleRead(art.id, false);
+    }
+  };
 
   const indiceSeleccionado = selectedArticle
     ? articles.findIndex((art) => art.id === selectedArticle.id)
@@ -107,7 +96,6 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
           const isLeido = Boolean(art.leido);
           const isGuardado = Boolean(art.guardado);
           const nombreFuente = getFuenteNombre(art);
-          const colorStyles = getDomainColor(nombreFuente);
           const fechaFormateada = formatFecha(art.fecha_publicacion);
           const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
           return (
@@ -124,9 +112,10 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 flex-wrap text-xs">
                     <span
+                      style={pillDominioStyle}
                       className={`text-[11px] font-bold border px-2 py-0.5 rounded flex items-center gap-1.5 tracking-wide transition-opacity ${
                         isLeido ? "opacity-60" : "opacity-100"
-                      } ${colorStyles.bg} ${colorStyles.text} ${colorStyles.border}`}
+                      }`}
                     >
                       <Globe size={11} className="shrink-0" />
                       <span className="truncate">{nombreFuente}</span>
@@ -156,7 +145,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
 
                 {/* Título */}
                 <h3
-                  onClick={() => setSelectedArticle(art)}
+                  onClick={() => abrirArticulo(art)}
                   className={`text-base font-bold leading-snug mb-2 cursor-pointer transition line-clamp-2 ${
                     isLeido ? "text-gray-500 line-through decoration-gray-600" : "text-white hover:text-sky-400"
                   }`}
@@ -166,7 +155,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
 
                 {/* Resumen */}
                 <p
-                  onClick={() => setSelectedArticle(art)}
+                  onClick={() => abrirArticulo(art)}
                   className={`text-xs line-clamp-3 mb-4 cursor-pointer transition ${
                     isLeido ? "text-gray-600" : "text-gray-400 hover:text-gray-300"
                   }`}
@@ -178,7 +167,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
               {/* Pie de la Tarjeta */}
               <div className="flex items-center justify-between pt-3 border-t border-gray-800/80 gap-1 text-xs">
                 <button
-                  onClick={() => setSelectedArticle(art)}
+                  onClick={() => abrirArticulo(art)}
                   className="text-sky-400 hover:underline flex items-center gap-1 font-medium text-xs"
                 >
                   <span>Leer noticia</span>

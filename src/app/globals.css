@@ -8,6 +8,10 @@
   --border: #243247;
   --muted: #91a0b5;
   --accent: #27a9e8;
+  --accent-strong: #0ea5e9;
+  --on-accent-strong: #030712;
+  --accent-ink: #9fdcfc;
+  --ink: #ffffff;
 }
 
 @theme inline {
@@ -78,8 +82,8 @@ textarea:focus-visible {
 }
 
 ::selection {
-  background: #1b6f9b;
-  color: #ffffff;
+  background: var(--accent-strong, #1b6f9b);
+  color: var(--on-accent-strong, #ffffff);
 }
 
 /* Tarjeta flotante a GitHub (basada en Uiverse.io by SouravBandyopadhyay) */

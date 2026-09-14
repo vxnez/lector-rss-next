@@ -1,5 +1,11 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
+import "./themes.css";
+
+// Aplica el tema guardado antes del primer pintado (evita parpadeo).
+// Debe coincidir con src/lib/temas.js (IDs y flag de tema claro).
+const SCRIPT_TEMA_INICIAL = `(function(){try{var t=localStorage.getItem("lector_tema")||"medianoche";var claros={"celeste":1,"menta":1,"celadon":1};document.documentElement.dataset.theme=t;if(claros[t]){document.documentElement.dataset.temaClaro="1";}var m=localStorage.getItem("lector_movimiento");if(m==="reducido"){document.documentElement.dataset.motion="reduced";}}catch(e){}})();`;
 
 
 
@@ -42,7 +48,10 @@ export default function RootLayout({ children }) {
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Script id="tema-inicial" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
+        {children}
+      </body>
     </html>
   );
 }

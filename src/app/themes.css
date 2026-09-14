@@ -1,0 +1,316 @@
+[data-theme="medianoche"] {
+  --color-sky-600: #0074b8;
+  --color-gray-500: #828a94;
+}
+
+/* ============ DUNA (Dune #363232 + Copperfield #C47D50) — oscuro ============ */
+[data-theme="duna"] {
+  color-scheme: dark;
+  --background: #211f1f;
+  --foreground: #ece5dd;
+  --surface: #363232;
+  --surface-raised: #443c38;
+  --border: #57504b;
+  --muted: #b3a89e;
+  --accent: #c47d50;
+  --accent-strong: #c47d50;
+  --on-accent-strong: #241a12;
+  --accent-ink: #eec39a;
+  --ink: #ece5dd;
+
+  --color-gray-950: #211f1f;
+  --color-gray-900: #363232;
+  --color-gray-800: #443c38;
+  --color-gray-700: #57504b;
+  --color-gray-600: #6f665e;
+  --color-gray-500: #a89e93;
+  --color-gray-400: #b3a89e;
+  --color-gray-300: #d3c9be;
+  --color-gray-200: #e6ded4;
+  --color-gray-100: #ece5dd;
+
+  --color-sky-600: #a8643a;
+  --color-sky-500: #c47d50;
+  --color-sky-400: #d99a6d;
+  --color-sky-300: #e8b48c;
+}
+
+/* ============ MINERAL (Mineral Green #355448 + Jet Stream #BDD9D7) — oscuro ============ */
+[data-theme="mineral"] {
+  color-scheme: dark;
+  --background: #1d2b26;
+  --foreground: #e9f2ec;
+  --surface: #355448;
+  --surface-raised: #415d53;
+  --border: #4e675a;
+  --muted: #9db8ab;
+  --accent: #bdd9d7;
+  --accent-strong: #bdd9d7;
+  --on-accent-strong: #12241f;
+  --accent-ink: #d8ece7;
+  --ink: #e9f2ec;
+
+  --color-gray-950: #1d2b26;
+  --color-gray-900: #355448;
+  --color-gray-800: #415d53;
+  --color-gray-700: #4e675a;
+  --color-gray-600: #648074;
+  --color-gray-500: #b9cdc1;
+  --color-gray-400: #c3d4c9;
+  --color-gray-300: #d5e2d9;
+  --color-gray-200: #dbe7df;
+  --color-gray-100: #e9f2ec;
+
+  --color-sky-600: #7fa8a4;
+  --color-sky-500: #bdd9d7;
+  --color-sky-400: #cfe3e0;
+  --color-sky-300: #dcefee;
+}
+
+/* ============ BOSQUE (Te Papa Green #244B40 + Apple #28B330) — oscuro ============ */
+[data-theme="bosque"] {
+  color-scheme: dark;
+  --background: #132a22;
+  --foreground: #e8f3ec;
+  --surface: #244b40;
+  --surface-raised: #2e5a4d;
+  --border: #3d6f5e;
+  --muted: #93b8a4;
+  --accent: #28b330;
+  --accent-strong: #28b330;
+  --on-accent-strong: #0c1f14;
+  --accent-ink: #a9ecb3;
+  --ink: #e8f3ec;
+
+  --color-gray-950: #132a22;
+  --color-gray-900: #244b40;
+  --color-gray-800: #2e5a4d;
+  --color-gray-700: #3d6f5e;
+  --color-gray-600: #54816d;
+  --color-gray-500: #a9cbb3;
+  --color-gray-400: #9dc2ae;
+  --color-gray-300: #bcd3c2;
+  --color-gray-200: #d9e8dd;
+  --color-gray-100: #e8f3ec;
+
+  --color-sky-600: #25a52e;
+  --color-sky-500: #28b330;
+  --color-sky-400: #4fd65a;
+  --color-sky-300: #7ce584;
+}
+
+/* ============ ÉBANO (Ebony Clay #28263E + Java #36B4AE) — oscuro ============ */
+[data-theme="ebano"] {
+  color-scheme: dark;
+  --background: #191827;
+  --foreground: #ebebf5;
+  --surface: #28263e;
+  --surface-raised: #34324c;
+  --border: #46445f;
+  --muted: #a3a1c2;
+  --accent: #36b4ae;
+  --accent-strong: #36b4ae;
+  --on-accent-strong: #06211f;
+  --accent-ink: #a5e6e0;
+  --ink: #ebebf5;
+
+  --color-gray-950: #191827;
+  --color-gray-900: #28263e;
+  --color-gray-800: #34324c;
+  --color-gray-700: #46445f;
+  --color-gray-600: #5b5978;
+  --color-gray-500: #a9a8c6;
+  --color-gray-400: #a3a1c2;
+  --color-gray-300: #c6c5da;
+  --color-gray-200: #dddcea;
+  --color-gray-100: #ebebf5;
+
+  --color-sky-600: #3fb3ac;
+  --color-sky-500: #45bcb5;
+  --color-sky-400: #5fd3cc;
+  --color-sky-300: #8fe3dc;
+}
+
+/* ============ CELESTE (Celeste #D2D3C5 + Eagle #AEB7A0) — CLARO ============ */
+[data-theme="celeste"] {
+  color-scheme: light;
+  --background: #e6e7da;
+  --foreground: #22271e;
+  --surface: #f0f1e6;
+  --surface-raised: #d9dcc9;
+  --border: #c2c5ae;
+  --muted: #68705f;
+  --accent: #5c6850;
+  --accent-strong: #55624a;
+  --on-accent-strong: #f4f5ea;
+  --accent-ink: #42503a;
+  --ink: #22271e;
+
+  --color-gray-950: #e6e7da;
+  --color-gray-900: #f0f1e6;
+  --color-gray-800: #d9dcc9;
+  --color-gray-700: #c2c5ae;
+  --color-gray-600: #a3a78f;
+  --color-gray-500: #68705f;
+  --color-gray-400: #4c5343;
+  --color-gray-300: #333a2b;
+  --color-gray-200: #292f23;
+  --color-gray-100: #22271e;
+
+  --color-sky-600: #5c6850;
+  --color-sky-500: #6f7a5f;
+  --color-sky-400: #4d5a43;
+  --color-sky-300: #3f4c37;
+}
+/* Texto principal: de blanco a tinta (los botones de acento/rojo la recuperan abajo). */
+[data-theme="celeste"] .text-white {
+  color: var(--ink);
+}
+[data-theme="celeste"] .hover\:text-white:hover {
+  color: var(--ink);
+}
+[data-theme="celeste"] .bg-sky-600,
+[data-theme="celeste"] .bg-sky-500,
+[data-theme="celeste"] .bg-sky-600\/90 {
+  color: var(--on-accent-strong);
+}
+[data-theme="celeste"] .bg-red-700 {
+  color: #fff;
+}
+
+/* ============ MENTA (Jet Stream #BDD9D7 + Mineral #355448) — CLARO ============ */
+[data-theme="menta"] {
+  color-scheme: light;
+  --background: #e2ede9;
+  --foreground: #1b2522;
+  --surface: #eef4f1;
+  --surface-raised: #d5e2dd;
+  --border: #bccbc5;
+  --muted: #5f726b;
+  --accent: #2c4a3e;
+  --accent-strong: #33584d;
+  --on-accent-strong: #eef5f2;
+  --accent-ink: #26463b;
+  --ink: #1b2522;
+
+  --color-gray-950: #e2ede9;
+  --color-gray-900: #eef4f1;
+  --color-gray-800: #d5e2dd;
+  --color-gray-700: #bccbc5;
+  --color-gray-600: #9caea7;
+  --color-gray-500: #5f726b;
+  --color-gray-400: #43564e;
+  --color-gray-300: #2c3d37;
+  --color-gray-200: #232f2b;
+  --color-gray-100: #1b2522;
+
+  --color-sky-600: #2c4a3e;
+  --color-sky-500: #355448;
+  --color-sky-400: #27453a;
+  --color-sky-300: #1d332b;
+}
+[data-theme="menta"] .text-white {
+  color: var(--ink);
+}
+[data-theme="menta"] .hover\:text-white:hover {
+  color: var(--ink);
+}
+[data-theme="menta"] .bg-sky-600,
+[data-theme="menta"] .bg-sky-500,
+[data-theme="menta"] .bg-sky-600\/90 {
+  color: var(--on-accent-strong);
+}
+[data-theme="menta"] .bg-red-700 {
+  color: #fff;
+}
+
+/* ============ CELADÓN (Fern #55B564 + Celadon claro) — CLARO ============ */
+[data-theme="celadon"] {
+  color-scheme: light;
+  --background: #e0f0dd;
+  --foreground: #1b2a1f;
+  --surface: #eef7ec;
+  --surface-raised: #d3e6d0;
+  --border: #b3cbb0;
+  --muted: #52705a;
+  --accent: #277636;
+  --accent-strong: #357a45;
+  --on-accent-strong: #f2faf3;
+  --accent-ink: #245c31;
+  --ink: #1b2a1f;
+
+  --color-gray-950: #e0f0dd;
+  --color-gray-900: #eef7ec;
+  --color-gray-800: #d3e6d0;
+  --color-gray-700: #b3cbb0;
+  --color-gray-600: #8faa8b;
+  --color-gray-500: #52705a;
+  --color-gray-400: #3c5942;
+  --color-gray-300: #2b4330;
+  --color-gray-200: #223626;
+  --color-gray-100: #1b2a1f;
+
+  --color-sky-600: #277636;
+  --color-sky-500: #359e49;
+  --color-sky-400: #227434;
+  --color-sky-300: #1a5c2a;
+}
+[data-theme="celadon"] .text-white {
+  color: var(--ink);
+}
+[data-theme="celadon"] .hover\:text-white:hover {
+  color: var(--ink);
+}
+[data-theme="celadon"] .bg-sky-600,
+[data-theme="celadon"] .bg-sky-500,
+[data-theme="celadon"] .bg-sky-600\/90 {
+  color: var(--on-accent-strong);
+}
+[data-theme="celadon"] .bg-red-700 {
+  color: #fff;
+}
+
+/* ============ Movimiento reducido (ajuste del panel) ============ */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ============ Entrada del panel lateral ============ */
+@keyframes panel-entrar-izquierda {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.anim-panel-izquierda {
+  animation: panel-entrar-izquierda 0.22s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+@keyframes fondo-fundido {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.anim-fondo-fundido {
+  animation: fondo-fundido 0.18s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-panel-izquierda,
+  .anim-fondo-fundido {
+    animation: none;
+  }
+}

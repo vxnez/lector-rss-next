@@ -17,8 +17,24 @@ function hash(texto = "") {
   return [...texto].reduce((total, caracter) => ((total << 5) - total) + caracter.charCodeAt(0), 0);
 }
 
+function esTemaClaro() {
+  try {
+    return document.documentElement.dataset.temaClaro === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function getCategoryStyle(category = "General") {
   const [hue, saturation, lightness] = PALETTE[Math.abs(hash(category)) % PALETTE.length];
+  // En temas claros el texto debe oscurecerse para seguir legible.
+  if (esTemaClaro()) {
+    return {
+      backgroundColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 12, 30)}%, 0.22)`,
+      color: `hsl(${hue}, ${Math.min(saturation + 10, 95)}%, ${Math.max(lightness - 34, 24)}%)`,
+      borderColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 20, 35)}%, 0.55)`,
+    };
+  }
   return {
     backgroundColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 25, 18)}%, 0.28)`,
     color: `hsl(${hue}, ${Math.min(saturation + 8, 90)}%, ${Math.min(lightness + 28, 86)}%)`,
