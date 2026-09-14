@@ -86,7 +86,10 @@ export default function HomePage() {
   const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const [toast, setToast] = useState(null);
+  const sentinelRef = useRef(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(true);
 
@@ -107,6 +110,7 @@ export default function HomePage() {
     }
     setSession(null);
     setArticulos([]);
+    setHasMore(true);
   }, []);
 
 
@@ -159,17 +163,29 @@ export default function HomePage() {
     }
   }, []);
 
-  const fetchArticles = useCallback(async (signal) => {
+  const PAGE_SIZE = 30;
+
+  const fetchArticles = useCallback(async (signal, { reset = true, offset = 0 } = {}) => {
     try {
-      const resArticles = await fetch(`/api/rss?t=${Date.now()}`, {
+      const resArticles = await fetch(`/api/rss?limit=${PAGE_SIZE}&offset=${offset}`, {
         cache: "no-store",
         signal,
       });
       if (resArticles.ok) {
         const articlesData = await resArticles.json();
-        const articles = Array.isArray(articlesData) ? articlesData : [];
-        setArticulos(articles);
-        setLastUpdated(new Date());
+        // Compat: objeto paginado {articles, hasMore} o arreglo legacy.
+        const articles = Array.isArray(articlesData) ? articlesData : (articlesData.articles || []);
+        const more = Array.isArray(articlesData) ? false : Boolean(articlesData.hasMore);
+        if (reset) {
+          setArticulos(articles);
+        } else {
+          setArticulos((prev) => {
+            const vistos = new Set(prev.map((a) => String(a.id)));
+            return [...prev, ...articles.filter((a) => !vistos.has(String(a.id)))];
+          });
+        }
+        setHasMore(more);
+        if (reset) setLastUpdated(new Date());
 
         setSourcesList((previousSources) => {
           const sourcesById = new Map(previousSources.map((source) => [String(source.id), source]));
@@ -191,6 +207,35 @@ export default function HomePage() {
       }
     }
   }, []);
+
+  const cargarMas = useCallback(async () => {
+    if (cargandoMas || !hasMore) return;
+    setCargandoMas(true);
+    try {
+      let offset = 0;
+      setArticulos((prev) => {
+        offset = prev.length;
+        return prev;
+      });
+      await fetchArticles(undefined, { reset: false, offset });
+    } finally {
+      setCargandoMas(false);
+    }
+  }, [cargandoMas, hasMore, fetchArticles]);
+
+  // Scroll infinito: cuando el centinela entra en viewport, pide la siguiente página.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) cargarMas();
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [cargarMas, hasMore, articulos.length]);
 
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
@@ -745,13 +790,32 @@ export default function HomePage() {
                   )}
                   </div>
                 ) : (
-                  <NewsFeed
-                    articles={articulosOrdenados}
-                    onToggleRead={toggleLeido}
-                    onToggleSave={toggleGuardado}
-                    onUpdateCategory={actualizarCategoria}
-                    onDelete={descartarArticulo}
-                  />
+                  <>
+                    <NewsFeed
+                      articles={articulosOrdenados}
+                      onToggleRead={toggleLeido}
+                      onToggleSave={toggleGuardado}
+                      onUpdateCategory={actualizarCategoria}
+                      onDelete={descartarArticulo}
+                    />
+                    <div className="mt-6 flex flex-col items-center gap-3">
+                      <p className="text-xs text-gray-500" role="status">
+                        Mostrando {articulosOrdenados.length} de {articulos.length} cargadas
+                        {hasMore ? " · hay más disponibles" : " · estás al día"}
+                      </p>
+                      <div ref={sentinelRef} aria-hidden="true" className="h-1 w-full" />
+                      {hasMore && (
+                        <button
+                          type="button"
+                          onClick={cargarMas}
+                          disabled={cargandoMas}
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-5 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-50"
+                        >
+                          {cargandoMas ? "Cargando..." : "Cargar más noticias"}
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>

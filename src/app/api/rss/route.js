@@ -761,8 +761,15 @@ export async function GET(req) {
       return NextResponse.json({ imagen: encontrada });
     }
 
+    // Feed paginado: ?limit=30&offset=0. Se pide limit+1 para saber si hay más.
+    // Sin ?limit se mantiene respuesta legacy (arreglo) por compatibilidad.
+    const limiteParam = searchParams.get("limit");
+    const usaPaginacion = limiteParam !== null;
+    const limite = Math.min(Math.max(Number(limiteParam) || 30, 1), 100);
+    const desplazamiento = Math.max(Number(searchParams.get("offset")) || 0, 0);
+
     const [rows] = await db.query(
-      `SELECT 
+      `SELECT
         a.id,
         a.titulo,
         a.resumen,
@@ -780,8 +787,9 @@ export async function GET(req) {
        FROM articulos_publicados a
        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
        WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
-       ORDER BY a.fecha_publicacion DESC, a.id DESC`,
-      [userId]
+       ORDER BY a.fecha_publicacion DESC, a.id DESC
+       LIMIT ? OFFSET ?`,
+      [userId, usaPaginacion ? limite + 1 : 1000000, desplazamiento]
     );
     const filasReparadas = rows.map((row) => ({
       ...row,
@@ -789,7 +797,16 @@ export async function GET(req) {
       resumen: repararTextoMalDecodificado(row.resumen),
       fuente_nombre: repararTextoMalDecodificado(row.fuente_nombre),
     }));
-    return NextResponse.json(filasReparadas);
+    if (!usaPaginacion) return NextResponse.json(filasReparadas);
+    const tieneMas = filasReparadas.length > limite;
+    const articulos = tieneMas ? filasReparadas.slice(0, limite) : filasReparadas;
+    return NextResponse.json({
+      articles: articulos,
+      hasMore: tieneMas,
+      nextOffset: desplazamiento + articulos.length,
+      limit: limite,
+      offset: desplazamiento,
+    });
   } catch (error) {
     console.error("Error al obtener datos:", error);
     return NextResponse.json({ error: "Error al obtener datos" }, { status: 500 });
