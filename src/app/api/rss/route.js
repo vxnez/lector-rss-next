@@ -785,13 +785,94 @@ export async function GET(req) {
       return NextResponse.json({ imagen: encontrada });
     }
 
-    // Feed paginado: ?limit=30&offset=0. Se pide limit+1 para saber si hay más.
-    // Sin ?limit se mantiene respuesta legacy (arreglo) por compatibilidad.
-    const limiteParam = searchParams.get("limit");
-    const usaPaginacion = limiteParam !== null;
-    const limite = Math.min(Math.max(Number(limiteParam) || 30, 1), 100);
-    const desplazamiento = Math.max(Number(searchParams.get("offset")) || 0, 0);
+    // Conteos globales para las tarjetas (pendientes / leídas / guardadas).
+    if (tipo === "conteos") {
+      const [[c]] = await db.query(
+        `SELECT
+           SUM(a.leido = 0 AND (a.guardado = 0 OR a.guardado IS NULL)) AS pendientes,
+           SUM(a.leido = 1) AS leidas,
+           SUM(a.guardado = 1) AS guardadas
+         FROM articulos_publicados a
+         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+         WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)`,
+        [userId]
+      );
+      return NextResponse.json({
+        pendientes: Number(c?.pendientes) || 0,
+        leidas: Number(c?.leidas) || 0,
+        guardadas: Number(c?.guardadas) || 0,
+      });
+    }
 
+    // Facetas de categorías: respeta pestaña/búsqueda/fuentes, ignora las
+    // categorías elegidas (comportamiento estándar de facetas).
+    if (tipo === "facetas") {
+      const { where, params } = construirFiltros(searchParams, userId, { ignorarCategorias: true });
+      const [filas] = await db.query(
+        `SELECT a.categoria AS categoria, COUNT(*) AS total
+         FROM articulos_publicados a
+         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+         ${where}
+         GROUP BY a.categoria
+         ORDER BY a.categoria ASC`,
+        params
+      );
+      return NextResponse.json(
+        filas.map((fila) => ({
+          categoria: repararTextoMalDecodificado(fila.categoria),
+          total: Number(fila.total) || 0,
+        }))
+      );
+    }
+
+    // Feed paginado con filtros en servidor:
+    // ?page=2&limit=30&tab=todas&q=&categorias=A,B&fuentes=1,2&orden=recientes
+    // Sin ?limit ni ?page se mantiene respuesta legacy (arreglo) por compatibilidad.
+    const limiteParam = searchParams.get("limit");
+    const paginaParam = searchParams.get("page");
+    const usaPaginacion = limiteParam !== null || paginaParam !== null;
+    const limite = Math.min(Math.max(Number(limiteParam) || 30, 1), 100);
+    const pagina = Math.max(Number(paginaParam) || 1, 1);
+    const desplazamiento = searchParams.get("offset") !== null
+      ? Math.max(Number(searchParams.get("offset")) || 0, 0)
+      : (pagina - 1) * limite;
+
+    if (!usaPaginacion) {
+      const [rowsLegacy] = await db.query(
+        `SELECT
+          a.id,
+          a.titulo,
+          a.resumen,
+          a.url_original,
+          a.fecha_publicacion,
+          a.leido,
+          a.guardado,
+          a.categoria,
+          a.clasificacion_metodo,
+          a.clasificacion_confianza,
+          a.imagen_url,
+          a.fuente_id,
+          f.titulo AS fuente_nombre,
+          f.url_feed AS fuente_url
+         FROM articulos_publicados a
+         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+         WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
+         ORDER BY a.fecha_publicacion DESC, a.id DESC
+         LIMIT 1000000 OFFSET 0`,
+        [userId]
+      );
+      return NextResponse.json(rowsLegacy.map(repararFilaArticulo));
+    }
+
+    const { where, params, orderBy } = construirFiltros(searchParams, userId, {});
+    const [[conteo]] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM articulos_publicados a
+       INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+       ${where}`,
+      params
+    );
+    const total = Number(conteo?.total) || 0;
     const [rows] = await db.query(
       `SELECT
         a.id,
@@ -810,26 +891,20 @@ export async function GET(req) {
         f.url_feed AS fuente_url
        FROM articulos_publicados a
        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-       WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
-       ORDER BY a.fecha_publicacion DESC, a.id DESC
+       ${where}
+       ${orderBy}
        LIMIT ? OFFSET ?`,
-      [userId, usaPaginacion ? limite + 1 : 1000000, desplazamiento]
+      [...params, limite, desplazamiento]
     );
-    const filasReparadas = rows.map((row) => ({
-      ...row,
-      titulo: repararTextoMalDecodificado(row.titulo),
-      resumen: repararTextoMalDecodificado(row.resumen),
-      fuente_nombre: repararTextoMalDecodificado(row.fuente_nombre),
-    }));
-    if (!usaPaginacion) return NextResponse.json(filasReparadas);
-    const tieneMas = filasReparadas.length > limite;
-    const articulos = tieneMas ? filasReparadas.slice(0, limite) : filasReparadas;
+    const articulos = rows.map(repararFilaArticulo);
+    const totalPaginas = Math.max(Math.ceil(total / limite), 1);
     return NextResponse.json({
       articles: articulos,
-      hasMore: tieneMas,
-      nextOffset: desplazamiento + articulos.length,
+      total,
+      page: Math.min(pagina, totalPaginas),
       limit: limite,
-      offset: desplazamiento,
+      totalPages: totalPaginas,
+      hasMore: desplazamiento + articulos.length < total,
     });
   } catch (error) {
     console.error("Error al obtener datos:", error);
@@ -982,6 +1057,74 @@ function normalizarCategoria(valor = "") {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+}
+
+function repararFilaArticulo(row) {
+  return {
+    ...row,
+    titulo: repararTextoMalDecodificado(row.titulo),
+    resumen: repararTextoMalDecodificado(row.resumen),
+    fuente_nombre: repararTextoMalDecodificado(row.fuente_nombre),
+  };
+}
+
+// Escapa comodines de LIKE para que la búsqueda sea literal.
+function escaparLike(valor = "") {
+  return valor.replace(/[\\%_]/g, (m) => `\\${m}`);
+}
+
+// Construye WHERE/params/ORDER para el feed con filtros de pestaña,
+// búsqueda, categorías, fuentes y orden. Todo parametrizado; el orden
+// va por lista blanca para no interpolar input crudo en SQL.
+function construirFiltros(searchParams, userId, { ignorarCategorias = false } = {}) {
+  const condiciones = ["f.usuario_id = ?", "(a.descartado = 0 OR a.descartado IS NULL)"];
+  const params = [userId];
+
+  const tab = searchParams.get("tab") || "todas";
+  if (tab === "guardadas") {
+    condiciones.push("a.guardado = 1");
+  } else if (tab === "leidas") {
+    condiciones.push("a.leido = 1");
+  } else {
+    condiciones.push("a.leido = 0 AND (a.guardado = 0 OR a.guardado IS NULL)");
+  }
+
+  const q = (searchParams.get("q") || "").trim();
+  if (q) {
+    const patron = `%${escaparLike(q)}%`;
+    condiciones.push("(a.titulo LIKE ? OR a.resumen LIKE ?)");
+    params.push(patron, patron);
+  }
+
+  const fuentes = (searchParams.get("fuentes") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (fuentes.length > 0) {
+    condiciones.push(`a.fuente_id IN (${fuentes.map(() => "?").join(",")})`);
+    params.push(...fuentes);
+  }
+
+  if (!ignorarCategorias) {
+    const categorias = (searchParams.get("categorias") || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (categorias.length > 0) {
+      condiciones.push(`a.categoria IN (${categorias.map(() => "?").join(",")})`);
+      params.push(...categorias);
+    }
+  }
+
+  const orden = searchParams.get("orden") || "recientes";
+  const orderBy =
+    orden === "az"
+      ? "ORDER BY a.titulo ASC, a.id ASC"
+      : orden === "za"
+        ? "ORDER BY a.titulo DESC, a.id DESC"
+        : "ORDER BY a.fecha_publicacion DESC, a.id DESC";
+
+  return { where: `WHERE ${condiciones.join(" AND ")}`, params, orderBy };
 }
 
 const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0.1 };

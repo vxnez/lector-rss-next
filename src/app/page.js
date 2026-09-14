@@ -1,7 +1,7 @@
 // src/app/page.js
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
@@ -68,6 +68,37 @@ function IconoFuentePildora({ fuente }) {
   );
 }
 
+const PAGE_SIZE = 30;
+
+// Construye los query params del feed (página + filtros server-side).
+function paramsFeed({ page, tab, orden, q, categorias, fuentes }) {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    page: String(page),
+    tab,
+    orden,
+  });
+  if (q.trim()) params.set("q", q.trim());
+  if (categorias.length > 0) params.set("categorias", categorias.join(","));
+  if (fuentes.length > 0) params.set("fuentes", fuentes.join(","));
+  return params.toString();
+}
+
+// Ventana de números de página con elipsis: 1 … c-1 c c+1 … N
+function numerosPagina(total, actual) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const paginas = new Set([1, 2, total - 1, total, actual - 1, actual, actual + 1]);
+  const lista = [...paginas].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const resultado = [];
+  let anterior = 0;
+  for (const n of lista) {
+    if (n - anterior > 1) resultado.push("…");
+    resultado.push(n);
+    anterior = n;
+  }
+  return resultado;
+}
+
 export default function HomePage() {
   const [session, setSession] = useState(null);
   const [articulos, setArticulos] = useState([]);
@@ -89,11 +120,15 @@ export default function HomePage() {
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [cargandoMas, setCargandoMas] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [totalNoticias, setTotalNoticias] = useState(0);
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+  const [conteos, setConteos] = useState({ pendientes: 0, leidas: 0, guardadas: 0 });
+  const [cargandoFeed, setCargandoFeed] = useState(false);
+  const [nonceRecarga, setNonceRecarga] = useState(0);
   const [toast, setToast] = useState(null);
-  const sentinelRef = useRef(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(true);
 
@@ -114,7 +149,9 @@ export default function HomePage() {
     }
     setSession(null);
     setArticulos([]);
-    setHasMore(true);
+    setPagina(1);
+    setTotalNoticias(0);
+    setConteos({ pendientes: 0, leidas: 0, guardadas: 0 });
   }, []);
 
 
@@ -167,79 +204,22 @@ export default function HomePage() {
     }
   }, []);
 
-  const PAGE_SIZE = 30;
-
-  const fetchArticles = useCallback(async (signal, { reset = true, offset = 0 } = {}) => {
+  // Conteos globales para las tarjetas (no dependen de la página visible).
+  const fetchConteos = useCallback(async (signal) => {
     try {
-      const resArticles = await fetch(`/api/rss?limit=${PAGE_SIZE}&offset=${offset}`, {
-        cache: "no-store",
-        signal,
-      });
-      if (resArticles.ok) {
-        const articlesData = await resArticles.json();
-        // Compat: objeto paginado {articles, hasMore} o arreglo legacy.
-        const articles = Array.isArray(articlesData) ? articlesData : (articlesData.articles || []);
-        const more = Array.isArray(articlesData) ? false : Boolean(articlesData.hasMore);
-        if (reset) {
-          setArticulos(articles);
-        } else {
-          setArticulos((prev) => {
-            const vistos = new Set(prev.map((a) => String(a.id)));
-            return [...prev, ...articles.filter((a) => !vistos.has(String(a.id)))];
-          });
-        }
-        setHasMore(more);
-        if (reset) setLastUpdated(new Date());
-
-        setSourcesList((previousSources) => {
-          const sourcesById = new Map(previousSources.map((source) => [String(source.id), source]));
-          articles.forEach((article) => {
-            if (!article.fuente_id || sourcesById.has(String(article.fuente_id))) return;
-            sourcesById.set(String(article.fuente_id), {
-              id: article.fuente_id,
-              nombre: article.fuente_nombre || "Fuente RSS",
-              url_feed: article.fuente_url || "",
-              categoria: article.categoria || "General",
-            });
-          });
-          return Array.from(sourcesById.values());
+      const res = await fetch("/api/rss?tipo=conteos", { cache: "no-store", signal });
+      if (res.ok) {
+        const data = await res.json();
+        setConteos({
+          pendientes: Number(data.pendientes) || 0,
+          leidas: Number(data.leidas) || 0,
+          guardadas: Number(data.guardadas) || 0,
         });
       }
     } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error("Error al obtener artículos:", err);
-      }
+      if (err.name !== "AbortError") console.error("Error al obtener conteos:", err);
     }
   }, []);
-
-  const cargarMas = useCallback(async () => {
-    if (cargandoMas || !hasMore) return;
-    setCargandoMas(true);
-    try {
-      let offset = 0;
-      setArticulos((prev) => {
-        offset = prev.length;
-        return prev;
-      });
-      await fetchArticles(undefined, { reset: false, offset });
-    } finally {
-      setCargandoMas(false);
-    }
-  }, [cargandoMas, hasMore, fetchArticles]);
-
-  // Scroll infinito: cuando el centinela entra en viewport, pide la siguiente página.
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore) return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) cargarMas();
-      },
-      { rootMargin: "600px 0px" }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [cargarMas, hasMore, articulos.length]);
 
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
@@ -258,16 +238,19 @@ export default function HomePage() {
       } catch {
         break;
       }
-      await fetchArticles();
+      // Refresca la página visible (vía nonce) con las categorías ya clasificadas.
+      setNonceRecarga((n) => n + 1);
       if (restantes === 0) break;
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
-  }, [fetchArticles]);
+  }, []);
 
+  // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
+  // carga el efecto de datos paginados cuando hay sesión.
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadData() {
+    async function loadSession() {
       try {
         const resAuth = await fetch("/api/auth/session", { signal: controller.signal });
         const sessionData = await resAuth.json();
@@ -276,18 +259,8 @@ export default function HomePage() {
 
         if (sessionData?.user) {
           setSession(sessionData);
-          await Promise.all([
-            fetchArticles(controller.signal),
-            fetchSources(controller.signal),
-          ]);
-
-          if (controller.signal.aborted) return;
-
-          // Comprobar si es la primera vez que inicia sesión en este navegador
           const hasSeenWelcome = localStorage.getItem(`welcome_seen_${sessionData.user.email || sessionData.user.id}`);
-          if (!hasSeenWelcome) {
-            setShowWelcomeModal(true);
-          }
+          if (!hasSeenWelcome) setShowWelcomeModal(true);
         } else {
           // Sin cuenta: se entra como invitado si hay cookie de sesión válida.
           try {
@@ -297,39 +270,104 @@ export default function HomePage() {
             });
             if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
-            await Promise.all([
-              fetchArticles(controller.signal),
-              fetchSources(controller.signal),
-            ]);
-            if (controller.signal.aborted) return;
             const hasSeenWelcome = localStorage.getItem("welcome_seen_invitado");
-            if (!hasSeenWelcome) {
-              setShowWelcomeModal(true);
-            }
+            if (!hasSeenWelcome) setShowWelcomeModal(true);
           } catch (err) {
-            if (err.name !== "AbortError") {
-              console.error("Error al cargar invitado:", err);
-            }
+            if (err.name !== "AbortError") console.error("Error al cargar invitado:", err);
           }
         }
       } catch (err) {
-        if (err.name !== "AbortError") {
-          console.error("Error al cargar sesión:", err);
-        }
+        if (err.name !== "AbortError") console.error("Error al cargar sesión:", err);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
-    loadData();
+    loadSession();
+    return () => controller.abort();
+  }, []);
 
-    // Función de limpieza para cancelar peticiones pendientes si el componente se desamonta
-    return () => {
-      controller.abort();
-    };
-  }, [fetchArticles, fetchSources]);
+  // Fuentes + conteos: al iniciar sesión y tras cambios estructurales.
+  useEffect(() => {
+    if (!session?.user) return undefined;
+    const controller = new AbortController();
+    async function cargarMeta() {
+      await Promise.all([
+        fetchSources(controller.signal),
+        fetchConteos(controller.signal),
+      ]);
+    }
+    cargarMeta();
+    return () => controller.abort();
+  }, [session, fetchSources, fetchConteos, nonceRecarga]);
+
+  // Debounce de búsqueda: 400ms tras dejar de teclear.
+  const busquedaRef = useRef("");
+  useEffect(() => {
+    const temporizador = window.setTimeout(() => {
+      if (busquedaRef.current !== searchQuery) {
+        busquedaRef.current = searchQuery;
+        setPagina(1);
+        setBusquedaAplicada(searchQuery);
+      }
+    }, 400);
+    return () => window.clearTimeout(temporizador);
+  }, [searchQuery]);
+
+  // Feed paginado + facetas: página, pestaña, orden, búsqueda, filtros.
+  useEffect(() => {
+    if (!session?.user) return undefined;
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    async function cargarFeed() {
+      setCargandoFeed(true);
+      try {
+        const feedParams = paramsFeed({
+          page: pagina,
+          tab: activeTab,
+          orden,
+          q: busquedaAplicada,
+          categorias: categoriasSeleccionadas,
+          fuentes: fuentesSeleccionadas,
+        });
+        const facetaParams = new URLSearchParams({ tipo: "facetas", tab: activeTab });
+        if (busquedaAplicada.trim()) facetaParams.set("q", busquedaAplicada.trim());
+        if (fuentesSeleccionadas.length > 0) facetaParams.set("fuentes", fuentesSeleccionadas.join(","));
+
+        const [resFeed, resFacetas] = await Promise.all([
+          fetch(`/api/rss?${feedParams}`, { cache: "no-store", signal }),
+          fetch(`/api/rss?${facetaParams}`, { cache: "no-store", signal }),
+        ]);
+        if (signal.aborted) return;
+
+        if (resFeed.ok) {
+          const data = await resFeed.json();
+          const articles = Array.isArray(data) ? data : (data.articles || []);
+          setArticulos(articles);
+          setTotalNoticias(Array.isArray(data) ? articles.length : (Number(data.total) || 0));
+          // Si la página quedó vacía por borrados y no es la primera, retrocede.
+          if (!Array.isArray(data) && articles.length === 0 && (Number(data.total) || 0) > 0 && pagina > 1) {
+            setPagina((p) => Math.max(p - 1, 1));
+          }
+          setLastUpdated(new Date());
+        }
+        if (resFacetas.ok) {
+          const facetas = await resFacetas.json();
+          setCategoriasDisponibles(
+            (Array.isArray(facetas) ? facetas : []).map((f) => f.categoria).filter(Boolean)
+          );
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Error al cargar el feed:", err);
+      } finally {
+        if (!signal.aborted) setCargandoFeed(false);
+      }
+    }
+
+    cargarFeed();
+    return () => controller.abort();
+  }, [session, pagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, nonceRecarga]);
 
   const closeWelcomeModal = () => {
     if (session?.user) {
@@ -357,7 +395,11 @@ export default function HomePage() {
       if (!response.ok) throw new Error("No se pudieron actualizar las fuentes.");
       const data = await response.json().catch(() => ({}));
 
-      await Promise.all([fetchArticles(), fetchSources()]);
+      // Vuelve a la primera página (o recarga si ya está en ella) y actualiza fuentes/conteos.
+      if (pagina === 1) setNonceRecarga((n) => n + 1);
+      else setPagina(1);
+      fetchSources();
+      fetchConteos();
       const restaurados = Number(data.restaurados) || 0;
       const pendientes = Number(data.pendientes) || 0;
       const omitidas = Number(data.omitidas) || 0;
@@ -388,16 +430,18 @@ export default function HomePage() {
     setConfirmarEliminar(false);
     const backupArticulos = [...articulos];
     setArticulos([]);
-    setHasMore(false);
+    setTotalNoticias(0);
 
     try {
       const res = await fetch("/api/rss?delete_all=true", { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudieron eliminar las publicaciones.");
+      setPagina(1);
+      fetchConteos();
       notify("Publicaciones eliminadas. Con 'Refrescar' se recuperan las de hoy.", "success");
     } catch (err) {
       console.error("Error al eliminar todas las noticias:", err);
       setArticulos(backupArticulos);
-      setHasMore(true);
+      setNonceRecarga((n) => n + 1);
       notify(err.message || "No se pudo eliminar el feed.", "error");
     }
   };
@@ -418,6 +462,9 @@ export default function HomePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo actualizar el estado de lectura.");
       }
+      // La noticia puede salir de la pestaña actual: recarga página + conteos.
+      setNonceRecarga((n) => n + 1);
+      fetchConteos();
       return true;
     } catch {
       setArticulos((prev) =>
@@ -443,6 +490,8 @@ export default function HomePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo actualizar el estado guardado.");
       }
+      setNonceRecarga((n) => n + 1);
+      fetchConteos();
       return true;
     } catch {
       setArticulos((prev) =>
@@ -470,6 +519,7 @@ export default function HomePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo actualizar la categoría.");
       }
+      setNonceRecarga((n) => n + 1);
       return true;
     } catch {
       if (articuloCopia) {
@@ -484,7 +534,11 @@ export default function HomePage() {
     setArticulos((prev) => prev.filter((art) => art.id !== id));
 
     try {
-      await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("No se pudo descartar la noticia.");
+      // Rellena la página desde el servidor y actualiza conteos.
+      setNonceRecarga((n) => n + 1);
+      fetchConteos();
     } catch {
       if (articuloCopia) {
         setArticulos((prev) => [...prev, articuloCopia]);
@@ -492,37 +546,9 @@ export default function HomePage() {
     }
   };
 
-  const categoriasDisponibles = useMemo(() => {
-    let baseList = articulos;
-    if (activeTab === "guardadas") {
-      baseList = articulos.filter((art) => art.guardado);
-    } else if (activeTab === "leidas") {
-      baseList = articulos.filter((art) => art.leido);
-    } else {
-      baseList = articulos.filter((art) => !art.leido && !art.guardado);
-    }
-
-    // Las categorías se limitan a las fuentes seleccionadas (1, 2 o más).
-    if (fuentesSeleccionadas.length > 0) {
-      const idsSeleccionados = new Set(fuentesSeleccionadas.map((id) => String(id)));
-      baseList = baseList.filter((art) => idsSeleccionados.has(String(art.fuente_id)));
-    }
-
-    const query = searchQuery.trim().toLocaleLowerCase("es");
-    if (query) {
-      baseList = baseList.filter((art) =>
-        `${art.titulo || ""} ${art.resumen || ""}`.toLocaleLowerCase("es").includes(query)
-      );
-    }
-
-    const categorias = Array.from(new Set(baseList.map((art) => art.categoria).filter(Boolean)));
-    categorias.sort((a, b) => a.localeCompare(b, "es"));
-    if (orden === "za") categorias.reverse();
-    return categorias;
-  }, [articulos, activeTab, fuentesSeleccionadas, searchQuery, orden]);
-
-  // Si al cambiar de fuentes una categoría seleccionada ya no existe, se retira
-  // para no dejar el feed vacío con un filtro imposible.
+  // Las facetas vienen del servidor (respetan pestaña/búsqueda/fuentes).
+  // Si una categoría seleccionada deja de existir, se retira para no dejar
+  // el feed vacío con un filtro imposible.
   useEffect(() => {
     setCategoriasSeleccionadas((actuales) => {
       if (actuales.length === 0) return actuales;
@@ -532,12 +558,29 @@ export default function HomePage() {
     });
   }, [categoriasDisponibles]);
 
+  const seleccionarTab = (tab) => {
+    setActiveTab(tab);
+    setCategoriasSeleccionadas([]);
+    setPagina(1);
+  };
+
+  const cambiarOrden = (valor) => {
+    setOrden(valor);
+    setPagina(1);
+  };
+
+  const cambiarPagina = (nueva) => {
+    setPagina(nueva);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const alternarCategoria = (categoria) => {
     setCategoriasSeleccionadas((actuales) => (
       actuales.includes(categoria)
         ? actuales.filter((actual) => actual !== categoria)
         : [...actuales, categoria]
     ));
+    setPagina(1);
   };
 
   const alternarFuente = (fuenteId) => {
@@ -547,6 +590,16 @@ export default function HomePage() {
         ? actuales.filter((actual) => actual !== id)
         : [...actuales, id]
     ));
+    setPagina(1);
+  };
+
+  const limpiarFiltros = () => {
+    setSearchQuery("");
+    setBusquedaAplicada("");
+    busquedaRef.current = "";
+    setCategoriasSeleccionadas([]);
+    setFuentesSeleccionadas([]);
+    setPagina(1);
   };
 
   const hayFiltrosActivos = Boolean(
@@ -563,49 +616,12 @@ export default function HomePage() {
     setPanelMovilAbierto(false);
   }, []);
 
-  const articulosFiltrados = useMemo(() => {
-    let base = articulos;
-    if (activeTab === "guardadas") {
-      base = articulos.filter((art) => art.guardado);
-    } else if (activeTab === "leidas") {
-      base = articulos.filter((art) => art.leido);
-    } else {
-      base = articulos.filter((art) => !art.leido && !art.guardado);
-    }
-
-    if (categoriasSeleccionadas.length > 0) {
-      base = base.filter((art) => categoriasSeleccionadas.includes(art.categoria));
-    }
-
-    if (fuentesSeleccionadas.length > 0) {
-      const idsSeleccionados = new Set(fuentesSeleccionadas.map((id) => String(id)));
-      base = base.filter((art) => idsSeleccionados.has(String(art.fuente_id)));
-    }
-
-    const query = searchQuery.trim().toLocaleLowerCase("es");
-    if (query) {
-      base = base.filter((art) => `${art.titulo || ""} ${art.resumen || ""}`.toLocaleLowerCase("es").includes(query));
-    }
-
-    return base;
-  }, [articulos, activeTab, categoriasSeleccionadas, fuentesSeleccionadas, searchQuery]);
-
-  const articulosOrdenados = useMemo(() => {
-    return [...articulosFiltrados].sort((a, b) => {
-      if (orden === "az") return (a.titulo || "").localeCompare(b.titulo || "");
-      if (orden === "za") return (b.titulo || "").localeCompare(a.titulo || "");
-
-      const fechaA = new Date(a.fecha_publicacion || a.created_at || 0).getTime();
-      const fechaB = new Date(b.fecha_publicacion || b.created_at || 0).getTime();
-
-      if (orden === "recientes") return fechaB - fechaA;
-      return 0;
-    });
-  }, [articulosFiltrados, orden]);
-
-  const totalGuardados = articulos.filter((art) => art.guardado).length;
-  const totalLeidos = articulos.filter((art) => art.leido).length;
-  const totalPendientes = articulos.filter((art) => !art.leido && !art.guardado).length;
+  // Los artículos ya llegan filtrados y ordenados del servidor.
+  // Los totales de las tarjetas son globales (vía /api/rss?tipo=conteos).
+  const totalGuardados = conteos.guardadas;
+  const totalLeidos = conteos.leidas;
+  const totalPendientes = conteos.pendientes;
+  const totalPaginas = Math.max(Math.ceil(totalNoticias / PAGE_SIZE), 1);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
@@ -744,8 +760,7 @@ export default function HomePage() {
                     aria-pressed={tarjeta.tab ? activeTab === tarjeta.tab : undefined}
                     onClick={() => {
                       if (tarjeta.tab) {
-                        setActiveTab(tarjeta.tab);
-                        setCategoriasSeleccionadas([]);
+                        seleccionarTab(tarjeta.tab);
                       } else {
                         irAFiltroFuentes();
                       }
@@ -775,7 +790,13 @@ export default function HomePage() {
               </div>
 
               <div className="order-4 lg:order-none">
-                {articulosOrdenados.length === 0 ? (
+                {cargandoFeed && articulos.length === 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse" aria-label="Cargando noticias">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div key={index} className="h-48 rounded-xl border border-gray-800 bg-gray-900/70" />
+                    ))}
+                  </div>
+                ) : totalNoticias === 0 ? (
                   <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
                   <p className="text-base text-gray-400">
                     {activeTab === "guardadas"
@@ -796,7 +817,7 @@ export default function HomePage() {
                 ) : (
                   <>
                     <NewsFeed
-                      articles={articulosOrdenados}
+                      articles={articulos}
                       onToggleRead={toggleLeido}
                       onToggleSave={toggleGuardado}
                       onUpdateCategory={actualizarCategoria}
@@ -804,19 +825,51 @@ export default function HomePage() {
                     />
                     <div className="mt-6 flex flex-col items-center gap-3">
                       <p className="text-xs text-gray-400" role="status">
-                        Mostrando {articulosOrdenados.length} de {articulos.length} cargadas
-                        {hasMore ? " · hay más disponibles" : " · estás al día"}
+                        Página {pagina} de {totalPaginas} · {totalNoticias} noticias
+                        {cargandoFeed ? " · cargando..." : ""}
                       </p>
-                      <div ref={sentinelRef} aria-hidden="true" className="h-1 w-full" />
-                      {hasMore && (
-                        <button
-                          type="button"
-                          onClick={cargarMas}
-                          disabled={cargandoMas}
-                          className="rounded-xl border border-gray-700 bg-gray-900 px-5 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-50"
-                        >
-                          {cargandoMas ? "Cargando..." : "Cargar más noticias"}
-                        </button>
+                      {totalPaginas > 1 && (
+                        <nav aria-label="Paginación de noticias" className="flex flex-wrap items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => cambiarPagina(pagina - 1)}
+                            disabled={pagina === 1 || cargandoFeed}
+                            aria-label="Página anterior"
+                            className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-40"
+                          >
+                            ← Anterior
+                          </button>
+                          {numerosPagina(totalPaginas, pagina).map((n, i) =>
+                            n === "…" ? (
+                              <span key={`e${i}`} aria-hidden="true" className="px-1 text-xs text-gray-500">…</span>
+                            ) : (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => cambiarPagina(n)}
+                                disabled={cargandoFeed}
+                                aria-label={`Ir a la página ${n}`}
+                                aria-current={n === pagina ? "page" : undefined}
+                                className={`min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${
+                                  n === pagina
+                                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            )
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => cambiarPagina(pagina + 1)}
+                            disabled={pagina === totalPaginas || cargandoFeed}
+                            aria-label="Página siguiente"
+                            className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-40"
+                          >
+                            Siguiente →
+                          </button>
+                        </nav>
                       )}
                     </div>
                   </>
@@ -943,7 +996,7 @@ export default function HomePage() {
                         type="button"
                         role="radio"
                         aria-checked={activo}
-                        onClick={() => setOrden(opcion.valor)}
+                        onClick={() => cambiarOrden(opcion.valor)}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                           activo
                             ? "border-sky-500 bg-sky-500/15 text-sky-300"
@@ -1040,7 +1093,7 @@ export default function HomePage() {
 
               {(searchQuery || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0) && (
                 <button
-                  onClick={() => { setSearchQuery(""); setCategoriasSeleccionadas([]); setFuentesSeleccionadas([]); }}
+                  onClick={limpiarFiltros}
                   className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
                 >
                   <XCircle size={15} /> Limpiar filtros
@@ -1151,7 +1204,10 @@ export default function HomePage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={async (data) => {
-          await Promise.all([fetchArticles(), fetchSources()]);
+          setPagina(1);
+          setNonceRecarga((n) => n + 1);
+          fetchSources();
+          fetchConteos();
           if (Number(data?.pendientes) > 0) {
             notify("Fuente agregada. Completando categorías en segundo plano...", "success");
             procesarColaClasificacion();
@@ -1166,8 +1222,10 @@ export default function HomePage() {
           setIsAddModalOpen(true);
         }}
         onChange={() => {
-          fetchArticles();
+          setPagina(1);
+          setNonceRecarga((n) => n + 1);
           fetchSources();
+          fetchConteos();
         }}
         onNotify={notify}
       />
