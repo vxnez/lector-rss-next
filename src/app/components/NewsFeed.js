@@ -190,6 +190,8 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
                   {/* Marcar Leído */}
                   <button
                     onClick={() => onToggleRead(art.id, isLeido)}
+                    aria-label={isLeido ? "Marcar como no leído" : "Marcar como leído"}
+                    aria-pressed={isLeido}
                     className={`p-1.5 rounded-lg border transition ${
                       isLeido
                         ? "bg-emerald-950/80 border-emerald-700 text-emerald-400"
@@ -197,12 +199,14 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
                     }`}
                     title={isLeido ? "Marcar como no leído" : "Marcar como leído"}
                   >
-                    <Check size={13} />
+                    <Check size={13} aria-hidden="true" />
                   </button>
 
                   {/* Guardar */}
                   <button
                     onClick={() => onToggleSave(art.id, isGuardado)}
+                    aria-label={isGuardado ? "Quitar de guardados" : "Guardar para después"}
+                    aria-pressed={isGuardado}
                     className={`p-1.5 rounded-lg border transition ${
                       isGuardado
                         ? "bg-amber-950/80 border-amber-700 text-amber-400"
@@ -210,7 +214,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
                     }`}
                     title={isGuardado ? "Desguardar" : "Guardar para después"}
                   >
-                    <Bookmark size={13} />
+                    <Bookmark size={13} aria-hidden="true" />
                   </button>
                 </div>
               </div>

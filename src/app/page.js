@@ -76,6 +76,7 @@ export default function HomePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isPerfilOpen, setIsPerfilOpen] = useState(false);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
   
   // Estado para el modal de bienvenida/tutorial de nuevos usuarios
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -380,24 +381,24 @@ export default function HomePage() {
     }
   };
 
-  const handleEliminarTodas = async () => {
-    if (!confirm("¿Estás seguro de que deseas eliminar todas las publicaciones del feed? Al hacer clic en 'Refrescar' se recuperarán las de hoy.")) {
-      return;
-    }
+  // Modal propio de confirmación (sin confirm() nativo): respeta el tema y es accesible.
+  const handleEliminarTodas = () => setConfirmarEliminar(true);
 
+  const confirmarEliminarTodas = async () => {
+    setConfirmarEliminar(false);
     const backupArticulos = [...articulos];
     setArticulos([]);
+    setHasMore(false);
 
     try {
       const res = await fetch("/api/rss?delete_all=true", { method: "DELETE" });
-      if (!res.ok) {
-        await Promise.all(
-          backupArticulos.map((art) => fetch(`/api/rss?id=${art.id}`, { method: "DELETE" }))
-        );
-      }
+      if (!res.ok) throw new Error("No se pudieron eliminar las publicaciones.");
+      notify("Publicaciones eliminadas. Con 'Refrescar' se recuperan las de hoy.", "success");
     } catch (err) {
       console.error("Error al eliminar todas las noticias:", err);
       setArticulos(backupArticulos);
+      setHasMore(true);
+      notify(err.message || "No se pudo eliminar el feed.", "error");
     }
   };
 
@@ -751,7 +752,7 @@ export default function HomePage() {
                     }}
                     className={`border border-gray-800 bg-gray-900/70 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 min-w-0 text-left transition cursor-pointer hover:border-gray-600 ${tarjeta.tab && activeTab === tarjeta.tab ? tarjeta.activo : ""}`}
                   >
-                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 truncate">{tarjeta.label}</p>
+                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-400 truncate">{tarjeta.label}</p>
                     <p className={`text-xl sm:text-2xl font-semibold ${tarjeta.color}`}>{tarjeta.value}</p>
                   </button>
                 ))}
@@ -768,7 +769,7 @@ export default function HomePage() {
                     className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-sky-600"
                   />
                 </label>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
+                <span className="text-xs text-gray-400 whitespace-nowrap">
                   {lastUpdated ? `Actualizado ${lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}` : "Sin actualizar"}
                 </span>
               </div>
@@ -802,7 +803,7 @@ export default function HomePage() {
                       onDelete={descartarArticulo}
                     />
                     <div className="mt-6 flex flex-col items-center gap-3">
-                      <p className="text-xs text-gray-500" role="status">
+                      <p className="text-xs text-gray-400" role="status">
                         Mostrando {articulosOrdenados.length} de {articulos.length} cargadas
                         {hasMore ? " · hay más disponibles" : " · estás al día"}
                       </p>
@@ -1180,8 +1181,37 @@ export default function HomePage() {
         onNotify={notify}
       />
       )}
+      {/* Confirmación de borrado total: modal propio, accesible, sin confirm() nativo */}
+      {confirmarEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-todo" className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 id="titulo-eliminar-todo" className="text-lg font-bold text-white">
+              Eliminar todas las publicaciones
+            </h3>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Se descartarán todas las noticias del feed. Al hacer clic en ‘Refrescar’ se recuperarán las de hoy.
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmarEliminar(false)}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-200 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminarTodas}
+                className="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg text-sm font-medium text-white transition"
+              >
+                Eliminar todo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
-        <div role="status" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
+        <div role="status" aria-live="polite" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
           {toast.message}
         </div>
       )}
