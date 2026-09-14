@@ -1,6 +1,12 @@
 // src/app/api/cron/refresh/route.js — Auto-refresh de feeds (Vercel Cron).
 // Requiere CRON_SECRET en Vercel: el cron envía Authorization: Bearer <secret>.
 // Sin CRON_SECRET solo se permite en desarrollo.
+//
+// Frecuencia (vercel.json): el plan Hobby solo permite 1 ejecución diaria
+// (aquí "0 12 * * *" = entre las 12:00 y 12:59 UTC). Para mayor frecuencia
+// en Hobby, usar un programador externo (p. ej. cron-job.org) contra esta
+// misma ruta con Authorization: Bearer <CRON_SECRET>. En Pro se puede usar
+// "*/45 * * * *". Nota: vercel.json debe ser JSON puro, sin comentarios.
 import { db } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { refrescarFuentesDeUsuario } from "@/app/api/rss/route";
