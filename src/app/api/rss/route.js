@@ -627,7 +627,8 @@ export async function POST(req) {
       let totalPendientes = 0;
       let totalOmitidas = 0;
       const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
-      await Promise.all(fuentes.map(async (fuente) => {
+      // Concurrencia acotada (4): evita saturar serverless con N fetches a la vez.
+      await mapWithConcurrency(fuentes, 4, async (fuente) => {
         try {
           const resultado = await intentarParsearFeed(fuente.url_feed, {
             etag: fuente.etag,
@@ -649,7 +650,7 @@ export async function POST(req) {
         } catch (e) {
           console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
         }
-      }));
+      });
       let totalRestaurados = 0;
       if (body.restore_today) {
         const [restaurados] = await db.query(
@@ -1011,6 +1012,18 @@ function extraerEsperaReintento(texto = "") {
 }
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Concurrencia acotada estilo p-limit sin dependencias: N workers consumen la cola.
+async function mapWithConcurrency(items = [], limite = 4, fn) {
+  const cola = [...items];
+  const workers = Array.from({ length: Math.min(limite, cola.length) }, async () => {
+    while (cola.length > 0) {
+      const item = cola.shift();
+      await fn(item);
+    }
+  });
+  await Promise.all(workers);
+}
 
 async function llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs) {
   const controller = new AbortController();

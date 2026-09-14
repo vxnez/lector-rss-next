@@ -22,98 +22,36 @@ const DOMAIN_COLOR_PALETTES = [
   { bg: "bg-cyan-950/60", text: "text-cyan-400", border: "border-cyan-800/50" },
 ];
 
+const domainColorCache = new Map();
+
 const getDomainColor = (domainName) => {
+  const cached = domainColorCache.get(domainName);
+  if (cached) return cached;
   let hash = 0;
   for (let i = 0; i < domainName.length; i++) {
     hash = domainName.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % DOMAIN_COLOR_PALETTES.length;
-  return DOMAIN_COLOR_PALETTES[index];
+  const palette = DOMAIN_COLOR_PALETTES[index];
+  domainColorCache.set(domainName, palette);
+  return palette;
 };
 
-const getCategoryColor = (categoria) => {
-  return getCategoryStyle(categoria);
+// Fuente única de verdad: lib/categoryStyles. (Se eliminó el switch duplicado muerto.)
+const getCategoryColor = (categoria) => getCategoryStyle(categoria);
 
-  switch (categoria) {
-    case "Inteligencia Artificial":
-      return "bg-violet-950/60 text-violet-300 border-violet-800/50";
-    case "Ciberseguridad":
-      return "bg-red-950/60 text-red-300 border-red-800/50";
-    case "Videojuegos":
-      return "bg-fuchsia-950/60 text-fuchsia-300 border-fuchsia-800/50";
-    case "Ciencia y Espacio":
-      return "bg-purple-950/60 text-purple-300 border-purple-800/50";
-    case "Economía y Finanzas":
-      return "bg-green-950/60 text-green-300 border-green-800/50";
-    case "Fitness y Nutrición":
-      return "bg-amber-950/60 text-amber-300 border-amber-800/50";
-    case "Medio Ambiente":
-      return "bg-emerald-950/60 text-emerald-300 border-emerald-800/50";
-    case "Clima y Meteorología":
-      return "bg-sky-950/60 text-sky-300 border-sky-800/50";
-    case "Seguridad y Justicia":
-      return "bg-red-950/60 text-red-300 border-red-800/50";
-    case "Cultura y Arte":
-      return "bg-pink-950/60 text-pink-300 border-pink-800/50";
-    case "Cine y Series":
-      return "bg-rose-950/60 text-rose-300 border-rose-800/50";
-    case "Música":
-      return "bg-cyan-950/60 text-cyan-300 border-cyan-800/50";
-    case "Sociedad y Sucesos":
-      return "bg-orange-950/60 text-orange-300 border-orange-800/50";
-    case "Gastronomía":
-      return "bg-yellow-950/60 text-yellow-300 border-yellow-800/50";
-    case "Viajes y Turismo":
-      return "bg-teal-950/60 text-teal-300 border-teal-800/50";
-    case "Motor":
-      return "bg-slate-800 text-slate-300 border-slate-700";
-    case "Educación":
-      return "bg-blue-950/60 text-blue-300 border-blue-800/50";
-    case "Moda y Belleza":
-      return "bg-fuchsia-950/60 text-fuchsia-300 border-fuchsia-800/50";
-    case "Hogar y Vida Diaria":
-      return "bg-lime-950/60 text-lime-300 border-lime-800/50";
-    case "Ciencia Ficción y Fantasía":
-      return "bg-indigo-950/60 text-indigo-300 border-indigo-800/50";
-    case "Ciencia":
-      return "bg-purple-950/60 text-purple-300 border-purple-800/50";
-    case "Celulares":
-      return "bg-blue-950/60 text-blue-300 border-blue-800/50";
-    case "Computadoras":
-      return "bg-indigo-950/60 text-indigo-300 border-indigo-800/50";
-    case "Política":
-      return "bg-red-950/60 text-red-300 border-red-800/50";
-    case "Cuidado ambiental":
-      return "bg-emerald-950/60 text-emerald-300 border-emerald-800/50";
-    case "Cuidado físico":
-      return "bg-amber-950/60 text-amber-300 border-amber-800/50";
-    case "Deportes":
-      return "bg-orange-950/60 text-orange-300 border-orange-800/50";
-    case "Salud":
-      return "bg-rose-950/60 text-rose-300 border-rose-800/50";
-    case "Economía":
-      return "bg-green-950/60 text-green-300 border-green-800/50";
-    case "Uso personal":
-      return "bg-cyan-950/60 text-cyan-300 border-cyan-800/50";
-    case "Vida diaria":
-      return "bg-teal-950/60 text-teal-300 border-teal-800/50";
-    case "Tecnología":
-      return "bg-sky-950/60 text-sky-300 border-sky-800/50";
-    default:
-      return "bg-gray-800 text-gray-300 border-gray-700/80";
-  }
-};
+// Formatter hoisteado: no crear un Intl por tarjeta por render.
+const fechaFormatter = new Intl.DateTimeFormat("es-ES", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
 // Función auxiliar para formatear la fecha de publicación de forma legible
 const formatFecha = (fechaStr) => {
-  // Si no hay fecha, usamos la fecha actual o un texto por defecto para pruebas
   const fechaObj = fechaStr ? new Date(fechaStr) : new Date();
   try {
     if (isNaN(fechaObj.getTime())) return "Reciente";
-    return new Intl.DateTimeFormat("es-ES", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(fechaObj);
+    return fechaFormatter.format(fechaObj);
   } catch {
     return "Reciente";
   }
