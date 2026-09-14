@@ -1,9 +1,17 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal } from "lucide-react";
+import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal, Clock, Type } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
+import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { useEffect, useRef, useState } from "react";
+
+const TAMANOS_LECTURA = {
+  normal: "text-sm md:text-base",
+  grande: "text-base md:text-lg",
+  extra: "text-lg md:text-xl leading-relaxed",
+};
+const ORDEN_TAMANOS = ["normal", "grande", "extra"];
 
 // Dirección de la última navegación entre noticias (1 = siguiente, -1 = anterior, 0 = apertura).
 // Vive a nivel de módulo porque el modal se remontan con `key` por noticia y el estado se pierde.
@@ -57,6 +65,24 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setImagenOculta(siguiente);
   };
   const [imagenRemota, setImagenRemota] = useState(null);
+  // Tamaño de letra del cuerpo (persistido por navegador).
+  const [tamanoLectura, setTamanoLectura] = useState(() => {
+    try {
+      const guardado = window.localStorage.getItem("lector_tamano_fuente");
+      return ORDEN_TAMANOS.includes(guardado) ? guardado : "normal";
+    } catch {
+      return "normal";
+    }
+  });
+  const ciclarTamanoLectura = () => {
+    const siguiente = ORDEN_TAMANOS[(ORDEN_TAMANOS.indexOf(tamanoLectura) + 1) % ORDEN_TAMANOS.length];
+    try {
+      window.localStorage.setItem("lector_tamano_fuente", siguiente);
+    } catch {
+      // Sin almacenamiento disponible: solo cambia en esta vista.
+    }
+    setTamanoLectura(siguiente);
+  };
   const [cargandoImagen, setCargandoImagen] = useState(
     () => Boolean(article?.url_original) && !article?.imagen_url
   );
@@ -305,6 +331,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   };
 
   const fechaFormateada = formatFecha(article.fecha_publicacion);
+  const minutosLectura = tiempoLecturaMinutos(article.titulo, article.resumen);
 
   return (
     <div
@@ -427,6 +454,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {fechaFormateada}
                 </span>
               )}
+              <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap" title={`Lectura estimada: ${minutosLectura} min`}>
+                <Clock size={12} className="opacity-75 shrink-0" />
+                {minutosLectura} min
+              </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -435,6 +466,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {posicion} / {total}
                 </span>
               ) : null}
+              <button
+                onClick={ciclarTamanoLectura}
+                title={`Tamaño de letra: ${tamanoLectura} (toca para cambiar)`}
+                aria-label={`Tamaño de letra actual: ${tamanoLectura}. Activar para cambiar.`}
+                className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+              >
+                <Type size={16} />
+              </button>
               {imagenVisible && !imagenRota && (
                 <button
                   onClick={alternarImagen}
@@ -462,7 +501,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </h2>
 
           {/* Cuerpo / Resumen de la noticia (sin scroll interno: usa el scroll del modal) */}
-          <div className="text-gray-300 text-sm md:text-base leading-relaxed space-y-3 break-words">
+          <div className={`text-gray-300 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
             <p>{article.resumen || "Sin resumen disponible para esta noticia."}</p>
           </div>
         </div>

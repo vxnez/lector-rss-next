@@ -3,8 +3,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar } from "lucide-react";
+import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
+import { tiempoLecturaMinutos } from "@/lib/lectura";
 
 // El lector solo se necesita cuando se abre una noticia: fuera del bundle inicial.
 const ArticleReaderModal = dynamic(() => import("./ArticleReaderModal"), { ssr: false });
@@ -108,6 +109,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
           const nombreFuente = getFuenteNombre(art);
           const colorStyles = getDomainColor(nombreFuente);
           const fechaFormateada = formatFecha(art.fecha_publicacion);
+          const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
           return (
             <div
               key={art.id}
@@ -136,6 +138,10 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
                         <span>{fechaFormateada}</span>
                       </span>
                     )}
+                    <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 rounded text-[11px]" title={`Lectura estimada: ${minutosLectura} min`}>
+                      <Clock size={11} className="opacity-75" />
+                      <span>{minutosLectura} min</span>
+                    </span>
                   </div>
 
                   <button
