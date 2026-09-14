@@ -19,8 +19,29 @@ const parser = new Parser({
   },
 });
 
+// LRU mínima sin dependencias: evita crecimiento sin cota en servidor.
+// Solo se cachean éxitos de Gemini; los fallos ("sin-ia") no se guardan.
+const CLASIFICACION_CACHE_MAX = 500;
 const clasificacionCache = new Map();
 const imagenPaginaCache = new Map();
+
+function cacheClasificacionGet(key) {
+  const hit = clasificacionCache.get(key);
+  if (hit) {
+    // Refresca recencia.
+    clasificacionCache.delete(key);
+    clasificacionCache.set(key, hit);
+  }
+  return hit;
+}
+
+function cacheClasificacionSet(key, valor) {
+  if (clasificacionCache.has(key)) clasificacionCache.delete(key);
+  clasificacionCache.set(key, valor);
+  if (clasificacionCache.size > CLASIFICACION_CACHE_MAX) {
+    clasificacionCache.delete(clasificacionCache.keys().next().value);
+  }
+}
 
 async function extraerImagenDePagina(url) {
   const directa = await extraerImagenDirecta(url);
@@ -87,6 +108,8 @@ async function extraerImagenScreenshot(url) {
 }
 let classificationSchemaPromise;
 
+// Red de seguridad en cold start (cacheada por promesa): el esquema canónico
+// vive en sql/03_articulos.sql + sql/06_ensure_schema.sql para BDs antiguas.
 async function ensureClassificationSchema() {
   if (!classificationSchemaPromise) {
     classificationSchemaPromise = (async () => {
@@ -1107,7 +1130,7 @@ async function clasificarLoteConIA(apiKey, noticias) {
   const grupos = new Map();
   noticias.forEach((noticia, indice) => {
     const key = `${(noticia.titulo || "").trim()}\u0000${(noticia.resumen || "").trim()}`;
-    const cached = clasificacionCache.get(key);
+    const cached = cacheClasificacionGet(key);
     if (cached) {
       resultados[indice] = cached;
       return;
@@ -1131,7 +1154,7 @@ async function clasificarLoteConIA(apiKey, noticias) {
       lote.forEach((item, posicion) => {
         const validada = validarPropuestaCategoria(porIndice.get(posicion));
         const resultado = validada || { ...SIN_CLASIFICACION };
-        if (validada) clasificacionCache.set(item.key, resultado);
+        if (validada) cacheClasificacionSet(item.key, resultado);
         item.indices.forEach((indice) => {
           resultados[indice] = resultado;
         });
