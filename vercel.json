@@ -1,8 +1,14 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      // Plan Hobby: solo se permite 1 ejecución diaria (se dispara entre
+      // las 12:00 y 12:59 UTC). Para mayor frecuencia en Hobby, usar un
+      // programador externo (p. ej. cron-job.org) contra /api/cron/refresh
+      // con Authorization: Bearer <CRON_SECRET>. En Pro se puede volver a
+      // "*/45 * * * *".
       "path": "/api/cron/refresh",
-      "schedule": "*/45 * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
