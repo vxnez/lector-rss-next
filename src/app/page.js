@@ -31,6 +31,8 @@ import {
   Search,
   XCircle,
   User,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 function dominioDeFuente(urlFeed = "") {
@@ -84,6 +86,13 @@ function paramsFeed({ page, tab, orden, q, categorias, fuentes }) {
   return params.toString();
 }
 
+// Convierte la clave VAPID (base64url) al formato que pide PushManager.
+function urlBase64ToUint8Array(base64) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob(base64.replace(/-/g, "+").replace(/_/g, "/") + padding);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
 // Ventana de números de página con elipsis: 1 … c-1 c c+1 … N
 function numerosPagina(total, actual) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -128,6 +137,9 @@ export default function HomePage() {
   const [conteos, setConteos] = useState({ pendientes: 0, leidas: 0, guardadas: 0 });
   const [cargandoFeed, setCargandoFeed] = useState(false);
   const [nonceRecarga, setNonceRecarga] = useState(0);
+  const [pushSoportado, setPushSoportado] = useState(false);
+  const [pushActivado, setPushActivado] = useState(false);
+  const [pushCargando, setPushCargando] = useState(false);
   const [toast, setToast] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(true);
@@ -244,6 +256,77 @@ export default function HomePage() {
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
   }, []);
+
+  // Service worker de push + estado de suscripción (solo navegadores compatibles).
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return;
+    }
+    let cancelado = false;
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(async (registro) => {
+        if (cancelado) return;
+        setPushSoportado(true);
+        const existente = await registro.pushManager.getSubscription().catch(() => null);
+        if (!cancelado) setPushActivado(Boolean(existente));
+      })
+      .catch(() => {
+        if (!cancelado) setPushSoportado(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const gestionarPush = useCallback(async () => {
+    if (pushCargando) return;
+    setPushCargando(true);
+    try {
+      const registro = await navigator.serviceWorker.ready;
+      const existente = await registro.pushManager.getSubscription();
+      if (existente) {
+        await existente.unsubscribe().catch(() => {});
+        await fetch("/api/push", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: existente.endpoint }),
+        });
+        setPushActivado(false);
+        notify("Notificaciones desactivadas.", "success");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        notify("Las notificaciones están bloqueadas en tu navegador.", "error");
+        return;
+      }
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") {
+        notify("Sin permiso no se pueden activar los avisos.", "error");
+        return;
+      }
+      const resKey = await fetch("/api/push", { cache: "no-store" });
+      const { publicKey } = await resKey.json();
+      if (!publicKey) throw new Error("Push no configurado en el servidor (falta VAPID_PUBLIC_KEY).");
+      const suscripcion = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      const res = await fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(suscripcion),
+      });
+      if (!res.ok) throw new Error("No se pudo guardar la suscripción.");
+      setPushActivado(true);
+      notify("Notificaciones activadas. Te avisaremos de noticias nuevas.", "success");
+    } catch (err) {
+      console.error("Error con notificaciones push:", err);
+      notify(err.message || "No se pudieron activar las notificaciones.", "error");
+    } finally {
+      setPushCargando(false);
+    }
+  }, [pushCargando, notify]);
 
   // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
   // carga el efecto de datos paginados cuando hay sesión.
@@ -958,6 +1041,21 @@ export default function HomePage() {
                     <span className="truncate">Fuentes</span>
                       </button>
                       </div>
+                      {pushSoportado && (
+                        <button
+                          type="button"
+                          onClick={gestionarPush}
+                          disabled={pushCargando}
+                          aria-pressed={pushActivado}
+                          title={pushActivado ? "Desactivar avisos de noticias nuevas" : "Avisar cuando haya noticias nuevas"}
+                          className="w-full min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          {pushActivado ? <BellOff size={14} /> : <Bell size={14} />}
+                          <span className="truncate">
+                            {pushCargando ? "Configurando..." : pushActivado ? "Notificaciones activadas" : "Activar notificaciones"}
+                          </span>
+                        </button>
+                      )}
                     </section>
                   </div>
                 )}

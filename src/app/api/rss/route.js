@@ -2,7 +2,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { resolverUsuarioId } from "@/lib/invitado";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { sendPushToUser } from "@/lib/push";
 import Parser from "rss-parser";
 
 export const maxDuration = 60;
@@ -637,56 +638,33 @@ export async function POST(req) {
     }
     
     if (body.action === "refresh") {
-      const [fuentes] = await db.query(
-        "SELECT id, url_feed, titulo, etag, last_modified FROM fuentes_rss WHERE usuario_id = ?",
-        [userId]
-      );
-
-      if (!fuentes || fuentes.length === 0) {
+      const resumen = await refrescarFuentesDeUsuario(userId, {
+        restoreToday: Boolean(body.restore_today),
+      });
+      if (resumen.vacia) {
         return NextResponse.json({ message: "No hay fuentes registradas para actualizar", nuevos: 0 });
       }
-
-      let totalNuevas = 0;
-      let totalPendientes = 0;
-      let totalOmitidas = 0;
-      const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
-      // Concurrencia acotada (4): evita saturar serverless con N fetches a la vez.
-      await mapWithConcurrency(fuentes, 4, async (fuente) => {
-        try {
-          const resultado = await intentarParsearFeed(fuente.url_feed, {
-            etag: fuente.etag,
-            lastModified: fuente.last_modified,
-          });
-          if (resultado?.sinCambios) {
-            await actualizarValidadoresFuente(fuente.id, null, null);
-            totalOmitidas++;
-            return;
-          }
-          const feed = resultado?.feed;
-          if (feed?.items && feed.items.length > 0) {
-            const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes, { omitirIA: true });
-            const { insertados } = await persistirArticulos(fuente.id, feed.items, clasificaciones, limiteFecha);
-            totalNuevas += insertados;
-            totalPendientes += extraerPendientes(clasificaciones).length;
-            await actualizarValidadoresFuente(fuente.id, resultado?.etag, resultado?.lastModified);
-          }
-        } catch (e) {
-          console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
-        }
-      });
-      let totalRestaurados = 0;
-      if (body.restore_today) {
-        const [restaurados] = await db.query(
-          `UPDATE articulos_publicados a
-           INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-           SET a.descartado = 0
-           WHERE f.usuario_id = ? AND a.descartado = 1 AND a.fecha_publicacion >= ?`,
-          [userId, inicioHoy]
+      // Push no bloqueante: avisa solo si hubo noticias realmente nuevas.
+      if (resumen.nuevos > 0) {
+        after(() =>
+          sendPushToUser(userId, {
+            title: "RSS Dashboard",
+            body:
+              resumen.nuevos === 1
+                ? "Tienes 1 noticia nueva en tus fuentes."
+                : `Tienes ${resumen.nuevos} noticias nuevas en tus fuentes.`,
+            url: "/",
+          }).catch((err) => console.error("Error al enviar push:", err.message))
         );
-        totalRestaurados = restaurados.affectedRows || 0;
       }
-      const purgados = await purgarArticulosAntiguos({ userId });
-      return NextResponse.json({ message: "Feeds actualizados y restaurados correctamente", nuevos: totalNuevas, restaurados: totalRestaurados, pendientes: totalPendientes, omitidas: totalOmitidas, purgados });
+      return NextResponse.json({
+        message: "Feeds actualizados y restaurados correctamente",
+        nuevos: resumen.nuevos,
+        restaurados: resumen.restaurados,
+        pendientes: resumen.pendientes,
+        omitidas: resumen.omitidas,
+        purgados: resumen.purgados,
+      });
     }
 
     const { url_feed } = body;
@@ -1189,6 +1167,66 @@ async function mapWithConcurrency(items = [], limite = 4, fn) {
     }
   });
   await Promise.all(workers);
+}
+
+// Refresca todas las fuentes de un usuario (ETag/304, solo-nuevas, purga).
+// Exportada para reutilizarla desde el cron (/api/cron/refresh) sin duplicar lógica.
+export async function refrescarFuentesDeUsuario(userId, { restoreToday = false } = {}) {
+  const limiteFecha = new Date();
+  limiteFecha.setDate(limiteFecha.getDate() - 7);
+  limiteFecha.setHours(0, 0, 0, 0);
+  const inicioHoy = new Date();
+  inicioHoy.setHours(0, 0, 0, 0);
+
+  const [fuentes] = await db.query(
+    "SELECT id, url_feed, titulo, etag, last_modified FROM fuentes_rss WHERE usuario_id = ?",
+    [userId]
+  );
+  if (!fuentes || fuentes.length === 0) {
+    return { vacia: true, nuevos: 0, pendientes: 0, omitidas: 0, restaurados: 0, purgados: 0 };
+  }
+
+  let nuevos = 0;
+  let pendientes = 0;
+  let omitidas = 0;
+  const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
+  await mapWithConcurrency(fuentes, 4, async (fuente) => {
+    try {
+      const resultado = await intentarParsearFeed(fuente.url_feed, {
+        etag: fuente.etag,
+        lastModified: fuente.last_modified,
+      });
+      if (resultado?.sinCambios) {
+        await actualizarValidadoresFuente(fuente.id, null, null);
+        omitidas++;
+        return;
+      }
+      const feed = resultado?.feed;
+      if (feed?.items && feed.items.length > 0) {
+        const clasificaciones = await prepararClasificaciones(fuente.id, feed.items, existentes, { omitirIA: true });
+        const { insertados } = await persistirArticulos(fuente.id, feed.items, clasificaciones, limiteFecha);
+        nuevos += insertados;
+        pendientes += extraerPendientes(clasificaciones).length;
+        await actualizarValidadoresFuente(fuente.id, resultado?.etag, resultado?.lastModified);
+      }
+    } catch (e) {
+      console.error(`[RSS REFRESH ERROR] Fuente ID ${fuente.id}:`, e.message);
+    }
+  });
+
+  let restaurados = 0;
+  if (restoreToday) {
+    const [rows] = await db.query(
+      `UPDATE articulos_publicados a
+       INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+       SET a.descartado = 0
+       WHERE f.usuario_id = ? AND a.descartado = 1 AND a.fecha_publicacion >= ?`,
+      [userId, inicioHoy]
+    );
+    restaurados = rows.affectedRows || 0;
+  }
+  const purgados = await purgarArticulosAntiguos({ userId });
+  return { vacia: false, nuevos, pendientes, omitidas, restaurados, purgados };
 }
 
 async function llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs) {
