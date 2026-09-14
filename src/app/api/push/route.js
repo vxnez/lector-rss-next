@@ -5,7 +5,23 @@ import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 
 // Clave pública VAPID para que el navegador cree la suscripción.
-export async function GET() {
+// Con ?dispositivos=1 devuelve los dispositivos vinculados del usuario.
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  if (searchParams.get("dispositivos") === "1") {
+    try {
+      const session = await auth();
+      const userId = await resolverUsuarioId(req, session);
+      const [rows] = await db.query(
+        "SELECT id, creado_en FROM push_subscriptions WHERE usuario_id = ? ORDER BY id DESC",
+        [userId]
+      );
+      return NextResponse.json(rows);
+    } catch (error) {
+      console.error("Error al listar push:", error);
+      return NextResponse.json({ error: "Error al listar dispositivos" }, { status: 500 });
+    }
+  }
   return NextResponse.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
 }
 
@@ -36,6 +52,14 @@ export async function DELETE(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    const { searchParams } = new URL(req.url);
+
+    // ?all=true revoca todos los dispositivos del usuario.
+    if (searchParams.get("all") === "true") {
+      await db.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [userId]);
+      return NextResponse.json({ message: "Todas las suscripciones eliminadas" });
+    }
+
     const { endpoint } = await req.json().catch(() => ({}));
 
     if (!endpoint) {

@@ -31,8 +31,6 @@ import {
   ArrowRight,
   Search,
   XCircle,
-  Bell,
-  BellOff,
   Save,
 } from "lucide-react";
 import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
@@ -191,7 +189,6 @@ export default function HomePage() {
       return false;
     }
   });
-  const pushRef = useRef(null);
   const [toast, setToast] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(true);
@@ -872,18 +869,6 @@ export default function HomePage() {
     setMovimientoReducido(valor);
   };
 
-  const irANotificaciones = useCallback(() => {
-    setPanelAjustes(false);
-    setControlsOpen(true);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-      abrirPanelMovil();
-    }
-    window.setTimeout(() => {
-      pushRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      pushRef.current?.focus({ preventScroll: true });
-    }, 90);
-  }, [abrirPanelMovil]);
-
   // Los artículos ya llegan filtrados y ordenados del servidor.
   // Los totales de las tarjetas son globales (vía /api/rss?tipo=conteos).
   const totalGuardados = conteos.guardadas;
@@ -891,21 +876,22 @@ export default function HomePage() {
   const totalPendientes = conteos.pendientes;
   const totalPaginas = Math.max(Math.ceil(totalNoticias / tamanoPagina), 1);
 
+  const botonAjustes = (
+    <button
+      type="button"
+      onClick={() => setPanelAjustes(true)}
+      title="Abrir ajustes"
+      aria-label="Abrir ajustes"
+      aria-expanded={panelAjustes}
+      className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+    >
+      <Settings size={14} />
+      <span className="hidden sm:inline">Ajustes</span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
-      {/* Botón flotante de ajustes (abajo del header, borde izquierdo) */}
-      {session?.user && (
-        <button
-          type="button"
-          onClick={() => setPanelAjustes((abierto) => !abierto)}
-          title="Abrir ajustes"
-          aria-label="Abrir ajustes"
-          aria-expanded={panelAjustes}
-          className="fixed left-3 top-20 z-40 rounded-full border border-gray-700 bg-gray-900 p-3 text-gray-300 shadow-xl transition hover:border-gray-500 hover:text-white"
-        >
-          <Settings size={20} />
-        </button>
-      )}
       {/* Navbar */}
       <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-md px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20">
         <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 min-w-0">
@@ -932,6 +918,7 @@ export default function HomePage() {
                 <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium">
                   Modo invitado
                 </span>
+                {botonAjustes}
                 <button
                   onClick={() => setShowWelcomeModal(true)}
                   title="Ayuda sobre cómo buscar fuentes RSS"
@@ -950,6 +937,7 @@ export default function HomePage() {
               </div>
             ) : (
             <div className="flex items-center gap-2 sm:gap-3">
+              {botonAjustes}
               <button
                 onClick={() => setShowWelcomeModal(true)}
                 title="Ayuda sobre cómo buscar fuentes RSS"
@@ -1235,22 +1223,7 @@ export default function HomePage() {
                     <span className="truncate">Fuentes</span>
                       </button>
                       </div>
-                      {pushSoportado && (
-                        <button
-                          ref={pushRef}
-                          type="button"
-                          onClick={gestionarPush}
-                          disabled={pushCargando}
-                          aria-pressed={pushActivado}
-                          title={pushActivado ? "Desactivar avisos de noticias nuevas" : "Avisar cuando haya noticias nuevas"}
-                          className="w-full min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                        >
-                          {pushActivado ? <BellOff size={14} /> : <Bell size={14} />}
-                          <span className="truncate">
-                            {pushCargando ? "Configurando..." : pushActivado ? "Notificaciones activadas" : "Activar notificaciones"}
-                          </span>
-                        </button>
-                      )}
+                      {/* Los avisos push se gestionan en Ajustes → Notificaciones */}
                     </section>
                   </div>
                 )}
@@ -1556,12 +1529,25 @@ export default function HomePage() {
         movimientoReducido={movimientoReducido}
         onMovimiento={cambiarMovimiento}
         nombreUsuario={session?.user?.name || session?.user?.email || null}
+        emailUsuario={esInvitado ? null : session?.user?.email || null}
+        imagenUsuario={esInvitado ? null : session?.user?.image || null}
         esInvitado={esInvitado}
         onEditarPerfil={() => {
           setPanelAjustes(false);
           setIsPerfilOpen(true);
         }}
-        onIrNotificaciones={irANotificaciones}
+        onCerrarSesion={salirInvitado}
+        pushSoportado={pushSoportado}
+        pushActivado={pushActivado}
+        pushCargando={pushCargando}
+        onGestionarPush={gestionarPush}
+        estadisticas={{
+          fuentes: fuentesDisponibles.length,
+          pendientes: conteos.pendientes,
+          leidas: conteos.leidas,
+          guardadas: conteos.guardadas,
+        }}
+        onNotify={notify}
       />
       <AddFeedModal
         key={isAddModalOpen ? `agregar-${urlCompartida || "manual"}` : "agregar-cerrado"}
