@@ -16,6 +16,15 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Feed Dashboard",
   description: "Organiza, clasifica y lee tus fuentes RSS en un solo dashboard.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "RSS Dashboard",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport = {
@@ -24,6 +33,7 @@ export const viewport = {
   minimumScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  themeColor: "#070b12",
 };
 
 export default function RootLayout({ children }) {

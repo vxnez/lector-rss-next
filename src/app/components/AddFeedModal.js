@@ -4,8 +4,10 @@
 import { useState } from "react";
 import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus } from "lucide-react";
 
-export default function AddFeedModal({ isOpen, onClose, onSuccess }) {
-  const [url, setUrl] = useState("");
+// initialUrl llega por prop y el padre fuerza remontaje con `key` al abrir,
+// así el prefill (p. ej. Web Share Target) no necesita sincronizar con efectos.
+export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = "" }) {
+  const [url, setUrl] = useState(initialUrl);
   const [categoria, setCategoria] = useState("General");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

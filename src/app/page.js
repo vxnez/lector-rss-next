@@ -113,7 +113,22 @@ export default function HomePage() {
   const [articulos, setArticulos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // URL recibida por Web Share Target (?compartir=): se lee una sola vez en
+  // el estado inicial, sin efectos, y se limpia de la barra de dirección.
+  const [urlCompartida, setUrlCompartida] = useState(() => {
+    try {
+      return (new URLSearchParams(window.location.search).get("compartir") || "").trim();
+    } catch {
+      return "";
+    }
+  });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).has("compartir");
+    } catch {
+      return false;
+    }
+  });
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isPerfilOpen, setIsPerfilOpen] = useState(false);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
@@ -327,6 +342,17 @@ export default function HomePage() {
       setPushCargando(false);
     }
   }, [pushCargando, notify]);
+
+  // Limpia ?compartir= de la barra sin recargar (no toca estado: sin aviso de lint).
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).has("compartir")) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    } catch {
+      // Sin URL compartida: arranque normal.
+    }
+  }, []);
 
   // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
   // carga el efecto de datos paginados cuando hay sesión.
@@ -1299,8 +1325,13 @@ export default function HomePage() {
 
       {/* Modales de la aplicación (el perfil no aplica en modo invitado) */}
       <AddFeedModal
+        key={isAddModalOpen ? `agregar-${urlCompartida || "manual"}` : "agregar-cerrado"}
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        initialUrl={urlCompartida}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setUrlCompartida("");
+        }}
         onSuccess={async (data) => {
           setPagina(1);
           setNonceRecarga((n) => n + 1);
