@@ -25,7 +25,7 @@ export async function GET(req) {
       feeds = filtrados;
     }
 
-    const totalFeeds = Object.values(feeds).reduce((acc, arr) => acc + arr.length, 0);
+    const totalFeeds = Object.values(feeds || {}).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
 
     return NextResponse.json({
       categorias: feeds,
