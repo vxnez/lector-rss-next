@@ -140,39 +140,71 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
   const [selectedArticle, setSelectedArticle] = useState(null);
   const { t, locale } = useIdioma();
 
-  const indiceSeleccionado = selectedArticle
-    ? articles.findIndex((art) => art.id === selectedArticle.id)
-    : -1;
-
   const articlesRef = useRef(articles);
+  // Foto de la lista al abrir el lector: la navegación (anterior/siguiente,
+  // posición y total) se calcula sobre ella para no romperse si el feed vivo
+  // cambia (p. ej. una noticia sale de "pendientes" al marcarse como leída).
+  // Es estado (no ref) porque se lee durante el render.
+  const [listaModal, setListaModal] = useState(null);
+  // Última noticia visible en el lector (evita cierres obsoletos en callbacks).
+  const seleccionRef = useRef(null);
 
   useEffect(() => {
     articlesRef.current = articles;
   });
 
+  useEffect(() => {
+    seleccionRef.current = selectedArticle;
+  }, [selectedArticle]);
+
+  const lista = listaModal || articles;
+
+  const indiceSeleccionado = selectedArticle
+    ? lista.findIndex((art) => art.id === selectedArticle.id)
+    : -1;
+
+  // Marca como leída la noticia que se abandona, solo si sigue sin leer en
+  // la lista viva (evita doble PUT tras un marcado manual previo).
+  const marcarAlAbandonar = useCallback((art) => {
+    if (!autoMarcarLeida || !art || art.leido) return;
+    const viva = (articlesRef.current || []).find((item) => item.id === art.id);
+    if (viva && viva.leido) return;
+    onToggleRead(art.id, false);
+  }, [autoMarcarLeida, onToggleRead]);
+
   const irAId = useCallback((id) => {
-    const item = (articlesRef.current || []).find((art) => art.id === id);
+    const actual = seleccionRef.current;
+    const foto = listaModal || articlesRef.current || [];
+    const item = foto.find((art) => art.id === id);
     if (item) {
+      // Al pasar a otra noticia se marca como leída la que se deja atrás.
+      // Abrir una noticia nunca marca por sí solo.
+      marcarAlAbandonar(actual);
       setSelectedArticle(item);
       return true;
     }
     return false;
-  }, []);
+  }, [listaModal, marcarAlAbandonar]);
 
-  const anteriorId = indiceSeleccionado > 0 ? articles[indiceSeleccionado - 1].id : null;
+  const anteriorId = indiceSeleccionado > 0 ? lista[indiceSeleccionado - 1].id : null;
   const siguienteId =
-    indiceSeleccionado >= 0 && indiceSeleccionado < articles.length - 1
-      ? articles[indiceSeleccionado + 1].id
+    indiceSeleccionado >= 0 && indiceSeleccionado < lista.length - 1
+      ? lista[indiceSeleccionado + 1].id
       : null;
+
+  const cerrarLector = useCallback(() => {
+    setListaModal(null);
+    setSelectedArticle(null);
+  }, []);
 
   const abrirArticuloCb = useCallback(
     (art) => {
+      // Abrir no marca como leída: el auto-marcado ocurre al pasar a la
+      // siguiente (o anterior) noticia dentro del lector.
+      setListaModal(articlesRef.current || []);
       setSelectedArticle(art);
-      if (autoMarcarLeida && art && !art.leido) {
-        onToggleRead(art.id, false);
-      }
     },
-    [autoMarcarLeida, onToggleRead]
+    []
   );
 
   return (
@@ -196,7 +228,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
       <ArticleReaderModal
         key={selectedArticle?.id ?? "vacio"}
         article={selectedArticle}
-        onClose={() => setSelectedArticle(null)}
+        onClose={cerrarLector}
         onToggleRead={onToggleRead}
         onToggleSave={onToggleSave}
         onUpdateCategory={onUpdateCategory}
@@ -204,7 +236,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
         anteriorId={anteriorId}
         siguienteId={siguienteId}
         posicion={indiceSeleccionado >= 0 ? indiceSeleccionado + 1 : null}
-        total={articles.length}
+        total={lista.length}
       />
     </>
   );
