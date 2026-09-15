@@ -60,6 +60,16 @@ body {
   max-width: 100%;
 }
 
+/* Barra de la página oculta: el desplazamiento sigue funcionando con
+   rueda, tacto y teclado. Solo oculta el riel visual. */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+
 img,
 svg,
 table {

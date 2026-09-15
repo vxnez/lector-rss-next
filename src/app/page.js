@@ -936,7 +936,7 @@ export default function HomePage() {
                 )}
               </span>
             </button>
-            <aside className={`dashboard-control-sidebar order-5 lg:order-last bg-app-surface/40 border border-app-line/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
+            <aside className={`dashboard-control-sidebar scroll-oculto order-5 lg:order-last bg-app-surface/40 border border-app-line/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
               <section className="border-b border-gray-800 pb-4 space-y-4">
                 <button
                   type="button"

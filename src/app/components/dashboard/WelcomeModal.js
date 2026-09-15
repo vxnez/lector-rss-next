@@ -7,7 +7,7 @@ export default function WelcomeModal({ abierto, onCerrar, t }) {
   if (!abierto) return null;
   return (
     <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="anim-modal bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
+      <div className="anim-modal scroll-oculto bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
         <button
           onClick={onCerrar}
           aria-label={t("comun.cerrar")}
