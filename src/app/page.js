@@ -16,7 +16,6 @@ import {
   Rss,
   Settings,
   Plus,
-  LogOut,
   LogIn,
   UserPlus,
   RotateCw,
@@ -25,7 +24,6 @@ import {
   ChevronDown,
   Check,
   Trash2,
-  HelpCircle,
   X,
   ExternalLink,
   ArrowRight,
@@ -387,6 +385,19 @@ export default function HomePage() {
       // Sin URL compartida: arranque normal.
     }
   }, []);
+
+  // Re-aplica tema y movimiento al montar: el script pre-paint ya lo hizo,
+  // pero esto cubre cualquier caso donde no se ejecutara. Idempotente.
+  useEffect(() => {
+    aplicarTema(tema);
+    try {
+      if (window.localStorage.getItem("lector_movimiento") === "reducido") {
+        document.documentElement.dataset.motion = "reduced";
+      }
+    } catch {
+      // Sin almacenamiento disponible: se conserva lo aplicado.
+    }
+  }, [tema]);
 
   // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
   // carga el efecto de datos paginados cuando hay sesión.
@@ -876,33 +887,51 @@ export default function HomePage() {
   const totalPendientes = conteos.pendientes;
   const totalPaginas = Math.max(Math.ceil(totalNoticias / tamanoPagina), 1);
 
+  // Engranaje cotidiano en la esquina superior izquierda (icono puro, sin píldora).
   const botonAjustes = (
     <button
       type="button"
       onClick={() => setPanelAjustes(true)}
-      title="Abrir ajustes"
+      title="Ajustes"
       aria-label="Abrir ajustes"
       aria-expanded={panelAjustes}
-      className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+      className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-800/70 hover:text-white"
     >
-      <Settings size={14} />
-      <span className="hidden sm:inline">Ajustes</span>
+      <Settings size={20} />
     </button>
+  );
+
+  const logoApp = (
+    <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 min-w-0">
+      <span
+        style={{ backgroundColor: "var(--accent-strong)", color: "var(--on-accent-strong)" }}
+        className="p-1.5 rounded-lg font-black text-sm flex items-center justify-center"
+      >
+        <Rss size={18} className="stroke-[3]" />
+      </span>
+      <span className="truncate">RSS Dashboard</span>
+    </h1>
   );
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
-      {/* Navbar */}
+      {/* Navbar: ajustes a la izquierda, logo a la derecha.
+          Guía y Cerrar sesión viven en el panel de ajustes (sección Sesión). */}
       <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-md px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20">
-        <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 min-w-0">
-          <span
-            style={{ backgroundColor: "var(--accent-strong)", color: "var(--on-accent-strong)" }}
-            className="p-1.5 rounded-lg font-black text-sm flex items-center justify-center"
-          >
-            <Rss size={18} className="stroke-[3]" />
-          </span>
-          <span className="truncate">RSS Dashboard</span>
-        </h1>
+        <div className="flex items-center gap-2 min-w-0">
+          {session?.user ? (
+            <>
+              {botonAjustes}
+              {esInvitado && (
+                <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">
+                  Modo invitado
+                </span>
+              )}
+            </>
+          ) : (
+            logoApp
+          )}
+        </div>
 
         {session?.user && !esInvitado && (
           <p className="hidden md:block flex-1 text-center text-sm text-gray-300 truncate px-2">
@@ -913,59 +942,7 @@ export default function HomePage() {
 
         <div className="flex items-center gap-4">
           {session?.user ? (
-            esInvitado ? (
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium">
-                  Modo invitado
-                </span>
-                {botonAjustes}
-                <button
-                  onClick={() => setShowWelcomeModal(true)}
-                  title="Ayuda sobre cómo buscar fuentes RSS"
-                  className="text-xs bg-gray-800 hover:bg-gray-700 text-sky-400 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
-                >
-                  <HelpCircle size={14} />
-                  <span className="hidden sm:inline">Guía RSS</span>
-                </button>
-                <button
-                  onClick={salirInvitado}
-                  className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span className="hidden sm:inline">Salir</span>
-                </button>
-              </div>
-            ) : (
-            <div className="flex items-center gap-2 sm:gap-3">
-              {botonAjustes}
-              <button
-                onClick={() => setShowWelcomeModal(true)}
-                title="Ayuda sobre cómo buscar fuentes RSS"
-                className="text-xs bg-gray-800 hover:bg-gray-700 text-sky-400 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
-              >
-                <HelpCircle size={14} />
-                <span className="hidden sm:inline">Guía RSS</span>
-              </button>
-
-              {/* Editar perfil vive ahora en el panel lateral de ajustes */}
-              {/* CAMBIAMOS ESTE LINK POR UN BOTÓN DIRECTO DE CIERRE DE SESIÓN */}
-              <button
-                onClick={async () => {
-                  try {
-                    window.sessionStorage.removeItem("lector_aviso_deslizar_vistas");
-                  } catch {
-                    // Sin almacenamiento disponible: continuar con el cierre de sesión.
-                  }
-                  const { signOut } = await import("next-auth/react");
-                  await signOut({ callbackUrl: "/login" });
-                }}
-                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut size={14} />
-                <span className="hidden sm:inline">Cerrar Sesión</span>
-              </button>
-            </div>
-            )
+            logoApp
           ) : (
 
             <div className="flex gap-2 shrink-0">
@@ -1548,6 +1525,7 @@ export default function HomePage() {
           guardadas: conteos.guardadas,
         }}
         onNotify={notify}
+        onAbrirGuia={() => setShowWelcomeModal(true)}
       />
       <AddFeedModal
         key={isAddModalOpen ? `agregar-${urlCompartida || "manual"}` : "agregar-cerrado"}

@@ -270,6 +270,10 @@
   color: #fff;
 }
 
+/* Scroll sin barra visible (panel de ajustes): se sigue desplazando con rueda, tacto y teclado. */
+.panel-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.panel-scroll::-webkit-scrollbar { display: none; }
+
 /* ============ Movimiento reducido (ajuste del panel) ============ */
 [data-motion="reduced"] *,
 [data-motion="reduced"] *::before,

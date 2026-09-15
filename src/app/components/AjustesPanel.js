@@ -26,6 +26,8 @@ import {
   Trash2,
   Share2,
   LogOut,
+  HelpCircle,
+  Rss,
 } from "lucide-react";
 import { TEMAS } from "@/lib/temas";
 
@@ -142,9 +144,11 @@ export default function AjustesPanel({
   onGestionarPush,
   estadisticas,
   onNotify,
+  onAbrirGuia,
 }) {
   const [vista, setVista] = useState(null);
   const [perfil, setPerfil] = useState(null);
+  const [actividad, setActividad] = useState(null);
   const [dispositivos, setDispositivos] = useState([]);
   const [exportando, setExportando] = useState(false);
   const [pasoEliminar, setPasoEliminar] = useState("idle");
@@ -197,9 +201,20 @@ export default function AjustesPanel({
     }
   };
 
+  const cargarActividad = async () => {
+    if (actividad || esInvitado) return;
+    try {
+      const res = await fetch("/api/actividad", { cache: "no-store" });
+      if (res.ok) setActividad(await res.json());
+    } catch {
+      // Sin actividad: la subvista muestra los conteos disponibles.
+    }
+  };
+
   const abrirVista = (id) => {
     setVista(id);
     if (id === "personal" || id === "seguridad" || id === "apps") cargarPerfil();
+    if (id === "seguridad") cargarActividad();
     if (id === "apps") cargarDispositivos();
   };
 
@@ -328,7 +343,7 @@ export default function AjustesPanel({
           </button>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
+        <div className="panel-scroll flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
           {!vista && (
             <>
               {/* Cabecera de cuenta (abre Información personal) */}
@@ -436,6 +451,34 @@ export default function AjustesPanel({
                 descripcion="Versión, stack y estado"
                 onAbrir={() => abrirVista("proyecto")}
               />
+
+              {/* Sesión: ayuda y salida (antes en la barra superior) */}
+              <div className="space-y-2 border-t border-gray-800 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    cerrar();
+                    onAbrirGuia();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left transition hover:border-gray-600"
+                >
+                  <HelpCircle size={17} className="shrink-0 text-sky-400" />
+                  <span className="flex-1 text-sm font-medium text-gray-200">Guía RSS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={cerrarSesion}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left transition hover:border-gray-600"
+                >
+                  <LogOut size={17} className="shrink-0 text-gray-400" />
+                  <span className="flex-1 text-sm font-medium text-gray-200">
+                    {esInvitado ? "Salir y borrar datos" : "Cerrar sesión"}
+                  </span>
+                </button>
+                <p className="flex items-center justify-center gap-1.5 px-1 pt-1 text-[11px] text-gray-500">
+                  <Rss size={11} aria-hidden="true" /> RSS Dashboard v1.0
+                </p>
+              </div>
             </>
           )}
 
@@ -543,6 +586,13 @@ export default function AjustesPanel({
                   >
                     <User size={15} /> Editar perfil
                   </button>
+                  <button
+                    type="button"
+                    onClick={cerrarSesion}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                  >
+                    <LogOut size={15} /> Cerrar sesión
+                  </button>
                 </>
               )}
             </section>
@@ -568,13 +618,34 @@ export default function AjustesPanel({
                   ahí, no en esta app.
                 </p>
               )}
-              <button
-                type="button"
-                onClick={cerrarSesion}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
-              >
-                <LogOut size={15} /> Cerrar sesión
-              </button>
+              <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                  Actividad reciente
+                </p>
+                {esInvitado ? (
+                  <p className="text-xs leading-relaxed text-gray-400">
+                    Sesión temporal de invitado: sin historial permanente.
+                  </p>
+                ) : (
+                  <>
+                    <p className="truncate text-sm font-medium text-gray-100">
+                      {actividad?.ultimaFuente
+                        ? `Última fuente: ${actividad.ultimaFuente.titulo}`
+                        : "Aún no agregas fuentes"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {actividad?.ultimaFuente
+                        ? formatearFecha(actividad.ultimaFuente.creado_en)
+                        : "Agrega tu primer feed desde el dashboard"}
+                      {" · "}
+                      {(estadisticas?.pendientes || 0) +
+                        (estadisticas?.leidas || 0) +
+                        (estadisticas?.guardadas || 0)}{" "}
+                      noticias en tu cuenta
+                    </p>
+                  </>
+                )}
+              </div>
             </section>
           )}
 
