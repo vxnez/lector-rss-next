@@ -153,15 +153,15 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     if (paso === 1) {
       if (categoriasSeleccionadas.length === 0) return;
       
-      // LIMPIEZA CRÍTICA: Forzamos la limpieza de datos previos antes de cargar nuevos
-      // para evitar que el renderizador intente usar datos corruptos del estado anterior.
-      setFeedsRecomendados({});
-      setTotalAgregados(0);
-      setFeedsAgregados(new Set());
-      setFeedsAgregando(new Set());
-      
-      await fetchFeeds();
+      // CAMBIO CRÍTICO: Primero cambiamos el paso para que la UI reaccione inmediatamente
       setPaso(2);
+      
+      // Luego cargamos los feeds en segundo plano
+      try {
+        await fetchFeeds();
+      } catch (err) {
+        console.error("Error en transición de paso 1 a 2:", err);
+      }
     } else if (paso === 2) {
       setPaso(3);
     }
