@@ -2,10 +2,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Sparkles, Check, Plus, Loader2, ArrowRight as ArrowRightIcon, Heart, Tag } from "lucide-react";
-import { ArrowRight as ArrowRightData } from "lucide";
+import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
-import MorphIcon from "../MorphIcon";
 import RecommendedFeedsList from "./RecommendedFeedsList";
 
 const CATEGORIES = [
@@ -309,7 +307,6 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("onboarding.continuar")}
-                <ArrowRightIcon size={16} />
               </button>
             </>
           )}
@@ -320,7 +317,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 onClick={() => setPaso(1)}
                 className="btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
-                <MorphIcon icon={ArrowRightData} size={16} className="rotate-180" /> {t("onboarding.continuar")}
+                {t("onboarding.anterior")}
               </button>
               <button
                 type="button"
@@ -328,7 +325,6 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.continuar")}
-                <ArrowRightIcon size={16} />
               </button>
             </>
           )}
