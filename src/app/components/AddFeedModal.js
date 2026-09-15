@@ -129,9 +129,6 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 <>
                   <Plus size={16} />
                   <span>{t("addfeed.guardar")}</span>
-                  <span aria-hidden="true" className="cta-icon hidden sm:grid">
-                    →
-                  </span>
                 </>
               )}
             </button>

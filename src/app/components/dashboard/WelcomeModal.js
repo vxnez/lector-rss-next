@@ -1,7 +1,7 @@
 // src/app/components/dashboard/WelcomeModal.js — Guía de bienvenida.
 "use client";
 
-import { X, Sparkles, ExternalLink, ArrowRight } from "lucide-react";
+import { X, Sparkles, ExternalLink } from "lucide-react";
 
 export default function WelcomeModal({ abierto, onCerrar, t }) {
   if (!abierto) return null;
@@ -51,8 +51,7 @@ export default function WelcomeModal({ abierto, onCerrar, t }) {
             onClick={onCerrar}
             className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-full transition flex items-center justify-center gap-2 text-sm"
           >
-            <span>{t("guia.entendido")}</span>
-            <ArrowRight size={16} />
+            {t("guia.entendido")}
           </button>
         </div>
       </div>

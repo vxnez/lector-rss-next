@@ -87,8 +87,8 @@ const DICCIONARIO = {
     pag: {
       estado: "Página {a} de {b} · {n} noticias",
       cargando: "· cargando...",
-      anterior: "← Anterior",
-      siguiente: "Siguiente →",
+      anterior: "Anterior",
+      siguiente: "Siguiente",
       aria_ant: "Página anterior",
       aria_sig: "Página siguiente",
       ir_a: "Ir a la página {n}",
@@ -560,8 +560,8 @@ const DICCIONARIO = {
     pag: {
       estado: "Page {a} of {b} · {n} stories",
       cargando: "· loading...",
-      anterior: "← Previous",
-      siguiente: "Next →",
+      anterior: "Previous",
+      siguiente: "Next",
       aria_ant: "Previous page",
       aria_sig: "Next page",
       ir_a: "Go to page {n}",

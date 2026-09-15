@@ -103,11 +103,6 @@ export default function RegisterPage() {
             className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Registrando..." : "Registrarse"}
-            {!loading && (
-              <span aria-hidden="true" className="cta-icon hidden sm:grid">
-                →
-              </span>
-            )}
           </button>
         </form>
 

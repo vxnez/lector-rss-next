@@ -25,9 +25,6 @@ export function LectorErrorFallback({ onReset }) {
         className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
       >
         {t("lector.reintentar")}
-        <span aria-hidden="true" className="cta-icon hidden sm:grid">
-          →
-        </span>
       </button>
     </div>
   );

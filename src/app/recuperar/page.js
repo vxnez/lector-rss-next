@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, Lock, CheckCircle2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Mail, KeyRound, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
 import MorphIcon from "../components/MorphIcon";
 
@@ -160,11 +160,6 @@ export default function RecuperarPage() {
               className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? "Generando código..." : "Generar código de recuperación"}
-              {!loading && (
-                <span aria-hidden="true" className="cta-icon hidden sm:grid">
-                  →
-                </span>
-              )}
             </button>
           </form>
         )}
@@ -280,7 +275,7 @@ export default function RecuperarPage() {
 
         <p className="text-center text-xs text-gray-400 mt-6">
           <Link href="/login" className="text-sky-400 hover:underline font-medium inline-flex items-center gap-1">
-            <ArrowLeft size={13} /> Volver al inicio de sesión
+            Volver al inicio de sesión
           </Link>
         </p>
         </div>

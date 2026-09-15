@@ -74,9 +74,6 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
             >
               <UserPlus size={16} />
               <span className="hidden sm:inline">{t("header.registro")}</span>
-              <span aria-hidden="true" className="cta-icon hidden sm:grid">
-                →
-              </span>
             </Link>
           </div>
         )}

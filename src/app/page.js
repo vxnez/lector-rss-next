@@ -962,9 +962,6 @@ export default function HomePage() {
                           className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
                         >
                           <Plus size={16} /> {t("vacio.agregar")}
-                          <span aria-hidden="true" className="cta-icon">
-                            →
-                          </span>
                         </button>
                       )}
                     </div>
