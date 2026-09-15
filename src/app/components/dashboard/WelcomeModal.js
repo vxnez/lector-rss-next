@@ -53,9 +53,6 @@ export default function WelcomeModal({ abierto, onCerrar, t }) {
           >
             <span>{t("guia.entendido")}</span>
             <ArrowRight size={16} />
-            <span aria-hidden="true" className="cta-icon hidden sm:grid">
-              →
-            </span>
           </button>
         </div>
       </div>
