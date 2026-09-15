@@ -115,7 +115,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
             aria-pressed={isLeido}
             className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
               isLeido
-                ? "bg-emerald-950/80 border-emerald-700 text-emerald-400"
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
                 : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
             }`}
             title={isLeido ? t("tarjeta.desmarcar") : t("tarjeta.marcar")}
@@ -128,7 +128,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
             aria-pressed={isGuardado}
             className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
               isGuardado
-                ? "bg-amber-950/80 border-amber-700 text-amber-400"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
                 : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
             }`}
             title={isGuardado ? t("tarjeta.guardar_quitar") : t("tarjeta.guardar_nuevo")}

@@ -186,6 +186,18 @@
   --color-sky-500: #6f7a5f;
   --color-sky-400: #4d5a43;
   --color-sky-300: #3f4c37;
+
+  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
+     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
+     oscuros conservan los valores originales). */
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-red-300: #b91c1c;
+  --color-red-400: #b91c1c;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #047857;
+  --color-rose-400: #be123c;
 }
 /* Texto principal: de blanco a tinta (los botones de acento/rojo la recuperan abajo). */
 [data-theme="celeste"] .text-white {
@@ -233,6 +245,18 @@
   --color-sky-500: #355448;
   --color-sky-400: #27453a;
   --color-sky-300: #1d332b;
+
+  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
+     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
+     oscuros conservan los valores originales). */
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-red-300: #b91c1c;
+  --color-red-400: #b91c1c;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #047857;
+  --color-rose-400: #be123c;
 }
 [data-theme="menta"] .text-white {
   color: var(--ink);
@@ -279,6 +303,18 @@
   --color-sky-500: #359e49;
   --color-sky-400: #227434;
   --color-sky-300: #1a5c2a;
+
+  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
+     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
+     oscuros conservan los valores originales). */
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-red-300: #b91c1c;
+  --color-red-400: #b91c1c;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #047857;
+  --color-rose-400: #be123c;
 }
 [data-theme="celadon"] .text-white {
   color: var(--ink);
@@ -293,6 +329,19 @@
 }
 [data-theme="celadon"] .bg-red-700 {
   color: #fff;
+}
+
+/* Superficies ámbar translúcidas: en temas claros el ámbar/10 queda
+   demasiado pálido; se refuerza el tinte sin tocar los temas oscuros. */
+[data-theme="celeste"] .bg-amber-500\/10,
+[data-theme="menta"] .bg-amber-500\/10,
+[data-theme="celadon"] .bg-amber-500\/10 {
+  background-color: rgb(217 119 6 / 0.14);
+}
+[data-theme="celeste"] .border-amber-500\/40,
+[data-theme="menta"] .border-amber-500\/40,
+[data-theme="celadon"] .border-amber-500\/40 {
+  border-color: rgb(180 83 9 / 0.55);
 }
 
 /* Scroll sin barra visible (panel de ajustes): se sigue desplazando con rueda, tacto y teclado. */

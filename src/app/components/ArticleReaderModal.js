@@ -506,7 +506,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             disabled={Boolean(savingAction)}
             className={`btn-press px-1.5 sm:px-3 py-2 sm:py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.leido
-                ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
+                ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
             }`}
           >
@@ -519,7 +519,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             disabled={Boolean(savingAction)}
             className={`btn-press px-1.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.guardado
-                ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
+                ? "bg-amber-500/15 border border-amber-500/40 text-amber-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
             }`}
           >

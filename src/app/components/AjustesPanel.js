@@ -844,7 +844,7 @@ export default function AjustesPanel({
                     <button
                       type="button"
                       onClick={() => setPasoEliminar("modal")}
-                      className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 transition hover:text-red-200"
+                      className="btn-press flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 hover:opacity-80"
                     >
                       <Trash2 size={15} /> {t("ajustes.eliminar_cuenta")}
                     </button>
@@ -879,7 +879,7 @@ export default function AjustesPanel({
                 href={URL_REPOSITORIO}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 btn-press hover:bg-amber-500/20"
               >
                 <Star size={15} /> {t("ajustes.estrella")}
               </a>
@@ -895,7 +895,7 @@ export default function AjustesPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={t("ajustes.cafe_titulo")}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 btn-press hover:bg-amber-500/20"
               >
                 <Coffee size={15} /> {t("ajustes.cafe")}
               </a>
@@ -967,7 +967,7 @@ export default function AjustesPanel({
             onClick={(event) => event.stopPropagation()}
             className="w-full max-w-md rounded-2xl border border-red-900/60 bg-gray-900 p-6 shadow-2xl sm:p-8"
           >
-            <div className="mx-auto mb-4 grid h-14 w-14 place-content-center rounded-full border border-red-800 bg-red-950/60 text-red-400">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-content-center rounded-full border border-red-500/40 bg-red-500/15 text-red-400">
               <TriangleAlert size={26} />
             </div>
             <h3 id="titulo-eliminar-cuenta" className="text-center text-xl font-bold text-white">
