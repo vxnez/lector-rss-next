@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Feed Dashboard",
+  title: "RSS Dashboard — Lector RSS",
   description: "Organiza, clasifica y lee tus fuentes RSS en un solo dashboard.",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -56,6 +56,9 @@ export default function RootLayout({ children }) {
         {/* Script plano y bloqueante (primera etiqueta del body): aplica tema y
             movimiento antes del primer pintado, sin depender del framework. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
+        <a href="#contenido" className="skip-link">
+          Saltar al contenido
+        </a>
         <IdiomaProvider>{children}</IdiomaProvider>
       </body>
     </html>

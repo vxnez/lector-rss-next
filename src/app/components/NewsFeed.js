@@ -34,13 +34,25 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
   const nombreFuente = nombreFuenteDeArticulo(art, t("tarjeta.fuente_generica"));
   const fechaFormateada = formatFecha(art.fecha_publicacion, t("tarjeta.reciente"), locale);
   const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
+  const fijarSpot = useCallback((event) => {
+    const el = event.currentTarget;
+    const rect = el.getBoundingClientRect();
+    el.style.setProperty("--spot-x", `${((event.clientX - rect.left) / rect.width) * 100}%`);
+    el.style.setProperty("--spot-y", `${((event.clientY - rect.top) / rect.height) * 100}%`);
+  }, []);
   return (
     <div
       style={{ "--stagger-delay": `${Math.min(indice * 40, 320)}ms` }}
-      className={`tarjeta-noticia stagger-in card-lift group p-5 rounded-2xl flex flex-col justify-between focus-within:border-[var(--accent)]/60 ${
+      onMouseMove={fijarSpot}
+      className={`tarjeta-noticia stagger-in card-lift spotlight-card group bezel-outer p-[3px] focus-within:border-[var(--accent)]/60 ${
         isLeido
-          ? "bg-app-surface/70 border border-app-line/40 opacity-40 grayscale-[25%]"
-          : "bg-app-surface border border-app-line hover:border-[var(--accent)]/50 hover:shadow-[0_16px_40px_-20px_color-mix(in_srgb,var(--accent)_45%,transparent)] opacity-100"
+          ? "opacity-50 saturate-[75%]"
+          : "opacity-100 hover:shadow-[0_20px_48px_-20px_color-mix(in_srgb,var(--accent)_50%,transparent)]"
+      }`}
+    >
+    <div
+      className={`bezel-inner flex h-full flex-col justify-between p-5 ${
+        isLeido ? "bg-app-surface/70" : "bg-app-surface"
       }`}
     >
       <div>
@@ -79,7 +91,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
         </div>
         <h3
           onClick={() => onAbrir(art)}
-          className={`text-base font-bold leading-snug mb-2 cursor-pointer transition line-clamp-2 ${
+          className={`text-balance text-[17px] font-bold leading-snug tracking-tight mb-2 cursor-pointer transition line-clamp-2 ${
             isLeido ? "text-app-muted line-through decoration-app-muted" : "text-app-fg hover:text-[var(--accent)]"
           }`}
         >
@@ -87,7 +99,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
         </h3>
         <p
           onClick={() => onAbrir(art)}
-          className={`resumen-noticia text-xs line-clamp-3 mb-4 cursor-pointer transition ${
+          className={`resumen-noticia text-pretty text-[13px] leading-relaxed line-clamp-3 mb-4 cursor-pointer transition ${
             isLeido ? "text-app-muted" : "text-app-muted hover:text-app-fg"
           }`}
         >
@@ -137,6 +149,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 });

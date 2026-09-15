@@ -85,11 +85,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-ambient min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
+    <div className="auth-ambient min-h-screen flex items-center justify-center bg-app-bg text-app-fg p-4">
       <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
         <div className="bezel-inner p-8 shadow-2xl">
           <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
-          <h2 className="text-2xl font-bold text-center mt-3 mb-6 tracking-tight text-white">Iniciar Sesión</h2>
+          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">Iniciar Sesión</h2>
 
           {error && (
             <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
@@ -99,9 +99,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Mail size={18} />
               </span>
               <input
@@ -110,7 +110,7 @@ export default function LoginPage() {
                 value={form.email}
                 autoComplete="email"
                 placeholder="Correo electrónico"
-                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
@@ -118,11 +118,11 @@ export default function LoginPage() {
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-medium text-gray-300 uppercase tracking-wider">Contraseña</label>
-              <Link href="/recuperar" className="text-xs text-sky-400 hover:underline">¿Olvidaste tu contraseña?</Link>
+              <label className="text-xs font-medium text-app-muted uppercase tracking-wider">Contraseña</label>
+              <Link href="/recuperar" className="text-xs text-[var(--accent)] hover:underline">¿Olvidaste tu contraseña?</Link>
             </div>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Lock size={18} />
               </span>
               <input
@@ -131,7 +131,7 @@ export default function LoginPage() {
                 value={form.password}
                 autoComplete="current-password"
                 placeholder="Contraseña"
-                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-11 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
               <button
@@ -140,7 +140,7 @@ export default function LoginPage() {
                 title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 aria-pressed={verPassword}
-                className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100"
+                className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-app-muted hover:text-app-fg"
               >
                 <MorphIcon icon={verPassword ? EyeOffData : EyeData} size={18} />
               </button>
@@ -157,39 +157,39 @@ export default function LoginPage() {
             >
               <span
                 aria-hidden="true"
-                className={`relative inline-flex w-10 shrink-0 items-center rounded-full border transition-colors duration-200 ${
-                  recordarme ? "bg-sky-600 border-sky-500" : "bg-gray-800 border-gray-700 group-hover:border-gray-600"
+                className={`switch-pill relative inline-flex w-10 shrink-0 items-center rounded-full border ${
+                  recordarme ? "bg-[var(--accent-strong)] border-[var(--accent-strong)]" : "bg-app-raised border-app-line group-hover:border-app-muted"
                 }`}
                 style={{ height: "1.375rem" }}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  className={`switch-knob inline-block h-4 w-4 transform rounded-full bg-white shadow ${
                     recordarme ? "translate-x-[1.125rem]" : "translate-x-0.5"
                   }`}
                 />
               </span>
-              <span className="text-xs text-gray-400 group-hover:text-gray-200 transition">Recordarme</span>
+              <span className="text-xs text-app-muted group-hover:text-app-fg transition">Recordarme</span>
             </button>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Entrando..." : "Iniciar Sesión"}
           </button>
         </form>
 
         <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-800"></div></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-gray-900 px-3 text-gray-400 font-medium">O continúa con</span></div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-app-line"></div></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">O continúa con</span></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
+            className="btn-press card-lift bg-app-raised/60 hover:bg-app-raised border border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -201,9 +201,9 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => signIn("github", { callbackUrl: "/" })}
-            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
+            className="btn-press card-lift bg-app-raised/60 hover:bg-app-raised border border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
           >
-            <svg className="w-4 h-4 fill-current text-gray-200" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 fill-current text-app-fg" viewBox="0 0 24 24">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
             </svg>
             GitHub
@@ -212,15 +212,15 @@ export default function LoginPage() {
 
         <button
           onClick={() => setMostrarAvisoInvitado(true)}
-          className="btn-press w-full mt-3 bg-gray-950 hover:bg-gray-800 border border-dashed border-gray-700 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-300"
+          className="btn-press w-full mt-3 bg-app-raised/40 hover:bg-app-raised border border-dashed border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
         >
-          <UserRound size={16} className="text-gray-400" />
+          <UserRound size={16} className="text-app-muted" />
           Continuar como invitado
         </button>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-app-muted mt-6">
           ¿No tienes cuenta?{" "}
-          <Link href="/register" className="text-sky-400 hover:underline font-medium">
+          <Link href="/register" className="text-[var(--accent)] hover:underline font-medium">
             Regístrate aquí
           </Link>
         </p>
@@ -236,27 +236,27 @@ export default function LoginPage() {
           onClick={() => setMostrarAvisoInvitado(false)}
         >
           <div
-            className="anim-modal w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4"
+            className="anim-modal w-full max-w-sm bg-app-surface border border-app-line rounded-2xl p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <span className="flex items-center gap-2 text-amber-300">
                 <TriangleAlert size={20} />
-                <strong id="aviso-invitado-titulo" className="text-sm font-semibold text-white">
+                <strong id="aviso-invitado-titulo" className="text-sm font-semibold text-app-fg">
                   Entrar como invitado
                 </strong>
               </span>
               <button
                 onClick={() => setMostrarAvisoInvitado(false)}
                 aria-label="Cerrar aviso"
-                className="btn-press text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800"
+                className="btn-press text-app-muted hover:text-app-fg p-1 rounded-lg hover:bg-app-raised"
               >
                 <X size={18} />
               </button>
             </div>
-            <p className="text-sm text-gray-300 leading-relaxed">
+            <p className="text-pretty text-sm text-app-muted leading-relaxed">
               Podrás agregar fuentes, refrescar, filtrar y leer noticias con normalidad. Al salir
-              o cerrar la ventana del navegador, <strong className="text-white">toda tu información se elimina</strong> y
+              o cerrar la ventana del navegador, <strong className="text-app-fg">toda tu información se elimina</strong> y
               nada de lo que modificaste se conserva.
             </p>
             {errorInvitado && (
@@ -268,14 +268,14 @@ export default function LoginPage() {
               <button
                 onClick={() => setMostrarAvisoInvitado(false)}
                 disabled={loadingInvitado}
-                className="btn-press rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 disabled:opacity-60"
+                className="btn-press rounded-xl border border-app-line bg-app-raised px-3 py-2.5 text-sm font-medium text-app-fg hover:opacity-90 disabled:opacity-60"
               >
                 Cancelar
               </button>
               <button
                 onClick={entrarComoInvitado}
                 disabled={loadingInvitado}
-                className="btn-press rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-60 shadow-lg shadow-sky-600/20"
+                className="btn-press rounded-xl bg-[var(--accent-strong)] px-3 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 disabled:opacity-60 shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)]"
               >
                 {loadingInvitado ? "Entrando..." : "Entendido, entrar"}
               </button>

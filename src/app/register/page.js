@@ -36,11 +36,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="auth-ambient min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
+    <div className="auth-ambient min-h-screen flex items-center justify-center bg-app-bg text-app-fg p-4">
       <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
         <div className="bezel-inner p-8 shadow-2xl">
           <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
-          <h2 className="text-2xl font-bold text-center mt-3 mb-6 tracking-tight text-white">Crear Cuenta</h2>
+          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">Crear Cuenta</h2>
         
           {error && (
             <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
@@ -50,48 +50,48 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">Nombre</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Nombre</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <User size={18} />
               </span>
               <input
                 type="text"
                 required
                 placeholder="Tu Nombre"
-                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Mail size={18} />
               </span>
               <input
                 type="email"
                 required
                 placeholder="correo@ejemplo.com"
-                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">Contraseña</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Contraseña</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Lock size={18} />
               </span>
               <input
                 type="password"
                 required
                 placeholder="••••••••"
-                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </div>
@@ -100,21 +100,21 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Registrando..." : "Registrarse"}
           </button>
         </form>
 
         <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-800"></div></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-gray-900 px-3 text-gray-400 font-medium">O regístrate con</span></div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-app-line"></div></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">O regístrate con</span></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={() => signIn("google", { callbackUrl: "/" })} 
-            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
+            className="btn-press card-lift bg-app-raised/60 hover:bg-app-raised border border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -126,18 +126,18 @@ export default function RegisterPage() {
           </button>
           <button 
             onClick={() => signIn("github", { callbackUrl: "/" })} 
-            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
+            className="btn-press card-lift bg-app-raised/60 hover:bg-app-raised border border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
           >
-            <svg className="w-4 h-4 fill-current text-gray-200" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 fill-current text-app-fg" viewBox="0 0 24 24">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
             </svg>
             GitHub
           </button>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-app-muted mt-6">
           ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="text-sky-400 hover:underline font-medium">
+          <Link href="/login" className="text-[var(--accent)] hover:underline font-medium">
             Inicia sesión
           </Link>
         </p>

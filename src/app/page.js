@@ -881,7 +881,8 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg flex flex-col">
+    <div className="app-ambient min-h-screen bg-app-bg text-app-fg flex flex-col">
+      <div aria-hidden="true" className="grain-overlay" />
       <AppHeader
         session={session}
         esInvitado={esInvitado}
@@ -891,15 +892,17 @@ export default function HomePage() {
       />
 
       {esInvitado && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:px-6 flex items-center justify-center gap-2 text-center">
-          <p className="text-xs text-amber-200">
-            {t("invitado.aviso_1")} <strong>{t("header.invitado").toLowerCase()}</strong>: {t("invitado.aviso_2")} <Link href="/register" className="underline font-medium">{t("invitado.crear")}</Link> {t("invitado.aviso_3")}
-          </p>
+        <div className="mx-auto mt-3 w-full max-w-[1440px] px-3 sm:px-6">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center justify-center gap-2 text-center">
+            <p className="text-xs text-amber-200">
+              {t("invitado.aviso_1")} <strong>{t("header.invitado").toLowerCase()}</strong>: {t("invitado.aviso_2")} <Link href="/register" className="underline font-medium">{t("invitado.crear")}</Link> {t("invitado.aviso_3")}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Main Content */}
-      <main className="w-full px-3 py-4 sm:px-6 sm:py-6 flex-1">
+      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-[1440px] px-3 py-6 sm:px-6 sm:py-8 flex-1 outline-none">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label={t("vacio.cargando")}>
             {Array.from({ length: 6 }).map((_, index) => (
@@ -1294,6 +1297,31 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      <footer className="mx-auto w-full max-w-[1440px] px-3 pb-8 sm:px-6">
+        <div className="flex flex-col gap-3 rounded-2xl border border-app-line bg-app-surface/60 px-4 py-4 text-xs text-app-muted backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-pretty">
+            <strong className="font-semibold text-app-fg">RSS Dashboard</strong>
+            {" — "}
+            {locale === "en" ? "Your feeds, classified and ready to read." : "Tus fuentes, clasificadas y listas para leer."}
+          </p>
+          <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href="/" className=" transition hover:text-app-fg">
+              {locale === "en" ? "Home" : "Inicio"}
+            </Link>
+            <span aria-hidden="true" className="text-app-line">/</span>
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: movimientoReducido ? "auto" : "smooth" })}
+              className="btn-press transition hover:text-app-fg"
+            >
+              {locale === "en" ? "Back to top" : "Volver arriba"}
+            </button>
+            <span aria-hidden="true" className="text-app-line">/</span>
+            <span>{new Date().getFullYear()} RSS Dashboard</span>
+          </nav>
+        </div>
+      </footer>
 
       <WelcomeModal abierto={showWelcomeModal} onCerrar={closeWelcomeModal} t={t} />
 

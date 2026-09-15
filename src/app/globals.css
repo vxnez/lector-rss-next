@@ -466,6 +466,100 @@ textarea:focus-visible {
   transform: translateY(-1px) scale(1.05);
 }
 
+/* ============ Remodelación estética: ambiente dashboard + grano ============
+   El dashboard era plano (bg-app-bg liso). Se añade profundidad ambiental:
+   dos orbes fijos de acento + grano sutil en overlay fijo (GPU-safe,
+   pointer-events-none, nunca en contenedores con scroll). Sigue a los
+   8 temas vía var(--accent). */
+.app-ambient {
+  position: relative;
+  isolation: isolate;
+}
+.app-ambient::before,
+.app-ambient::after {
+  content: "";
+  position: fixed;
+  width: min(42rem, 90vw);
+  height: min(42rem, 90vw);
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 0;
+}
+.app-ambient::before {
+  top: -14rem;
+  right: -10rem;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+}
+.app-ambient::after {
+  bottom: -16rem;
+  left: -12rem;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 9%, transparent), transparent);
+}
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* Tipografía editorial: evita viudas/huérfanas sin tocar copy. */
+.text-balance {
+  text-wrap: balance;
+}
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* Spotlight: el borde de la tarjeta se ilumina bajo el cursor. */
+.spotlight-card {
+  position: relative;
+}
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    240px circle at var(--spot-x, 50%) var(--spot-y, 0%),
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-card:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Skip-link accesible: oculto hasta foco de teclado. */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  transform: translateY(-300%);
+  border-radius: 0.75rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--surface-raised);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  transition: transform 200ms var(--ease-out);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* ============ Lenguaje de movimiento global v2 (todas las interfaces) ============
    Overlays, modales, toasts, skeletons y auth comparten curvas y duraciones:
    overlay 180ms, modal 280ms ease-out fuerte, toast 400ms, shimmer 1.6s lineal.
@@ -597,6 +691,10 @@ textarea:focus-visible {
 
 /* Movimiento reducido: conserva opacidad/color, elimina desplazamiento. */
 @media (prefers-reduced-motion: reduce) {
+  .spotlight-card::before,
+  .grain-overlay {
+    display: none;
+  }
   .stagger-in,
   .card-lift,
   .btn-press,

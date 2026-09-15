@@ -19,7 +19,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
   );
 
   const logoApp = (
-    <h1 className="text-base sm:text-xl font-bold tracking-tight text-app-fg flex items-center gap-2 min-w-0">
+    <h1 className="text-balance text-base sm:text-xl font-bold tracking-tighter text-app-fg flex items-center gap-2 min-w-0">
       <span
         style={{
           backgroundColor: "var(--accent-strong)",
@@ -35,7 +35,8 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
   );
 
   return (
-    <header translate="no" className="border-b border-app-line bg-app-surface/70 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/60 px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20 shadow-[0_1px_0_color-mix(in_srgb,var(--accent)_12%,transparent)] notranslate">
+    <div className="sticky top-3 z-20 mx-auto w-full max-w-[1440px] px-3 sm:px-6">
+    <header translate="no" className="rounded-2xl border border-app-line bg-app-surface/80 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/70 px-3 py-3 sm:px-5 sm:py-3.5 flex justify-between items-center gap-3 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--accent)_45%,transparent),inset_0_1px_0_rgba(255,255,255,0.06)] notranslate">
       <div className="flex items-center gap-2 min-w-0">
         {session?.user ? (
           <>
@@ -79,5 +80,6 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
         )}
       </div>
     </header>
+    </div>
   );
 }
