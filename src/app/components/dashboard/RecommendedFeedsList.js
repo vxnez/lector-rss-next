@@ -49,74 +49,68 @@ export default function RecommendedFeedsList({
   feedsAgregados, 
   t 
 }) {
-  try {
-    if (cargando) {
-      return (
-        <div className="flex justify-center items-center py-8 text-app-muted gap-2">
-          <Loader2 size={20} className="animate-spin text-sky-500" />
-          <span>{t("fuentes.cargando")}</span>
-        </div>
-      );
-    }
-
-    const safeFeeds = (feeds && typeof feeds === 'object' && !Array.isArray(feeds)) ? feeds : {};
-    const safeTotal = total || 0;
-
-    const categorias = Object.keys(safeFeeds);
-
-    if (categorias.length === 0 || safeTotal === 0) {
-      return <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>;
-    }
-
+  if (cargando) {
     return (
-      <>
-        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-          {categorias.map((categoria) => {
-            const lista = safeFeeds[categoria];
-            if (!Array.isArray(lista)) return null;
-            return (
-              <div key={categoria} className="space-y-2">
-                <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
-                    <Tag size={10} className="text-sky-400" />
-                  </span>
-                  {categoria} ({lista.length})
-                </h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {lista.map((feed) => {
-                    if (!feed || typeof feed !== 'object') return null;
-                    const key = `${feed.titulo}|${feed.url}`;
-                    return (
-                      <LocalFeedCard
-                        key={`${categoria}-${feed.titulo}`}
-                        feed={{ ...feed, categoria }}
-                        onAdd={() => onAdd(feed)}
-                        adding={feedsAgregando.has(key)}
-                        added={feedsAgregados.has(key)}
-                        t={t}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {safeTotal > 0 && totalAgregados < safeTotal && (
-          <button
-            type="button"
-            onClick={onAddAll}
-            disabled={totalAgregados === safeTotal}
-            className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Plus size={16} /> {t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
-          </button>
-        )}
-      </>
+      <div className="flex justify-center items-center py-8 text-app-muted gap-2">
+        <Loader2 size={20} className="animate-spin text-sky-500" />
+        <span>{t("fuentes.cargando")}</span>
+      </div>
     );
-  } catch (e) {
-    console.error("Critical render error in RecommendedFeedsList:", e);
-    return <p className="text-center text-red-400 py-8">Error al cargar las recomendaciones.</p>;
   }
+
+  const safeFeeds = feeds && typeof feeds === "object" && !Array.isArray(feeds) ? feeds : {};
+  const safeTotal = total || 0;
+  const categorias = Object.keys(safeFeeds);
+
+  if (categorias.length === 0 || safeTotal === 0) {
+    return <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>;
+  }
+
+  return (
+    <>
+      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+        {categorias.map((categoria) => {
+          const lista = safeFeeds[categoria];
+          if (!Array.isArray(lista)) return null;
+          return (
+            <div key={categoria} className="space-y-2">
+              <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
+                  <Tag size={10} className="text-sky-400" />
+                </span>
+                {categoria} ({lista.length})
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {lista.map((feed) => {
+                  if (!feed || typeof feed !== "object") return null;
+                  const key = `${feed.titulo}|${feed.url}`;
+                  return (
+                    <LocalFeedCard
+                      key={`${categoria}-${feed.titulo}`}
+                      feed={{ ...feed, categoria }}
+                      onAdd={() => onAdd(feed)}
+                      adding={feedsAgregando.has(key)}
+                      added={feedsAgregados.has(key)}
+                      t={t}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {safeTotal > 0 && totalAgregados < safeTotal && (
+        <button
+          type="button"
+          onClick={onAddAll}
+          disabled={totalAgregados === safeTotal}
+          className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <Plus size={16} /> {t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
+        </button>
+      )}
+    </>
+  );
 }

@@ -9,7 +9,7 @@ import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const TAMANOS_LECTURA = {
   normal: "text-sm md:text-base",
@@ -105,12 +105,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Navegación centralizada: registra la dirección para animar la entrada y el
   // instante del cambio para el enfriamiento del scroll con rueda.
-  const navegar = (direccion, id) => {
+  const navegar = useCallback((direccion, id) => {
     if (id == null) return false;
     direccionNavegacion = direccion;
     ultimoCambioRueda = Date.now();
     return onIrAId(id);
-  };
+  }, [onIrAId]);
 
   const manejarInicioToque = (event) => {
     const toque = event.touches?.[0];
@@ -161,7 +161,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [article, onClose, onIrAId, anteriorId, siguienteId, editandoCategoria]);
+  }, [article, onClose, navegar, anteriorId, siguienteId, editandoCategoria]);
 
   // Scroll con rueda del mouse en PC: al llegar al borde del contenido, el gesto
   // cambia de noticia (abajo = siguiente, arriba = anterior). Solo con puntero
@@ -217,7 +217,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       contenedor.removeEventListener("wheel", manejarRueda);
       if (temporizadorReposo) clearTimeout(temporizadorReposo);
     };
-  }, [article, onIrAId, anteriorId, siguienteId]);
+  }, [article, navegar, anteriorId, siguienteId]);
 
   // Aviso "desliza" (móvil, 3 primeras noticias por sesión): el estado inicial
   // ya decide si se muestra; el efecto solo cuenta la vista y lo oculta.

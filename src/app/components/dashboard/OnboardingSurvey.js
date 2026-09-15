@@ -1,7 +1,7 @@
 // src/app/components/dashboard/OnboardingSurvey.js — Encuesta de bienvenida con selección de categorías y feeds recomendados.
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, Check, Plus, Loader2, ArrowRight, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
 import MorphIcon from "../MorphIcon";
@@ -66,48 +66,40 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const cargandoRef = useRef(false);
 
   useEffect(() => {
-    setHasMounted(true);
-  }, []);
+    let cancelado = false;
+    if (categoriasSeleccionadas.length === 0) {
+      return () => { cancelado = true; };
+    }
 
-  const fetchFeeds = useCallback(async (seleccionadas = categoriasSeleccionadas) => {
-    if (seleccionadas.length === 0) {
-      setFeedsRecomendados({});
-      return;
-    }
-    setCargandoFeeds(true);
-    try {
-      const params = new URLSearchParams({ categorias: seleccionadas.join(",") });
-      const res = await fetch(`/api/recommended-feeds?${params}`, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        setFeedsRecomendados(data.categorias || {});
+    const cargarFeeds = async () => {
+      try {
+        const params = new URLSearchParams({ categorias: categoriasSeleccionadas.join(",") });
+        const res = await fetch(`/api/recommended-feeds?${params}`, { cache: "no-store" });
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setFeedsRecomendados(data.categorias || {});
+        }
+      } catch (err) {
+        if (!cancelado) {
+          console.error("Error cargando feeds recomendados:", err);
+          setFeedsRecomendados({});
+        }
+      } finally {
+        if (!cancelado) setCargandoFeeds(false);
       }
-    } catch (err) {
-      console.error("Error cargando feeds recomendados:", err);
-      setFeedsRecomendados({});
-    } finally {
-      setCargandoFeeds(false);
-    }
+    };
+
+    cargarFeeds();
+    return () => { cancelado = true; };
   }, [categoriasSeleccionadas]);
 
-  useEffect(() => {
-    let cancelado = false;
-    if (categoriasSeleccionadas.length > 0) {
-      fetchFeeds().then(() => {
-        if (cancelado) setFeedsRecomendados({});
-      });
-    } else {
-      setFeedsRecomendados({});
-    }
-    return () => { cancelado = true; };
-  }, [categoriasSeleccionadas, fetchFeeds]);
-
   const alternarCategoria = (categoria) => {
-    setCategoriasSeleccionadas((actuales) =>
-      actuales.includes(categoria)
-        ? actuales.filter((c) => c !== categoria)
-        : [...actuales, categoria]
-    );
+    const siguientes = categoriasSeleccionadas.includes(categoria)
+      ? categoriasSeleccionadas.filter((actual) => actual !== categoria)
+      : [...categoriasSeleccionadas, categoria];
+    setCategoriasSeleccionadas(siguientes);
+    setCargandoFeeds(siguientes.length > 0);
+    if (siguientes.length === 0) setFeedsRecomendados({});
   };
 
   const handleAgregarFeed = async (feed) => {
