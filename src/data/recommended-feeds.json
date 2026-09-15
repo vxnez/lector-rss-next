@@ -1,0 +1,122 @@
+{
+  "categorias": {
+    "Tecnología": [
+      { "titulo": "Genbeta", "url": "https://www.genbeta.com/rss", "descripcion": "Noticias de tecnología, software e internet" },
+      { "titulo": "Xataka", "url": "https://www.xataka.com/rss", "descripcion": "Tecnología, gadgets y ciencia" },
+      { "titulo": "El Androide Libre", "url": "https://elandroidelibre.elespanol.com/feed/", "descripcion": "Android, móviles y apps" },
+      { "titulo": "Applesfera", "url": "https://www.applesfera.com/rss", "descripcion": "Noticias de Apple y ecosistema" },
+      { "titulo": "Microsiervos", "url": "https://www.microsiervos.com/feed", "descripcion": "Ciencia, tecnología y curiosidades" },
+      { "titulo": "WWWhatsnew", "url": "https://wwwhatsnew.com/feed/", "descripcion": "Herramientas web, apps y recursos digitales" }
+    ],
+    "Ciencia y Espacio": [
+      { "titulo": "NASA Breaking News", "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss", "descripcion": "Noticias oficiales de la NASA" },
+      { "titulo": "ESA Science", "url": "https://www.esa.int/rss/ESA_Science.rss", "descripcion": "Agencia Espacial Europea" },
+      { "titulo": "National Geographic Ciencia", "url": "https://www.nationalgeographic.com/ciencia/rss/", "descripcion": "Ciencia, naturaleza y exploración" },
+      { "titulo": "New Scientist", "url": "https://www.newscientist.com/feed/", "descripcion": "Revista de ciencia y tecnología" },
+      { "titulo": "Space.com", "url": "https://www.space.com/feeds/all", "descripcion": "Exploración espacial y astronomía" }
+    ],
+    "Videojuegos": [
+      { "titulo": "3DJuegos", "url": "https://www.3djuegos.com/rss/rss.xml", "descripcion": "Noticias de videojuegos en español" },
+      { "titulo": "Vandal", "url": "https://www.vandal.net/rss.xml", "descripcion": "Análisis, noticias y trucos de videojuegos" },
+      { "titulo": "Meristation", "url": "https://meristation.as.com/rss/", "descripcion": "Videojuegos, cultura y entretenimiento" },
+      { "titulo": "Eurogamer.es", "url": "https://www.eurogamer.es/rss", "descripcion": "Análisis y noticias de videojuegos" },
+      { "titulo": "IGN España", "url": "https://es.ign.com/rss", "descripcion": "Videojuegos, cine y cómics" }
+    ],
+    "Cine y Series": [
+      { "titulo": "Fotogramas", "url": "https://www.fotogramas.es/rss/rss.xml", "descripcion": "Cine, series y crítica cinematográfica" },
+      { "titulo": "Espinof", "url": "https://www.espinof.com/rss", "descripcion": "Cine, series y streaming" },
+      { "titulo": "El Séptimo Arte", "url": "https://www.elseptimoarte.net/rss.xml", "descripcion": "Críticas y noticias de cine" },
+      { "titulo": "Series y TV", "url": "https://www.seriesytv.com/rss.xml", "descripcion": "Noticias de series de televisión" },
+      { "titulo": "Cine con Ñ", "url": "https://cineconene.es/feed/", "descripcion": "Cine español y latinoamericano" }
+    ],
+    "Música": [
+      { "titulo": "Mondosonoro", "url": "https://www.mondosonoro.com/feed/", "descripcion": "Música independiente y alternativa" },
+      { "titulo": "Jenesaispop", "url": "https://www.jenesaispop.com/feed/", "descripcion": "Música, pop y cultura" },
+      { "titulo": "Pitchfork", "url": "https://pitchfork.com/rss/news/", "descripcion": "Críticas y noticias musicales" },
+      { "titulo": "Rolling Stone", "url": "https://www.rollingstone.com/music/music-news/feed/", "descripcion": "Noticias de la industria musical" }
+    ],
+    "Deportes": [
+      { "titulo": "Marca", "url": "https://www.marca.com/rss/rss.xml", "descripcion": "Deportes: fútbol, tenis, F1, baloncesto" },
+      { "titulo": "AS", "url": "https://as.com/rss/rss.xml", "descripcion": "Noticias deportivas en español" },
+      { "titulo": "Mundo Deportivo", "url": "https://www.mundodeportivo.com/rss/rss.xml", "descripcion": "Fútbol y deportes" },
+      { "titulo": "ESPN Deportes", "url": "https://www.espn.com/espn/rss/news", "descripcion": "Deportes internacionales" }
+    ],
+    "Economía y Finanzas": [
+      { "titulo": "Cinco Días", "url": "https://cincodias.elpais.com/rss/economia/rss.xml", "descripcion": "Economía, mercados y empresas" },
+      { "titulo": "Expansión", "url": "https://www.expansion.com/rss/mercados.xml", "descripcion": "Mercados financieros y bolsa" },
+      { "titulo": "El Economista", "url": "https://www.eleconomista.es/rss/rss-economia.xml", "descripcion": "Economía, finanzas y empresa" },
+      { "titulo": "Financial Times", "url": "https://www.ft.com/rss/home", "descripcion": "Noticias financieras globales" }
+    ],
+    "Salud y Medicina": [
+      { "titulo": "WHO News", "url": "https://www.who.int/rss-feeds/news-english.xml", "descripcion": "Organización Mundial de la Salud" },
+      { "titulo": "Medscape", "url": "https://www.medscape.com/rss/medicalnews", "descripcion": "Noticias médicas profesionales" },
+      { "titulo": "El Médico Interactivo", "url": "https://www.elmedicointeractivo.com/rss.xml", "descripcion": "Salud y medicina en español" }
+    ],
+    "Política": [
+      { "titulo": "El País - Política", "url": "https://elpais.com/rss/politica.xml", "descripcion": "Política nacional e internacional" },
+      { "titulo": "El Mundo - Política", "url": "https://www.elmundo.es/rss/portada_politica.xml", "descripcion": "Actualidad política" },
+      { "titulo": "Público - Política", "url": "https://www.publico.es/rss/politica.xml", "descripcion": "Política y sociedad" }
+    ],
+    "Medio Ambiente": [
+      { "titulo": "National Geographic Medio Ambiente", "url": "https://www.nationalgeographic.com/medio-ambiente/rss/", "descripcion": "Cambio climático, conservación y ecología" },
+      { "titulo": "El Ecologista", "url": "https://www.eleconomista.es/ecologia/rss.xml", "descripcion": "Ecología y medio ambiente" },
+      { "titulo": "Greenpeace España", "url": "https://www.greenpeace.org/espana/feed/", "descripcion": "Campañas ambientales" }
+    ],
+    "Gastronomía": [
+      { "titulo": "Directo al Paladar", "url": "https://www.directoalpaladar.com/rss", "descripcion": "Recetas, restaurantes y gastronomía" },
+      { "titulo": "Cocina Familiar", "url": "https://www.cocina-familiar.com/feed/", "descripcion": "Recetas caseras y trucos de cocina" },
+      { "titulo": "Gastronomía y Cía", "url": "https://www.gastronomiaycia.com/feed/", "descripcion": "Gastronomía, vinos y restaurantes" }
+    ],
+    "Viajes y Turismo": [
+      { "titulo": "Lonely Planet", "url": "https://www.lonelyplanet.com/rss.xml", "descripcion": "Guías y consejos de viaje" },
+      { "titulo": "National Geographic Viajes", "url": "https://www.nationalgeographic.com/viajes/rss/", "descripcion": "Destinos y fotografía de viajes" },
+      { "titulo": "El Viajero", "url": "https://elviajero.elpais.com/rss.xml", "descripcion": "Turismo y viajes" }
+    ],
+    "Motor": [
+      { "titulo": "Motorpasión", "url": "https://www.motorpasion.com/rss", "descripcion": "Coches, motos y motor" },
+      { "titulo": "Diariomotor", "url": "https://www.diariomotor.com/rss.xml", "descripcion": "Pruebas, noticias y novedades del motor" },
+      { "titulo": "Auto Bild", "url": "https://www.autobild.es/rss/rss.xml", "descripcion": "Revista del automóvil" }
+    ],
+    "Educación": [
+      { "titulo": "El País - Educación", "url": "https://elpais.com/rss/educacion.xml", "descripcion": "Sistema educativo, universidades y estudiantes" },
+      { "titulo": "Educación 3.0", "url": "https://www.educaciontrespuntocero.com/feed/", "descripcion": "Innovación educativa y TIC" }
+    ],
+    "Cultura y Arte": [
+      { "titulo": "El Cultural", "url": "https://www.elcultural.com/rss.xml", "descripcion": "Cultura, arte, literatura y pensamiento" },
+      { "titulo": "ABC Cultural", "url": "https://www.abc.es/cultura/rss.xml", "descripcion": "Arte, libros y espectáculos" }
+    ],
+    "Moda y Belleza": [
+      { "titulo": "Telva", "url": "https://www.telva.com/rss.xml", "descripcion": "Moda, belleza y estilo de vida" },
+      { "titulo": "Vogue España", "url": "https://www.vogue.es/rss.xml", "descripcion": "Moda, belleza y tendencias" }
+    ],
+    "Fitness y Nutrición": [
+      { "titulo": "Vitónica", "url": "https://vitonica.com/rss", "descripcion": "Fitness, nutrición y vida saludable" },
+      { "titulo": "Men's Health", "url": "https://www.menshealth.com/rss/health.xml", "descripcion": "Salud, fitness y nutrición masculina" }
+    ],
+    "Hogar y Vida Diaria": [
+      { "titulo": "El Mueble", "url": "https://www.elmueble.com/rss.xml", "descripcion": "Decoración, hogar y estilo de vida" },
+      { "titulo": "Mi Casa Revista", "url": "https://www.micasarevista.com/rss.xml", "descripcion": "Decoración, reformas y hogar" }
+    ],
+    "Celulares": [
+      { "titulo": "Xataka Móvil", "url": "https://www.xatakamovil.com/rss", "descripcion": "Smartphones, Android, iOS y apps" },
+      { "titulo": "Andro4all", "url": "https://andro4all.com/feed/", "descripcion": "Noticias Android y móviles" }
+    ],
+    "Computadoras": [
+      { "titulo": "Xataka PC", "url": "https://www.xatakapc.com/rss", "descripcion": "Hardware, PC, laptops y componentes" },
+      { "titulo": "HardZone", "url": "https://hardzone.net/feed/", "descripcion": "Hardware, componentes y tecnología PC" }
+    ],
+    "Seguridad y Justicia": [
+      { "titulo": "El País - Sociedad", "url": "https://elpais.com/rss/sociedad.xml", "descripcion": "Sucesos, justicia y seguridad" },
+      { "titulo": "El Mundo - Sucesos", "url": "https://www.elmundo.es/rss/portada_sucesos.xml", "descripcion": "Crimen, justicia y sucesos" }
+    ],
+    "Clima y Meteorología": [
+      { "titulo": "AEMET", "url": "https://www.aemet.es/xml/rss/ultimos_avisos.xml", "descripcion": "Avisos meteorológicos oficiales" },
+      { "titulo": "El Tiempo", "url": "https://www.el-tiempo.net/rss/portada.xml", "descripcion": "Predicción del tiempo en España" }
+    ]
+  },
+  "metadata": {
+    "fuente": "Curated from vxnez/rssfeeds and verified Spanish RSS sources",
+    "actualizado": "2026-09-14",
+    "total_feeds": 54
+  }
+}

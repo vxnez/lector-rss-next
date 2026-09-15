@@ -33,7 +33,7 @@ import AppHeader from "./components/dashboard/AppHeader";
 import StatsCards from "./components/dashboard/StatsCards";
 import Paginacion from "./components/dashboard/Paginacion";
 import Toast from "./components/dashboard/Toast";
-import WelcomeModal from "./components/dashboard/WelcomeModal";
+import OnboardingSurvey from "./components/dashboard/OnboardingSurvey";
 import ConfirmDeleteModal from "./components/dashboard/ConfirmDeleteModal";
 
 function dominioDeFuente(urlFeed = "") {
@@ -92,8 +92,8 @@ export default function HomePage() {
   const [isPerfilOpen, setIsPerfilOpen] = useState(false);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
   
-  // Estado para el modal de bienvenida/tutorial de nuevos usuarios
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  // Estado para la encuesta de bienvenida (onboarding) de nuevos usuarios
+  const [showOnboardingSurvey, setShowOnboardingSurvey] = useState(false);
 
   const [activeTab, setActiveTab] = useState("todas"); // "todas" | "guardadas" | "leidas"
   const [orden, setOrden] = useState("recientes");
@@ -400,7 +400,7 @@ export default function HomePage() {
         if (sessionData?.user) {
           setSession(sessionData);
           const hasSeenWelcome = localStorage.getItem(`welcome_seen_${sessionData.user.email || sessionData.user.id}`);
-          if (!hasSeenWelcome) setShowWelcomeModal(true);
+          if (!hasSeenWelcome) setShowOnboardingSurvey(true);
         } else {
           // Sin cuenta: se entra como invitado si hay cookie de sesión válida.
           try {
@@ -411,7 +411,7 @@ export default function HomePage() {
             if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
             const hasSeenWelcome = localStorage.getItem("welcome_seen_invitado");
-            if (!hasSeenWelcome) setShowWelcomeModal(true);
+            if (!hasSeenWelcome) setShowOnboardingSurvey(true);
           } catch (err) {
             if (err.name !== "AbortError") console.error("Error al cargar invitado:", err);
           }
@@ -517,7 +517,7 @@ export default function HomePage() {
     return () => controller.abort();
   }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, nonceRecarga]);
 
-  const closeWelcomeModal = () => {
+  const closeOnboardingSurvey = () => {
     if (session?.user) {
       const clave = esInvitado ? "invitado" : (session.user.email || session.user.id);
       if (clave) {
@@ -528,8 +528,28 @@ export default function HomePage() {
         }
       }
     }
-    setShowWelcomeModal(false);
+    setShowOnboardingSurvey(false);
   };
+
+  // Función para agregar fuentes desde la encuesta de onboarding (un clic)
+  const handleAgregarFuenteOnboarding = useCallback(async (titulo, url_feed, categoria) => {
+    try {
+      const res = await fetch("/api/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: titulo.trim(), url_feed: url_feed.trim(), categoria: (categoria || "General").trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t("fuentes.err_conexion"));
+      // Recargar fuentes y conteos
+      fetchSources();
+      fetchConteos();
+      return data;
+    } catch (err) {
+      console.error("Error agregando fuente desde onboarding:", err);
+      throw err;
+    }
+  }, [fetchSources, fetchConteos, t]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -1193,7 +1213,13 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <WelcomeModal abierto={showWelcomeModal} onCerrar={closeWelcomeModal} t={t} />
+      <OnboardingSurvey
+        abierto={showOnboardingSurvey}
+        onCerrar={closeOnboardingSurvey}
+        t={t}
+        onCompletado={() => {}}
+        onAgregarFuente={handleAgregarFuenteOnboarding}
+      />
 
       {/* Panel lateral de ajustes + modales (el perfil no aplica en modo invitado) */}
       <AjustesPanel
@@ -1229,7 +1255,7 @@ export default function HomePage() {
           guardadas: conteos.guardadas,
         }}
         onNotify={notify}
-        onAbrirGuia={() => setShowWelcomeModal(true)}
+        onAbrirGuia={() => setShowOnboardingSurvey(true)}
       />
       <AddFeedModal
         key={isAddModalOpen ? `agregar-${urlCompartida || "manual"}` : "agregar-cerrado"}
