@@ -153,12 +153,6 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
       if (categoriasSeleccionadas.length === 0) return;
       
       setPaso(2);
-      
-      try {
-        await fetchFeeds();
-      } catch (err) {
-        console.error("Error en transición de paso 1 a 2:", err);
-      }
     } else if (paso === 2) {
       setPaso(3);
     }
