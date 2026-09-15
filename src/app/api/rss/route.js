@@ -140,7 +140,7 @@ async function ensureClassificationSchema() {
 
 let articulosUnicidadPromise;
 
-async function ensureArticulosUnicidad() {
+async function ensureArticulosUnicidad(userId) {
   if (!articulosUnicidadPromise) {
     articulosUnicidadPromise = (async () => {
       const [indices] = await db.query(
@@ -159,6 +159,7 @@ async function ensureArticulosUnicidad() {
       if (!tienePar) {
         await db.query("ALTER TABLE articulos_publicados ADD UNIQUE KEY unique_fuente_url (fuente_id, url_original)");
       }
+      await normalizarArticulosExistentes(userId);
     })().catch((error) => {
       articulosUnicidadPromise = undefined;
       throw error;
@@ -227,11 +228,17 @@ function limpiarUrlNoticia(rawUrl) {
   if (!rawUrl) return "";
   try {
     const urlObj = new URL(rawUrl.trim());
-    urlObj.searchParams.delete("utm_source");
-    urlObj.searchParams.delete("utm_medium");
-    urlObj.searchParams.delete("utm_campaign");
-    urlObj.searchParams.delete("utm_term");
-    urlObj.searchParams.delete("utm_content");
+    const parametrosSeguimiento = /^(utm_|fbclid$|gclid$|dclid$|mc_cid$|mc_eid$|_ga$|ref$)/i;
+    for (const nombre of [...urlObj.searchParams.keys()]) {
+      if (parametrosSeguimiento.test(nombre)) urlObj.searchParams.delete(nombre);
+    }
+    urlObj.protocol = urlObj.protocol.toLowerCase();
+    urlObj.hostname = urlObj.hostname.toLowerCase();
+    if ((urlObj.protocol === "http:" && urlObj.port === "80") || (urlObj.protocol === "https:" && urlObj.port === "443")) {
+      urlObj.port = "";
+    }
+    urlObj.hash = "";
+    urlObj.pathname = urlObj.pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "") || "/";
     return urlObj.toString();
   } catch (e) {
     return rawUrl.trim();
@@ -572,7 +579,7 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
     await ensureFuentesCacheSchema();
-    await ensureArticulosUnicidad();
+    await ensureArticulosUnicidad(userId);
 
     const limiteFecha = new Date();
     limiteFecha.setDate(limiteFecha.getDate() - 7);
@@ -754,6 +761,7 @@ export async function GET(req) {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
     await ensureClassificationSchema();
+    await ensureArticulosUnicidad(userId);
     const { searchParams } = new URL(req.url);
     const tipo = searchParams.get("tipo");
 
@@ -1600,4 +1608,71 @@ function extraerPendientes(clasificaciones = []) {
     pendientes.push({ link: clasificacion.link, titulo: clasificacion.titulo, resumen: clasificacion.resumen });
   }
   return pendientes;
+}
+
+const normalizacionArticulosPromises = new Map();
+
+async function normalizarArticulosExistentes(userId) {
+  if (!normalizacionArticulosPromises.has(userId)) {
+    const normalizacionArticulosPromise = (async () => {
+      const connection = await db.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [filas] = await connection.query(
+          `SELECT id, fuente_id, url_original, leido, guardado, descartado
+           FROM articulos_publicados a
+           INNER JOIN fuentes_rss f ON f.id = a.fuente_id
+           WHERE f.usuario_id = ?
+           ORDER BY fuente_id ASC, id ASC
+           FOR UPDATE`,
+          [userId]
+        );
+        const grupos = new Map();
+        for (const fila of filas) {
+          const urlCanonica = limpiarUrlNoticia(fila.url_original);
+          if (!urlCanonica) continue;
+          const clave = `${fila.fuente_id}\u0000${urlCanonica}`;
+          if (!grupos.has(clave)) grupos.set(clave, { urlCanonica, filas: [] });
+          grupos.get(clave).filas.push(fila);
+        }
+
+        for (const grupo of grupos.values()) {
+          const [principal, ...duplicadas] = grupo.filas;
+          if (duplicadas.length > 0) {
+            await connection.query(
+              "DELETE FROM articulos_publicados WHERE id IN (?)",
+              [duplicadas.map((fila) => fila.id)]
+            );
+          }
+          const leido = Math.max(...grupo.filas.map((fila) => Number(fila.leido) || 0));
+          const guardado = Math.max(...grupo.filas.map((fila) => Number(fila.guardado) || 0));
+          const descartado = Math.min(...grupo.filas.map((fila) => Number(fila.descartado) || 0));
+          if (
+            principal.url_original !== grupo.urlCanonica ||
+            Number(principal.leido) !== leido ||
+            Number(principal.guardado) !== guardado ||
+            Number(principal.descartado) !== descartado
+          ) {
+            await connection.query(
+              `UPDATE articulos_publicados
+               SET url_original = ?, leido = ?, guardado = ?, descartado = ?
+               WHERE id = ?`,
+              [grupo.urlCanonica, leido, guardado, descartado, principal.id]
+            );
+          }
+        }
+        await connection.commit();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    })().catch((error) => {
+      normalizacionArticulosPromises.delete(userId);
+      throw error;
+    });
+    normalizacionArticulosPromises.set(userId, normalizacionArticulosPromise);
+  }
+  return normalizacionArticulosPromises.get(userId);
 }
