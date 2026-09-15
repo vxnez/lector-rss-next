@@ -157,6 +157,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const handleAgregarTodas = async () => {
     if (!feedsRecomendados) return;
     const todas = Object.values(feedsRecomendados || {}).flat();
+    if (!Array.isArray(todas)) return;
     for (const feed of todas) {
       const feedKey = `${feed.titulo}|${feed.url}`;
       if (!feedsAgregados.has(feedKey) && !feedsAgregando.has(feedKey)) {
@@ -286,18 +287,18 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                         </span>
                         {categoria} ({feeds.length})
                       </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {feeds.map((feed) => (
-                          <FeedCard
-                            key={`${categoria}-${feed.titulo}`}
-                            feed={{ ...feed, categoria }}
-                            onAdd={() => handleAgregarFeed(feed)}
-                            adding={feedsAgregando.has(`${feed.titulo}|${feed.url}`)}
-                            added={feedsAgregados.has(`${feed.titulo}|${feed.url}`)}
-                            t={t}
-                          />
-                        ))}
-                      </div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                         {Array.isArray(feeds) && feeds.map((feed) => (
+                           <FeedCard
+                             key={`${categoria}-${feed.titulo}`}
+                             feed={{ ...feed, categoria }}
+                             onAdd={() => handleAgregarFeed(feed)}
+                             adding={feedsAgregando.has(`${feed.titulo}|${feed.url}`)}
+                             added={feedsAgregados.has(`${feed.titulo}|${feed.url}`)}
+                             t={t}
+                           />
+                         ))}
+                       </div>
                     </div>
                   ))}
                 </div>

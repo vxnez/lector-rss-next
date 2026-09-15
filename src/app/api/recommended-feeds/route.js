@@ -36,6 +36,10 @@ export async function GET(req) {
     });
   } catch (error) {
     console.error("Error en GET /api/recommended-feeds:", error);
-    return NextResponse.json({ error: "Error al obtener feeds recomendados" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Error al obtener feeds recomendados",
+      categorias: {}, 
+      total: 0 
+    }, { status: 500 });
   }
 }
