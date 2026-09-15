@@ -363,16 +363,17 @@ textarea:focus-visible {
   }
 }
 
-/* Línea vertical cuando la tarjeta está minimizada */
+/* Línea vertical cuando la tarjeta está minimizada: sigue al tema activo
+   vía var(--accent) en vez del degradado azul fijo. */
 .github-float-min {
-  background: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);
+  background: linear-gradient(to bottom, var(--accent), var(--accent-strong));
   cursor: pointer;
-  box-shadow: -2px 0 12px rgba(62, 131, 255, 0.35);
-  transition: width 200ms ease-in-out, box-shadow 200ms ease-in-out;
+  box-shadow: -2px 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: width 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
 .github-float-min:hover {
   width: 1rem;
-  box-shadow: -2px 0 18px rgba(62, 131, 255, 0.55);
+  box-shadow: -2px 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 /* ============ Sistema de pulido UI (skills: emil + high-end + taste) ============
