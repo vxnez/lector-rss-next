@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
+import { useIdioma } from "@/lib/i18n";
 import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -45,34 +46,10 @@ function GitHubIcon({ size = 18 }) {
   );
 }
 
-function etiquetaProveedor(proveedor) {
-  const lista = String(proveedor || "")
-    .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p && p !== "credentials" && p !== "invitado");
-  const nombres = lista.map((p) => (p === "google" ? "Google" : p === "github" ? "GitHub" : p));
-  if (nombres.length > 0) return nombres.join(" + ");
-  return "Correo y contraseña";
-}
-
-// Métodos vinculados a la cuenta (para mostrar insignias y ofrecer vincular).
-function metodosVinculados(perfil) {
-  const metodos = [];
-  if (Number(perfil?.tiene_password) === 1) {
-    metodos.push({ id: "correo", etiqueta: "Correo y contraseña" });
-  }
-  const lista = String(perfil?.proveedor || "")
-    .split(",")
-    .map((p) => p.trim());
-  if (lista.includes("google")) metodos.push({ id: "google", etiqueta: "Google" });
-  if (lista.includes("github")) metodos.push({ id: "github", etiqueta: "GitHub" });
-  return metodos;
-}
-
-function formatearFecha(valor) {
+function formatearFecha(valor, locale = "es-ES") {
   if (!valor) return "—";
   try {
-    return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(new Date(valor));
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(valor));
   } catch {
     return "—";
   }
@@ -174,26 +151,24 @@ export default function AjustesPanel({
   const [exportando, setExportando] = useState(false);
   const [pasoEliminar, setPasoEliminar] = useState("idle");
   const cerrarRef = useRef(null);
+  const { idioma, setIdioma, t } = useIdioma();
 
   const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
 
-  // Versión viva: v1.<commits en GitHub> + último cambio (se actualiza solo).
+  // Versión viva vía /api/repo (caché 1h + timeout 6s, sin rate-limit directo).
   const cargarRepo = async () => {
     if (infoRepo) return;
     try {
-      const res = await fetch(
-        "https://api.github.com/repos/vxnez/lector-rss-next/commits?per_page=1"
-      );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch("/api/repo", { cache: "no-store", signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) return;
-      const datos = await res.json().catch(() => []);
-      const cabecera = res.headers.get("Link") || "";
-      const coincidencia = cabecera.match(/[?&]page=(\d+)>;\s*rel="last"/);
-      const commits = coincidencia ? Number(coincidencia[1]) : 0;
-      const primero = Array.isArray(datos) ? datos[0] : null;
+      const datos = await res.json().catch(() => ({}));
       setInfoRepo({
-        commits,
-        mensaje: String(primero?.commit?.message || "").split("\n")[0].slice(0, 80),
-        fecha: primero?.commit?.author?.date || null,
+        commits: Number(datos.commits) || 0,
+        mensaje: String(datos.mensaje || ""),
+        fecha: datos.fecha || null,
       });
     } catch {
       // Sin red hacia GitHub: se muestra la versión base.
@@ -279,9 +254,9 @@ export default function AjustesPanel({
       enlace.click();
       enlace.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      onNotify("Datos exportados en JSON.", "success");
+      onNotify(t("avisos.exportar_ok"), "success");
     } catch (err) {
-      onNotify(err.message || "No se pudo exportar.", "error");
+      onNotify(err.message || t("avisos.exportar_err"), "error");
     } finally {
       setExportando(false);
     }
@@ -292,10 +267,10 @@ export default function AjustesPanel({
     try {
       const res = await fetch("/api/datos", { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar la cuenta.");
-      onNotify("Cuenta y datos eliminados.", "success");
+      onNotify(t("avisos.cuenta_eliminada"), "success");
       await signOut({ callbackUrl: "/login" });
     } catch (err) {
-      onNotify(err.message || "No se pudo eliminar.", "error");
+      onNotify(err.message || t("avisos.cuenta_err"), "error");
       setPasoEliminar("modal");
     }
   };
@@ -303,7 +278,7 @@ export default function AjustesPanel({
   const compartirApp = async () => {
     const datos = {
       title: "RSS Dashboard",
-      text: "Leo mis noticias RSS aquí, échale un ojo:",
+      text: t("ajustes.compartir_texto"),
       url: URL_APP,
     };
     try {
@@ -311,7 +286,7 @@ export default function AjustesPanel({
         await navigator.share(datos);
       } else {
         await navigator.clipboard.writeText(datos.url);
-        onNotify("Enlace copiado al portapapeles.", "success");
+        onNotify(t("avisos.enlace_copiado"), "success");
       }
     } catch {
       // El usuario canceló el diálogo: no se notifica nada.
@@ -327,18 +302,39 @@ export default function AjustesPanel({
   };
 
   const inicial = (nombreUsuario || "?").trim().charAt(0).toUpperCase() || "?";
-  const proveedor = perfil?.proveedor || null;
+  const locale = idioma === "en" ? "en-US" : "es-ES";
+
+  // Métodos vinculados a la cuenta (insignias traducidas).
+  const metodosVinculados = () => {
+    const metodos = [];
+    if (Number(perfil?.tiene_password) === 1) {
+      metodos.push({ id: "correo", etiqueta: t("ajustes.prov_correo") });
+    }
+    const lista = String(perfil?.proveedor || "")
+      .split(",")
+      .map((p) => p.trim());
+    if (lista.includes("google")) metodos.push({ id: "google", etiqueta: t("ajustes.prov_google") });
+    if (lista.includes("github")) metodos.push({ id: "github", etiqueta: t("ajustes.prov_github") });
+    return metodos;
+  };
+
+  const etiquetasProveedor = () => {
+    const partes = metodosVinculados().map((m) => m.etiqueta);
+    return partes.length > 0 ? partes.join(" + ") : t("ajustes.prov_correo");
+  };
+
+  const fecha = (valor) => formatearFecha(valor, locale);
   const totalNoticias =
     (estadisticas?.pendientes || 0) + (estadisticas?.leidas || 0) + (estadisticas?.guardadas || 0);
 
   const titulos = {
-    apariencia: "Apariencia",
-    cuenta: "Cuenta",
-    seguridad: "Seguridad y acceso",
-    notificaciones: "Notificaciones",
-    datos: "Datos y privacidad",
-    apoyo: "Apoyo al creador",
-    proyecto: "Sobre el proyecto",
+    apariencia: t("ajustes.apariencia_t"),
+    cuenta: t("ajustes.cuenta_t"),
+    seguridad: t("ajustes.seguridad_t"),
+    notificaciones: t("ajustes.noti_t"),
+    datos: t("ajustes.datos_t"),
+    apoyo: t("ajustes.apoyo_t"),
+    proyecto: t("ajustes.proyecto_t"),
   };
 
   return (
@@ -351,8 +347,8 @@ export default function AjustesPanel({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={vista ? titulos[vista] : "Ajustes"}
-        className="anim-panel-izquierda fixed inset-y-0 left-0 z-50 flex w-[min(22rem,88vw)] flex-col border-r border-gray-800 bg-gray-900 shadow-2xl"
+        aria-label={vista ? titulos[vista] : t("ajustes.titulo")}
+        className="anim-panel-izquierda fixed inset-y-0 left-0 z-50 flex w-[min(22rem,88vw)] flex-col border-r border-app-line bg-app-surface shadow-2xl"
       >
         <div className="flex items-center gap-2 border-b border-gray-800 px-3 py-3">
           {vista ? (
@@ -366,13 +362,13 @@ export default function AjustesPanel({
             </button>
           ) : null}
           <h2 className="min-w-0 flex-1 truncate text-base font-bold text-white">
-            {vista ? titulos[vista] : "Ajustes"}
+            {vista ? titulos[vista] : t("ajustes.titulo")}
           </h2>
           <button
             ref={cerrarRef}
             type="button"
             onClick={cerrar}
-            aria-label="Cerrar ajustes"
+            aria-label={t("ajustes.cerrar")}
             className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
           >
             <X size={18} />
@@ -398,9 +394,9 @@ export default function AjustesPanel({
                   <HelpCircle size={20} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-sky-100">Guía RSS</span>
+                  <span className="block text-sm font-semibold text-sky-100">{t("ajustes.guia_t")}</span>
                   <span className="block truncate text-xs text-sky-100/70">
-                    Cómo encontrar y agregar fuentes
+                    {t("ajustes.guia_d")}
                   </span>
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-sky-100/70" />
@@ -430,10 +426,10 @@ export default function AjustesPanel({
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-gray-100">
-                    {nombreUsuario || "Sin sesión"}
+                    {nombreUsuario || t("ajustes.sin_sesion")}
                   </span>
                   <span className="block truncate text-xs text-gray-500">
-                    {esInvitado ? "Modo invitado (temporal)" : emailUsuario || ""}
+                    {esInvitado ? t("ajustes.invitado_tag") : emailUsuario || ""}
                   </span>
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-gray-500" />
@@ -443,56 +439,56 @@ export default function AjustesPanel({
                 icono={<Palette size={20} />}
                 fondoIcono="#e0e7ff"
                 tintaIcono="#3730a3"
-                titulo="Apariencia"
-                descripcion="Temas, lectura y densidad"
+                titulo={t("ajustes.apariencia_t")}
+                descripcion={t("ajustes.apariencia_d")}
                 onAbrir={() => abrirVista("apariencia")}
               />
               <TarjetaAjuste
                 icono={<IdCard size={20} />}
                 fondoIcono="#dcfce7"
                 tintaIcono="#166534"
-                titulo="Cuenta"
-                descripcion="Perfil y sesión"
+                titulo={t("ajustes.cuenta_t")}
+                descripcion={t("ajustes.cuenta_d")}
                 onAbrir={() => abrirVista("cuenta")}
               />
               <TarjetaAjuste
                 icono={<ShieldCheck size={20} />}
                 fondoIcono="#dbeafe"
                 tintaIcono="#1e40af"
-                titulo="Seguridad y acceso"
-                descripcion="Acceso, contraseña y actividad"
+                titulo={t("ajustes.seguridad_t")}
+                descripcion={t("ajustes.seguridad_d")}
                 onAbrir={() => abrirVista("seguridad")}
               />
               <TarjetaAjuste
                 icono={<BellRing size={20} />}
                 fondoIcono="#ffedd5"
                 tintaIcono="#9a3412"
-                titulo="Notificaciones"
-                descripcion={pushActivado ? "Avisos push activados" : "Avisos push de noticias"}
+                titulo={t("ajustes.noti_t")}
+                descripcion={pushActivado ? t("ajustes.noti_on") : t("ajustes.noti_d")}
                 onAbrir={() => abrirVista("notificaciones")}
               />
               <TarjetaAjuste
                 icono={<Database size={20} />}
                 fondoIcono="#ccfbf1"
                 tintaIcono="#115e59"
-                titulo="Datos y privacidad"
-                descripcion="Exportar o eliminar tus datos"
+                titulo={t("ajustes.datos_t")}
+                descripcion={t("ajustes.datos_d")}
                 onAbrir={() => abrirVista("datos")}
               />
               <TarjetaAjuste
                 icono={<Heart size={20} />}
                 fondoIcono="#fce7f3"
                 tintaIcono="#9d174d"
-                titulo="Apoyo al creador"
-                descripcion="GitHub y compartir"
+                titulo={t("ajustes.apoyo_t")}
+                descripcion={t("ajustes.apoyo_d")}
                 onAbrir={() => abrirVista("apoyo")}
               />
               <TarjetaAjuste
                 icono={<Info size={20} />}
                 fondoIcono="#f3f4f6"
                 tintaIcono="#374151"
-                titulo="Sobre el proyecto"
-                descripcion="Versión, stack y estado"
+                titulo={t("ajustes.proyecto_t")}
+                descripcion={t("ajustes.proyecto_d")}
                 onAbrir={() => abrirVista("proyecto")}
               />
 
@@ -502,21 +498,21 @@ export default function AjustesPanel({
           {vista === "apariencia" && (
             <section className="space-y-4">
               <div className="space-y-2.5">
-                <p className="text-xs font-medium text-gray-400">Tema de color</p>
+                <p className="text-xs font-medium text-gray-400">{t("ajustes.tema_grupo")}</p>
                 <p className="text-xs leading-relaxed text-gray-500">
-                  Se aplica en toda la app y se guarda en este navegador.
+                  {t("ajustes.apariencia_nota")}
                 </p>
-                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tema de color">
-                  {TEMAS.map((t) => {
-                    const activo = tema === t.id;
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("ajustes.tema_grupo")}>
+                  {TEMAS.map((item) => {
+                    const activo = tema === item.id;
                     return (
                       <button
-                        key={t.id}
+                        key={item.id}
                         type="button"
                         role="radio"
                         aria-checked={activo}
-                        onClick={() => onTema(t.id)}
-                        title={t.claro ? `${t.nombre} (claro)` : `${t.nombre} (oscuro)`}
+                        onClick={() => onTema(item.id)}
+                        title={`${item.nombre} (${item.claro ? t("ajustes.claro") : t("ajustes.oscuro")})`}
                         className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
                           activo
                             ? "border-sky-500 bg-sky-500/15"
@@ -525,24 +521,56 @@ export default function AjustesPanel({
                       >
                         <span
                           aria-hidden="true"
-                          style={{ background: `linear-gradient(135deg, ${t.bg} 50%, ${t.accent} 50%)` }}
+                          style={{ background: `linear-gradient(135deg, ${item.bg} 50%, ${item.accent} 50%)` }}
                           className="h-7 w-7 shrink-0 rounded-full border border-gray-700"
                         />
                         <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-200">
-                          {t.nombre}
+                          {item.nombre}
                         </span>
                         {activo && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
                       </button>
                     );
                   })}
                 </div>
+                <div>
+                  <span id="ajustes-idioma" className="mb-1.5 block text-xs font-medium text-gray-400">
+                    {t("ajustes.idioma")}
+                  </span>
+                  <p className="mb-1.5 text-xs leading-relaxed text-gray-500">
+                    {t("ajustes.idioma_d")}
+                  </p>
+                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-idioma">
+                    {[
+                      { id: "es", etiqueta: "Español" },
+                      { id: "en", etiqueta: "English" },
+                    ].map((op) => {
+                      const activo = idioma === op.id;
+                      return (
+                        <button
+                          key={op.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => setIdioma(op.id)}
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            activo
+                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                          }`}
+                        >
+                          {op.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2.5 border-t border-gray-800 pt-4">
-                <p className="text-xs font-medium text-gray-400">Lectura</p>
+                <p className="text-xs font-medium text-gray-400">{t("ajustes.lectura_sub")}</p>
                 <div>
                   <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-gray-400">
-                    Noticias por página
+                    {t("ajustes.pagina")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-pagina">
                     {TAMANOS_PAGINA.map((n) => {
@@ -568,12 +596,12 @@ export default function AjustesPanel({
                 </div>
                 <div>
                   <span id="ajustes-densidad" className="mb-1.5 block text-xs font-medium text-gray-400">
-                    Densidad de tarjetas
+                    {t("ajustes.densidad")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-densidad">
                     {[
-                      { id: "comoda", etiqueta: "Cómoda" },
-                      { id: "compacta", etiqueta: "Compacta" },
+                      { id: "comoda", etiqueta: t("ajustes.d_comoda") },
+                      { id: "compacta", etiqueta: t("ajustes.d_compacta") },
                     ].map((op) => {
                       const activo = densidad === op.id;
                       return (
@@ -598,17 +626,17 @@ export default function AjustesPanel({
                 <Interruptor
                   activado={autoMarcarLeida}
                   onCambiar={onAutoMarcar}
-                  etiqueta="Marcar como leída al abrir"
-                  descripcion="Al abrir una noticia se marca leída sola."
+                  etiqueta={t("ajustes.auto")}
+                  descripcion={t("ajustes.auto_d")}
                 />
                 <Interruptor
                   activado={movimientoReducido}
                   onCambiar={onMovimiento}
-                  etiqueta="Reducir animaciones"
-                  descripcion="Calma transiciones y efectos de movimiento."
+                  etiqueta={t("ajustes.movimiento")}
+                  descripcion={t("ajustes.movimiento_d")}
                 />
                 <p className="text-xs leading-relaxed text-gray-500">
-                  El tamaño de letra se ajusta dentro del lector de noticias (icono A).
+                  {t("ajustes.letra_nota")}
                 </p>
               </div>
             </section>
@@ -619,36 +647,35 @@ export default function AjustesPanel({
               {esInvitado ? (
                 <>
                   <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
-                    Estás en modo invitado: no hay perfil permanente. Crea una cuenta para conservar
-                    tu información.
+                    {t("ajustes.invitado_nota")}
                   </p>
                   <button
                     type="button"
                     onClick={onCerrarSesion}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                   >
-                    <LogOut size={15} /> Salir y borrar datos
+                    <LogOut size={15} /> {t("ajustes.salir_datos")}
                   </button>
                 </>
               ) : (
                 <>
-                  <FilaDato etiqueta="Nombre" valor={perfil?.nombre || nombreUsuario || "—"} />
-                  <FilaDato etiqueta="Correo" valor={perfil?.email || emailUsuario || "—"} />
-                  <FilaDato etiqueta="Proveedor" valor={etiquetaProveedor(proveedor)} />
-                  <FilaDato etiqueta="Miembro desde" valor={formatearFecha(perfil?.creado_en)} />
+                  <FilaDato etiqueta={t("ajustes.nombre")} valor={perfil?.nombre || nombreUsuario || "—"} />
+                  <FilaDato etiqueta={t("ajustes.correo")} valor={perfil?.email || emailUsuario || "—"} />
+                  <FilaDato etiqueta={t("ajustes.proveedor")} valor={etiquetasProveedor()} />
+                  <FilaDato etiqueta={t("ajustes.miembro")} valor={fecha(perfil?.creado_en)} />
                   <button
                     type="button"
                     onClick={onEditarPerfil}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                   >
-                    <User size={15} /> Editar perfil
+                    <User size={15} /> {t("ajustes.editar_perfil")}
                   </button>
                   <button
                     type="button"
                     onClick={cerrarSesion}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                   >
-                    <LogOut size={15} /> Cerrar sesión
+                    <LogOut size={15} /> {t("ajustes.cerrar_sesion")}
                   </button>
                 </>
               )}
@@ -658,15 +685,15 @@ export default function AjustesPanel({
           {vista === "seguridad" && (
             <section className="space-y-2.5">
               {esInvitado ? (
-                <FilaDato etiqueta="Método de acceso" valor="Invitado (temporal)" />
+                <FilaDato etiqueta={t("ajustes.metodo")} valor={t("ajustes.invitado_tag")} />
               ) : (
                 <>
                   <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
                     <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Métodos vinculados
+                      {t("ajustes.metodos")}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {metodosVinculados(perfil).map((m) => (
+                      {metodosVinculados().map((m) => (
                         <span
                           key={m.id}
                           className="rounded-full border border-emerald-700 bg-emerald-950/60 px-2.5 py-1 text-xs font-medium text-emerald-300"
@@ -674,67 +701,66 @@ export default function AjustesPanel({
                           {m.etiqueta}
                         </span>
                       ))}
-                      {metodosVinculados(perfil).length === 0 && (
-                        <span className="text-xs text-gray-500">Cargando métodos…</span>
+                      {metodosVinculados().length === 0 && (
+                        <span className="text-xs text-gray-500">{t("ajustes.cargando_metodos")}</span>
                       )}
                     </div>
                   </div>
-                  {!metodosVinculados(perfil).some((m) => m.id === "google") && (
+                  {!metodosVinculados().some((m) => m.id === "google") && (
                     <button
                       type="button"
                       onClick={() => signIn("google", { callbackUrl: "/" })}
                       className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                     >
-                      Conectar con Google
+                      {t("ajustes.conectar_google")}
                     </button>
                   )}
-                  {!metodosVinculados(perfil).some((m) => m.id === "github") && (
+                  {!metodosVinculados().some((m) => m.id === "github") && (
                     <button
                       type="button"
                       onClick={() => signIn("github", { callbackUrl: "/" })}
                       className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                     >
-                      Conectar con GitHub
+                      {t("ajustes.conectar_github")}
                     </button>
                   )}
                   <p className="text-xs leading-relaxed text-gray-500">
-                    Vincula sin salirte: usa el mismo correo de tu cuenta y ambos accesos abren lo
-                    mismo.
+                    {t("ajustes.vincular_nota")}
                   </p>
-                  {metodosVinculados(perfil).some((m) => m.id === "correo") && (
+                  {metodosVinculados().some((m) => m.id === "correo") && (
                     <Link
                       href="/recuperar"
                       className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                     >
-                      Cambiar contraseña
+                      {t("ajustes.cambiar_pass")}
                     </Link>
                   )}
                 </>
               )}
               <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                  Actividad reciente
+                  {t("ajustes.actividad")}
                 </p>
                 {esInvitado ? (
                   <p className="text-xs leading-relaxed text-gray-400">
-                    Sesión temporal de invitado: sin historial permanente.
+                    {t("ajustes.actividad_invitado")}
                   </p>
                 ) : (
                   <>
                     <p className="truncate text-sm font-medium text-gray-100">
                       {actividad?.ultimaFuente
-                        ? `Última fuente: ${actividad.ultimaFuente.titulo}`
-                        : "Aún no agregas fuentes"}
+                        ? `${t("ajustes.ultima_fuente")}: ${actividad.ultimaFuente.titulo}`
+                        : t("ajustes.sin_fuentes_act")}
                     </p>
                     <p className="text-xs text-gray-500">
                       {actividad?.ultimaFuente
-                        ? formatearFecha(actividad.ultimaFuente.creado_en)
-                        : "Agrega tu primer feed desde el dashboard"}
+                        ? fecha(actividad.ultimaFuente.creado_en)
+                        : t("ajustes.agrega_primero")}
                       {" · "}
                       {(estadisticas?.pendientes || 0) +
                         (estadisticas?.leidas || 0) +
                         (estadisticas?.guardadas || 0)}{" "}
-                      noticias en tu cuenta
+                      {t("ajustes.noticias_en")}
                     </p>
                   </>
                 )}
@@ -746,15 +772,14 @@ export default function AjustesPanel({
             <section className="space-y-2.5">
               {!pushSoportado ? (
                 <p className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs leading-relaxed text-gray-400">
-                  Tu navegador no soporta notificaciones push. Prueba con Chrome o Edge en
-                  escritorio o Android.
+                  {t("ajustes.noti_no")}
                 </p>
               ) : (
                 <>
                   <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">Estado</p>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">{t("ajustes.noti_estado")}</p>
                     <p className="text-sm font-medium text-gray-100">
-                      {pushActivado ? "Avisos activados en este dispositivo" : "Avisos desactivados"}
+                      {pushActivado ? t("ajustes.noti_activados") : t("ajustes.noti_desactivados")}
                     </p>
                   </div>
                   <button
@@ -765,13 +790,13 @@ export default function AjustesPanel({
                     className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white disabled:opacity-50"
                   >
                     {pushCargando
-                      ? "Configurando..."
+                      ? t("ajustes.noti_config")
                       : pushActivado
-                        ? "Desactivar avisos"
-                        : "Activar avisos push"}
+                        ? t("ajustes.noti_desactivar")
+                        : t("ajustes.noti_activar")}
                   </button>
                   <p className="text-xs leading-relaxed text-gray-500">
-                    Te avisamos cuando el refresco (manual o automático) encuentre noticias nuevas.
+                    {t("ajustes.noti_nota")}
                   </p>
                 </>
               )}
@@ -781,26 +806,28 @@ export default function AjustesPanel({
           {vista === "datos" && (
             <section className="space-y-2.5">
               <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">Qué se guarda</p>
+                <p className="text-[11px] uppercase tracking-wide text-gray-500">{t("ajustes.que_guarda")}</p>
                 <p className="text-xs leading-relaxed text-gray-400">
-                  {estadisticas?.fuentes || 0} fuentes ·{" "}
-                  {(estadisticas?.pendientes || 0) +
-                    (estadisticas?.leidas || 0) +
-                    (estadisticas?.guardadas || 0)}{" "}
-                  noticias · tus vistas guardadas y tus dispositivos push. Nada más.
+                  {t("ajustes.que_guarda_d", {
+                    f: estadisticas?.fuentes || 0,
+                    n:
+                      (estadisticas?.pendientes || 0) +
+                      (estadisticas?.leidas || 0) +
+                      (estadisticas?.guardadas || 0),
+                  })}
                 </p>
               </div>
               {esInvitado ? (
                 <>
                   <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
-                    En modo invitado tus datos viven solo en esta sesión y se borran al salir.
+                    {t("ajustes.invitado_datos")}
                   </p>
                   <button
                     type="button"
                     onClick={onCerrarSesion}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
                   >
-                    <Trash2 size={15} /> Borrar datos y salir
+                    <Trash2 size={15} /> {t("ajustes.borrar_salir")}
                   </button>
                 </>
               ) : (
@@ -811,7 +838,7 @@ export default function AjustesPanel({
                     disabled={exportando}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white disabled:opacity-50"
                   >
-                    <Download size={15} /> {exportando ? "Exportando..." : "Exportar mis datos (JSON)"}
+                    <Download size={15} /> {exportando ? t("ajustes.exportando") : t("ajustes.exportar")}
                   </button>
                   <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2.5">
                     <button
@@ -819,7 +846,7 @@ export default function AjustesPanel({
                       onClick={() => setPasoEliminar("modal")}
                       className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 transition hover:text-red-200"
                     >
-                      <Trash2 size={15} /> Eliminar mi cuenta y datos
+                      <Trash2 size={15} /> {t("ajustes.eliminar_cuenta")}
                     </button>
                   </div>
                 </>
@@ -842,9 +869,9 @@ export default function AjustesPanel({
                   <GitHubIcon size={20} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-gray-100">Código en GitHub</span>
+                  <span className="block text-sm font-semibold text-gray-100">{t("ajustes.repo_t")}</span>
                   <span className="block truncate text-xs text-gray-500">
-                    vxnez/lector-rss-next · regálale una estrella
+                    vxnez/lector-rss-next
                   </span>
                 </span>
               </a>
@@ -854,25 +881,26 @@ export default function AjustesPanel({
                 rel="noopener noreferrer"
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20"
               >
-                <Star size={15} /> Regalar una estrella en GitHub
+                <Star size={15} /> {t("ajustes.estrella")}
               </a>
               <button
                 type="button"
                 onClick={compartirApp}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
               >
-                <Share2 size={15} /> Compartir la app
+                <Share2 size={15} /> {t("ajustes.compartir")}
               </button>
-              <button
-                type="button"
-                disabled
-                title="Disponible en próximas ediciones"
-                className="flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-500 disabled:opacity-60"
+              <a
+                href={URL_REPOSITORIO}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={t("ajustes.cafe_titulo")}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20"
               >
-                <Coffee size={15} /> Invítame un café (próximamente)
-              </button>
+                <Coffee size={15} /> {t("ajustes.cafe")}
+              </a>
               <p className="text-xs leading-relaxed text-gray-500">
-                Proyecto universitario de código abierto. Compartirlo es la mejor forma de apoyarlo.
+                {t("ajustes.apoyo_nota")}
               </p>
             </section>
           )}
@@ -880,25 +908,27 @@ export default function AjustesPanel({
           {vista === "proyecto" && (
             <section className="space-y-2.5">
               <FilaDato
-                etiqueta="App"
+                etiqueta={t("ajustes.app")}
                 valor={`RSS Dashboard v${versionTexto}`}
               />
               <FilaDato
-                etiqueta="Último cambio"
+                etiqueta={t("ajustes.ultimo_cambio")}
                 valor={
                   infoRepo
-                    ? `${infoRepo.mensaje} · ${formatearFecha(infoRepo.fecha)}`
-                    : "Consultando GitHub…"
+                    ? `${infoRepo.mensaje} · ${fecha(infoRepo.fecha)}`
+                    : t("ajustes.consultando")
                 }
               />
-              <FilaDato etiqueta="Stack" valor="Next.js 16 · React 19 · MySQL · Gemini · Tailwind" />
+              <FilaDato etiqueta="Stack" valor={t("ajustes.stack")} />
               <FilaDato
-                etiqueta="Tu actividad"
-                valor={`${estadisticas?.fuentes || 0} fuentes · ${
-                  (estadisticas?.pendientes || 0) +
-                  (estadisticas?.leidas || 0) +
-                  (estadisticas?.guardadas || 0)
-                } noticias`}
+                etiqueta={t("ajustes.actividad_prop")}
+                valor={t("ajustes.actividad_val", {
+                  f: estadisticas?.fuentes || 0,
+                  n:
+                    (estadisticas?.pendientes || 0) +
+                    (estadisticas?.leidas || 0) +
+                    (estadisticas?.guardadas || 0),
+                })}
               />
               <a
                 href={URL_APP}
@@ -906,7 +936,7 @@ export default function AjustesPanel({
                 rel="noopener noreferrer"
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
               >
-                Abrir app desplegada
+                {t("ajustes.abrir_app")}
               </a>
               <a
                 href={URL_REPOSITORIO}
@@ -914,7 +944,7 @@ export default function AjustesPanel({
                 rel="noopener noreferrer"
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
               >
-                <GitHubIcon size={15} /> Repositorio
+                <GitHubIcon size={15} /> {t("ajustes.repositorio")}
               </a>
             </section>
           )}
@@ -941,19 +971,18 @@ export default function AjustesPanel({
               <TriangleAlert size={26} />
             </div>
             <h3 id="titulo-eliminar-cuenta" className="text-center text-xl font-bold text-white">
-              ¿Eliminar tu cuenta?
+              {t("ajustes.modal_titulo")}
             </h3>
             <p className="mt-2 text-center text-sm text-gray-400">
-              Esto borra para siempre:
+              {t("ajustes.modal_que")}
             </p>
             <ul className="mx-auto mt-3 max-w-xs list-disc space-y-1 pl-5 text-sm text-gray-300">
-              <li>Tus fuentes RSS y todas las noticias</li>
-              <li>Tus vistas guardadas y dispositivos vinculados</li>
-              <li>Tu perfil, acceso y preferencias</li>
+              <li>{t("ajustes.modal_l1")}</li>
+              <li>{t("ajustes.modal_l2")}</li>
+              <li>{t("ajustes.modal_l3")}</li>
             </ul>
             <p className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-center text-xs leading-relaxed text-amber-200">
-              Para volver a usar la app necesitarás crear una cuenta nueva con tu correo. Esta
-              acción no se puede deshacer.
+              {t("ajustes.modal_aviso")}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
@@ -962,7 +991,7 @@ export default function AjustesPanel({
                 disabled={pasoEliminar === "eliminando"}
                 className="rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-gray-700 disabled:opacity-50"
               >
-                Cancelar
+                {t("ajustes.modal_cancelar")}
               </button>
               <button
                 type="button"
@@ -970,7 +999,7 @@ export default function AjustesPanel({
                 disabled={pasoEliminar === "eliminando"}
                 className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
               >
-                {pasoEliminar === "eliminando" ? "Eliminando…" : "Sí, eliminar todo"}
+                {pasoEliminar === "eliminando" ? t("ajustes.modal_eliminando") : t("ajustes.modal_confirmar")}
               </button>
             </div>
           </div>

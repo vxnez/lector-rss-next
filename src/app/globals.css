@@ -22,8 +22,24 @@
   --color-line: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  /* Tokens de app: única vía para superficies/textos que deben seguir al tema.
+     Usar bg-app-bg, bg-app-surface, bg-app-raised, border-app-line,
+     text-app-fg, text-app-muted en vez de gray-*/ 
+  --color-app-bg: var(--background);
+  --color-app-surface: var(--surface);
+  --color-app-raised: var(--surface-raised);
+  --color-app-line: var(--border);
+  --color-app-muted: var(--muted);
+  --color-app-fg: var(--foreground);
+  --color-app-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* Render diferido de tarjetas largas: menos costo en grillas de 30-60. */
+.tarjeta-noticia {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
 body {
@@ -96,19 +112,20 @@ textarea:focus-visible {
   isolation: isolate;
   position: relative;
   width: 100%;
-  background: #29292c;
+  background: var(--border);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   overflow: hidden;
   font-size: 14px;
-  --gradient: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);
-  --color: #32a6ff;
+  --gradient: linear-gradient(to bottom, var(--accent), var(--accent-strong));
+  --color: var(--accent-ink);
 }
 .github-float-link:before {
   position: absolute;
   content: "";
   inset: 0.0625rem;
   border-radius: 0.9375rem;
-  background: #18181b;
+  background: var(--surface);
   z-index: 2;
 }
 .github-float-link:after {
@@ -139,7 +156,7 @@ textarea:focus-visible {
   transform: translateX(0.15rem);
 }
 .github-float .notibody {
-  color: #99999d;
+  color: var(--muted);
   padding: 0 1.25rem 1rem;
   transition: transform 300ms ease;
   z-index: 5;

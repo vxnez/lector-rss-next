@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Minus } from "lucide-react";
+import { useIdioma } from "@/lib/i18n";
 
 const CLAVE_MINIMIZADA = "github_card_min";
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
@@ -23,6 +24,7 @@ function GitHubIcon({ size = 18, className = "" }) {
 }
 
 export default function GitHubCard() {
+  const { t } = useIdioma();
   const [minimizada, setMinimizada] = useState(() => {
     try {
       return typeof window !== "undefined" && window.localStorage.getItem(CLAVE_MINIMIZADA) === "1";
@@ -45,8 +47,8 @@ export default function GitHubCard() {
       <button
         type="button"
         onClick={() => guardar(false)}
-        title="Mostrar tarjeta de GitHub"
-        aria-label="Mostrar tarjeta de GitHub"
+        title={t("github.mostrar_aria")}
+        aria-label={t("github.mostrar_aria")}
         className="github-float-min fixed right-0 bottom-5 z-40 h-28 w-2.5 rounded-l-md"
       />
     );
@@ -58,22 +60,22 @@ export default function GitHubCard() {
         href={URL_REPOSITORIO}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Abrir el repositorio RSS Dashboard en GitHub"
+        aria-label={t("github.abrir_aria")}
         className="github-float-link"
       >
         <span className="notiglow" aria-hidden="true" />
         <span className="notiborderglow" aria-hidden="true" />
         <span className="notititle">
           <GitHubIcon size={18} className="shrink-0" />
-          RSS Dashboard
+          {t("github.titulo")}
         </span>
-        <span className="notibody">Código fuente del proyecto en GitHub</span>
+        <span className="notibody">{t("github.cuerpo")}</span>
       </a>
       <button
         type="button"
         onClick={() => guardar(true)}
-        aria-label="Minimizar tarjeta de GitHub"
-        title="Minimizar"
+        aria-label={t("github.minimizar_aria")}
+        title={t("github.minimizar_titulo")}
         className="github-float-close"
       >
         <Minus size={14} />

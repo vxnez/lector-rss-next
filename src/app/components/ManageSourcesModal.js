@@ -3,13 +3,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save, Plus } from "lucide-react";
+import { useIdioma } from "@/lib/i18n";
 
 export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify, onAgregarFuente }) {
+  const { t, locale } = useIdioma();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [refreshingSourceId, setRefreshingSourceId] = useState(null);
   const [editingSourceId, setEditingSourceId] = useState(null);
+  const [confirmarEliminarId, setConfirmarEliminarId] = useState(null);
   const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General" });
 
   const fetchSources = useCallback(async (signal) => {
@@ -45,13 +48,19 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     };
   }, [isOpen, fetchSources]);
 
+  const cerrar = () => {
+    setConfirmarEliminarId(null);
+    onClose();
+  };
+
   useEffect(() => {
     if (!isOpen) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") cerrar();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, onClose]);
 
   // Clasifica la cola de pendientes por lotes hasta agotarla (progreso visible)
@@ -93,19 +102,19 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         const pendientes = Number(data.pendientes) || 0;
-        let mensaje = data.message || "Fuente actualizada correctamente.";
+        let mensaje = data.message || t("fuentes.ok_actualizada");
         if (pendientes > 0) {
-          mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
+          mensaje += t("fuentes.completando", { n: pendientes });
           procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");
         if (onChange) onChange();
       } else {
-        onNotify?.("No se pudo refrescar la fuente seleccionada.", "error");
+        onNotify?.(t("fuentes.err_refrescar"), "error");
       }
     } catch (err) {
       console.error("Error al refrescar fuente individual:", err);
-      onNotify?.("Error de conexión al refrescar la fuente.", "error");
+      onNotify?.(t("fuentes.err_conexion"), "error");
     } finally {
       setRefreshingSourceId(null);
     }
@@ -129,11 +138,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         const pendientes = Number(data.pendientes) || 0;
         const omitidas = Number(data.omitidas) || 0;
         let mensaje = restaurados > 0
-          ? `Todas las fuentes fueron actualizadas. Se recuperaron ${restaurados} noticias borradas.`
-          : "Todas las fuentes fueron actualizadas.";
-        if (omitidas > 0) mensaje += ` ${omitidas} fuentes sin cambios.`;
+          ? t("fuentes.todas_ok_restauradas", { n: restaurados })
+          : t("fuentes.todas_ok");
+        if (omitidas > 0) mensaje += t("fuentes.sin_cambios", { n: omitidas });
         if (pendientes > 0) {
-          mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
+          mensaje += t("fuentes.completando", { n: pendientes });
           procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");
@@ -146,28 +155,34 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   };
 
+  // Borrado en dos pasos (sin confirm() nativo): el primer clic arma la
+  // confirmación y el segundo ejecuta. Se desarma al cerrar o cambiar.
   const handleDelete = async (sourceId) => {
-    if (!confirm("¿Estás seguro de eliminar esta fuente y sus artículos asociados?")) return;
+    if (confirmarEliminarId !== sourceId) {
+      setConfirmarEliminarId(sourceId);
+      return;
+    }
+    setConfirmarEliminarId(null);
 
     try {
       const res = await fetch(`/api/sources?id=${sourceId}`, { method: "DELETE" });
       if (res.ok) {
         setSources((prev) => prev.filter((s) => s.id !== sourceId));
-        onNotify?.("Fuente eliminada correctamente.", "success");
+        onNotify?.(t("fuentes.eliminada_ok"), "success");
         if (onChange) onChange();
       } else {
-        onNotify?.("No se pudo eliminar la fuente.", "error");
+        onNotify?.(t("fuentes.err_eliminar"), "error");
       }
     } catch (err) {
       console.error("Error al eliminar fuente:", err);
-      onNotify?.("Error de conexión al eliminar la fuente.", "error");
+      onNotify?.(t("fuentes.err_eliminar_conexion"), "error");
     }
   };
 
   const handleStartEdit = (source) => {
     setEditingSourceId(source.id);
     setEditForm({
-      titulo: source.titulo || source.nombre || "Fuente RSS",
+      titulo: source.titulo || source.nombre || t("fuentes.sin_nombre"),
       url_feed: source.url_feed || "",
       categoria: source.categoria || "General",
     });
@@ -183,7 +198,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "No se pudo actualizar la fuente");
+        throw new Error(data.error || t("fuentes.err_actualizar"));
       }
 
       setSources((prev) => prev.map((source) => (
@@ -209,33 +224,33 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           <div className="flex items-center gap-2">
             <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
               <Rss size={20} className="text-sky-400" />
-              Gestionar Fuentes RSS
+              {t("fuentes.titulo")}
             </h3>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
-              title="Agregar feed"
-              aria-label="Agregar nueva fuente RSS"
+              title={t("fuentes.agregar_titulo")}
+              aria-label={t("fuentes.agregar_aria")}
               className="bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shadow-lg shadow-sky-600/20"
             >
               <Plus size={14} />
-              <span className="hidden sm:inline">Agregar</span>
+              <span className="hidden sm:inline">{t("fuentes.agregar")}</span>
             </button>
             <button
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
-              aria-label="Refrescar todas las fuentes RSS"
+              aria-label={t("fuentes.refrescar_todo_aria")}
               className="bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
-              <span className="hidden sm:inline">{refreshingAll ? "Actualizando todo..." : "Refrescar Todo"}</span>
+              <span className="hidden sm:inline">{refreshingAll ? t("fuentes.actualizando_todo") : t("fuentes.refrescar_todo")}</span>
             </button>
 
             <button
-              onClick={onClose}
-              aria-label="Cerrar gestión de fuentes"
+              onClick={cerrar}
+              aria-label={t("fuentes.cerrar_aria")}
               className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition"
             >
               <X size={20} />
@@ -248,16 +263,16 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           {loading ? (
             <div className="flex justify-center items-center py-12 text-gray-400 gap-2">
               <RotateCw size={18} className="animate-spin text-sky-500" />
-              <span className="text-sm">Cargando fuentes...</span>
+              <span className="text-sm">{t("fuentes.cargando")}</span>
             </div>
           ) : visibleSources.length === 0 ? (
-            <p className="text-center text-gray-500 py-10 text-sm">No hay fuentes RSS registradas.</p>
+            <p className="text-center text-gray-500 py-10 text-sm">{t("fuentes.vacio")}</p>
           ) : (
             visibleSources.map((source) => {
               const sId = source.id;
               const sUrl = source.url_feed;
               const isRefreshingThis = refreshingSourceId === sId;
-              const nombreFuente = source.titulo || source.nombre || "Fuente sin nombre";
+              const nombreFuente = source.titulo || source.nombre || t("fuentes.sin_nombre");
               const isEditing = editingSourceId === sId;
 
               return (
@@ -270,19 +285,22 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       <input
                         value={editForm.titulo}
                         onChange={(event) => setEditForm((form) => ({ ...form, titulo: event.target.value }))}
-                        placeholder="Nombre de la fuente"
+                        placeholder={t("fuentes.nombre_ph")}
+                        aria-label={t("fuentes.nombre_ph")}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
                       />
                       <input
                         value={editForm.url_feed}
                         onChange={(event) => setEditForm((form) => ({ ...form, url_feed: event.target.value }))}
-                        placeholder="URL del feed RSS"
+                        placeholder={t("fuentes.url_ph")}
+                        aria-label={t("fuentes.url_ph")}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
                       />
                       <input
                         value={editForm.categoria}
                         onChange={(event) => setEditForm((form) => ({ ...form, categoria: event.target.value }))}
-                        placeholder="Categoría de la fuente"
+                        placeholder={t("fuentes.cat_ph")}
+                        aria-label={t("fuentes.cat_ph")}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
                       />
                     </div>
@@ -291,11 +309,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       <h4 className="text-sm font-semibold text-white truncate">{nombreFuente}</h4>
                       <p className="text-xs text-gray-400 truncate max-w-md">{sUrl}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                        <span className="text-emerald-300">● {source.estado || "activa"}</span>
-                        <span className="text-gray-500">{Number(source.articulos_count || 0)} artículos</span>
+                        <span className="text-emerald-300">● {source.estado || t("fuentes.activa")}</span>
+                        <span className="text-gray-500">{t("fuentes.articulos", { n: Number(source.articulos_count || 0) })}</span>
                         {source.ultima_actualizacion && (
                           <span className="text-gray-500">
-                            Actualizada {new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(new Date(source.ultima_actualizacion))}
+                            {t("fuentes.actualizada", { fecha: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(source.ultima_actualizacion)) })}
                           </span>
                         )}
                       </div>
@@ -312,48 +330,53 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       <>
                         <button
                           onClick={() => handleSaveEdit(sId)}
-                          title="Guardar cambios"
+                          title={t("fuentes.guardar_titulo")}
                           className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-lg transition border border-emerald-900/40 flex items-center gap-1.5"
                         >
                           <Save size={12} />
-                          <span>Guardar</span>
+                          <span>{t("fuentes.guardar")}</span>
                         </button>
                         <button
                           onClick={() => setEditingSourceId(null)}
                           className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700"
                         >
-                          Cancelar
+                          {t("fuentes.cancelar")}
                         </button>
                       </>
                     ) : (
                       <>
                         <button
                           onClick={() => handleStartEdit(source)}
-                          title="Editar fuente"
+                          title={t("fuentes.editar_titulo")}
                           className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
                         >
                           <Pencil size={12} />
-                          <span>Editar</span>
+                          <span>{t("fuentes.editar")}</span>
                         </button>
                         <button
                           onClick={() => handleRefreshSingle(source)}
                           disabled={isRefreshingThis}
-                          title="Volver a descargar y reinsertar noticias de esta fuente"
+                          title={t("fuentes.refrescar_titulo")}
                           className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
                         >
                           <RotateCw size={12} className={isRefreshingThis ? "animate-spin" : ""} />
-                          <span>{isRefreshingThis ? "Actualizando..." : "Refrescar"}</span>
+                          <span>{isRefreshingThis ? t("fuentes.actualizando") : t("fuentes.refrescar")}</span>
                         </button>
                       </>
                     )}
 
                     <button
                       onClick={() => handleDelete(sId)}
-                      title="Eliminar fuente"
-                      className="bg-red-950/30 hover:bg-red-900/40 text-red-400 text-xs px-3 py-1.5 rounded-lg transition border border-red-900/30 flex items-center gap-1.5"
+                      title={confirmarEliminarId === sId ? t("fuentes.eliminar_confirmar") : t("fuentes.eliminar_titulo")}
+                      aria-live="polite"
+                      className={`text-xs px-3 py-1.5 rounded-lg transition border flex items-center gap-1.5 ${
+                        confirmarEliminarId === sId
+                          ? "bg-red-700 hover:bg-red-600 text-white border-red-600"
+                          : "bg-red-950/30 hover:bg-red-900/40 text-red-400 border-red-900/30"
+                      }`}
                     >
                       <Trash2 size={12} />
-                      <span>Eliminar</span>
+                      <span>{confirmarEliminarId === sId ? t("fuentes.eliminar_confirmar") : t("fuentes.eliminar")}</span>
                     </button>
                   </div>
                 </div>
@@ -365,10 +388,10 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         {/* Footer del Modal */}
         <div className="flex justify-end pt-2 border-t border-gray-800">
           <button
-            onClick={onClose}
+            onClick={cerrar}
             className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition"
           >
-            Cerrar
+            {t("fuentes.cerrar")}
           </button>
         </div>
 

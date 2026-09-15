@@ -3,10 +3,12 @@
 
 import { useState } from "react";
 import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus } from "lucide-react";
+import { useIdioma } from "@/lib/i18n";
 
 // initialUrl llega por prop y el padre fuerza remontaje con `key` al abrir,
 // así el prefill (p. ej. Web Share Target) no necesita sincronizar con efectos.
 export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = "" }) {
+  const { t } = useIdioma();
   const [url, setUrl] = useState(initialUrl);
   const [categoria, setCategoria] = useState("General");
   const [loading, setLoading] = useState(false);
@@ -27,10 +29,10 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al agregar la fuente");
+      if (!res.ok) throw new Error(data.error || t("addfeed.err_agregar"));
 
       if (!data.nuevos) {
-        throw new Error("La fuente no devolvió noticias para mostrar.");
+        throw new Error(t("addfeed.err_sin_noticias"));
       }
 
       setUrl("");
@@ -49,6 +51,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
         {/* Botón cerrar X */}
         <button
           onClick={onClose}
+          aria-label={t("addfeed.cerrar")}
           className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition"
         >
           <X size={18} />
@@ -59,7 +62,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
           <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg border border-sky-500/20">
             <Rss size={20} />
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-white">Agregar Fuente RSS</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-white">{t("addfeed.titulo")}</h3>
         </div>
 
         {/* Mensaje de error con icono */}
@@ -73,13 +76,13 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-300">
-              URL del Feed RSS
+              {t("addfeed.url")}
             </label>
             <div className="relative flex items-center">
               <LinkIcon size={16} className="absolute left-3 text-gray-500" />
               <input
                 type="url"
-                placeholder="https://ejemplo.com/feed.xml"
+                placeholder={t("addfeed.url_ph")}
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -90,13 +93,13 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
 
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-300">
-              Categoría
+              {t("addfeed.cat")}
             </label>
             <div className="relative flex items-center">
               <Tag size={16} className="absolute left-3 text-gray-500" />
               <input
                 type="text"
-                placeholder="Ej: Tecnología, Noticias, Videojuegos"
+                placeholder={t("addfeed.cat_ph")}
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
@@ -110,7 +113,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
               onClick={onClose}
               className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-300 transition"
             >
-              Cancelar
+              {t("addfeed.cancelar")}
             </button>
             <button
               type="submit"
@@ -120,12 +123,12 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Sincronizando...</span>
+                  <span>{t("addfeed.sincronizando")}</span>
                 </>
               ) : (
                 <>
                   <Plus size={16} />
-                  <span>Guardar Fuente</span>
+                  <span>{t("addfeed.guardar")}</span>
                 </>
               )}
             </button>

@@ -1,35 +1,33 @@
 // src/app/login/page.js
 "use client";
 import { signIn } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, UserRound, TriangleAlert, X } from "lucide-react";
+import { useIdioma } from "@/lib/i18n";
 
 const RECORDAR_CORREO_CLAVE = "lector_recordar_correo";
 
+function correoRecordadoInicial() {
+  try {
+    return window.localStorage.getItem(RECORDAR_CORREO_CLAVE) || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const { t } = useIdioma();
+  const [form, setForm] = useState(() => ({ email: correoRecordadoInicial(), password: "" }));
   const [verPassword, setVerPassword] = useState(false);
-  const [recordarme, setRecordarme] = useState(false);
+  const [recordarme, setRecordarme] = useState(() => correoRecordadoInicial() !== "");
   const [mostrarAvisoInvitado, setMostrarAvisoInvitado] = useState(false);
   const [error, setError] = useState("");
   const [errorInvitado, setErrorInvitado] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingInvitado, setLoadingInvitado] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    try {
-      const guardado = window.localStorage.getItem(RECORDAR_CORREO_CLAVE);
-      if (guardado) {
-        setForm((actual) => ({ ...actual, email: guardado }));
-        setRecordarme(true);
-      }
-    } catch {
-      // Sin almacenamiento disponible: se continúa sin recordar el correo.
-    }
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,14 +49,14 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Credenciales incorrectas");
+        setError(t("login.err_credenciales"));
         setLoading(false);
       } else {
         router.push("/");
         router.refresh();
       }
     } catch {
-      setError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+      setError(t("login.err_sesion"));
       setLoading(false);
     }
   };

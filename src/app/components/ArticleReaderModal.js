@@ -4,7 +4,9 @@
 import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal, Clock, Type } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
+import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
+import { useIdioma } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 
 const TAMANOS_LECTURA = {
@@ -23,24 +25,13 @@ let ultimoCambioRueda = 0;
 // Fuente única de verdad: lib/categoryStyles. (Se eliminó el switch duplicado muerto.)
 const getCategoryColor = (categoria) => getCategoryStyle(categoria);
 
-// Formatter hoisteado: no crear un Intl por render.
-const fechaFormatter = new Intl.DateTimeFormat("es-ES", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
-// Función auxiliar para formatear la fecha de publicación de forma legible
-const formatFecha = (fechaStr) => {
-  const fechaObj = fechaStr ? new Date(fechaStr) : new Date();
-  try {
-    if (isNaN(fechaObj.getTime())) return "Reciente";
-    return fechaFormatter.format(fechaObj);
-  } catch {
-    return "Reciente";
-  }
-};
+
+// Fecha legible con cache compartido en lib/formato.
+const formatFechaArticulo = (fechaStr, t, locale) => formatFecha(fechaStr, t("tarjeta.reciente"), locale);
 
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
+  const { t, locale } = useIdioma();
   const [savingAction, setSavingAction] = useState("");
   const [actionError, setActionError] = useState("");
   const [editandoCategoria, setEditandoCategoria] = useState(false);
@@ -90,7 +81,20 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
   const contenedorRef = useRef(null);
-  const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(false);
+  // Se calcula en el init (el modal se remonta por noticia vía `key`): móvil,
+  // cupo de 3 vistas por sesión y noticia no vista. Sin setState en efectos.
+  const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(() => {
+    try {
+      if (typeof window === "undefined") return false;
+      if (!window.matchMedia("(max-width: 639px)").matches) return false;
+      const id = String(article?.id ?? article?.url_original ?? "");
+      if (window.sessionStorage.getItem("lector_aviso_deslizar_ultimo_id") === id) return false;
+      const vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
+      return vistas < 3;
+    } catch {
+      return false;
+    }
+  });
   const ultimoAvisoContadoId = useRef(null);
   // Dirección con la que se entró a esta noticia: define la animación de entrada.
   const [direccionEntrada] = useState(() => direccionNavegacion);
@@ -213,49 +217,24 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     };
   }, [article, onIrAId, anteriorId, siguienteId]);
 
+  // Aviso "desliza" (móvil, 3 primeras noticias por sesión): el estado inicial
+  // ya decide si se muestra; el efecto solo cuenta la vista y lo oculta.
+  // El setState en el callback del timeout es asíncrono y está permitido.
   useEffect(() => {
-    if (!article) return undefined;
+    if (!article || !mostrarAyudaDeslizar) return undefined;
     const idNoticia = String(article.id ?? article.url_original ?? posicion ?? "");
-    // Evita contar dos veces la misma noticia (StrictMode / remontajes).
     if (ultimoAvisoContadoId.current === idNoticia) return undefined;
-    try {
-      if (window.sessionStorage.getItem("lector_aviso_deslizar_ultimo_id") === idNoticia) {
-        ultimoAvisoContadoId.current = idNoticia;
-        return undefined;
-      }
-    } catch {
-      // Sin almacenamiento disponible: se continúa con el conteo en memoria.
-    }
-    // Solo se muestra en móvil (donde las flechas están ocultas y el gesto es la vía de navegación).
-    let esMovil = false;
-    try {
-      esMovil = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
-    } catch {
-      esMovil = false;
-    }
-    if (!esMovil) return undefined;
-    // Solo en las 3 primeras noticias vistas por sesión (se reinicia al cerrar sesión / pestaña).
-    let vistas = 0;
-    try {
-      vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
-    } catch {
-      vistas = 0;
-    }
-    if (vistas >= 3) {
-      setMostrarAyudaDeslizar(false);
-      return undefined;
-    }
     ultimoAvisoContadoId.current = idNoticia;
     try {
+      const vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
       window.sessionStorage.setItem("lector_aviso_deslizar_vistas", String(vistas + 1));
       window.sessionStorage.setItem("lector_aviso_deslizar_ultimo_id", idNoticia);
     } catch {
-      // Sin almacenamiento disponible: se muestra igual esta vez.
+      // Sin almacenamiento disponible: el aviso igual se oculta por timeout.
     }
-    setMostrarAyudaDeslizar(true);
     const temporizador = setTimeout(() => setMostrarAyudaDeslizar(false), 2500);
     return () => clearTimeout(temporizador);
-  }, [article?.id]);
+  }, [article, mostrarAyudaDeslizar, posicion]);
 
   useEffect(() => {
     if (!article || article.imagen_url || !article.url_original) return undefined;
@@ -290,7 +269,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setSavingAction("");
     if (actualizado) {
       if (siguienteId == null || !onIrAId(siguienteId)) onClose();
-    } else setActionError("No se pudo actualizar el estado de lectura.");
+    } else setActionError(t("lector.err_lectura"));
   };
 
   const handleGuardar = async () => {
@@ -300,7 +279,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setSavingAction("");
     if (actualizado) {
       if (siguienteId == null || !onIrAId(siguienteId)) onClose();
-    } else setActionError("No se pudo actualizar el estado guardado.");
+    } else setActionError(t("lector.err_guardado"));
   };
 
   const iniciarEdicionCategoria = async () => {
@@ -314,7 +293,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       const data = await res.json();
       if (Array.isArray(data)) setCategorias(data);
     } catch {
-      setActionError("No se pudo cargar el catálogo de categorías.");
+      setActionError(t("lector.err_catalogo"));
       setEditandoCategoria(false);
     }
   };
@@ -329,11 +308,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       setVistaLocal({ categoria: categoriaElegida, metodo: "manual", confianza: 1 });
       setEditandoCategoria(false);
     } else {
-      setActionError("No se pudo actualizar la categoría.");
+      setActionError(t("lector.err_categoria"));
     }
   };
 
-  const fechaFormateada = formatFecha(article.fecha_publicacion);
+  const fechaFormateada = formatFechaArticulo(article.fecha_publicacion, t, locale);
   const minutosLectura = tiempoLecturaMinutos(article.titulo, article.resumen);
 
   return (
@@ -351,8 +330,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           if (anteriorId != null) navegar(-1, anteriorId);
         }}
         disabled={anteriorId == null}
-        title="Noticia anterior"
-        aria-label="Noticia anterior"
+        title={t("lector.anterior")}
+        aria-label={t("lector.anterior")}
         className="hidden sm:block fixed top-1/2 -translate-y-1/2 left-2 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
         <ChevronLeft size={22} />
@@ -363,15 +342,15 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           if (siguienteId != null) navegar(1, siguienteId);
         }}
         disabled={siguienteId == null}
-        title="Noticia siguiente"
-        aria-label="Noticia siguiente"
+        title={t("lector.siguiente")}
+        aria-label={t("lector.siguiente")}
         className="hidden sm:block fixed top-1/2 -translate-y-1/2 right-2 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
         <ChevronRight size={22} />
       </button>
       <div
         ref={contenedorRef}
-        className={`bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
           direccionEntrada > 0
             ? "anim-articulo-siguiente"
             : direccionEntrada < 0
@@ -400,7 +379,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                     value={categoriaElegida}
                     onChange={(event) => setCategoriaElegida(event.target.value)}
                     disabled={Boolean(savingAction)}
-                    aria-label="Elegir categoría"
+                    aria-label={t("lector.elegir_cat")}
                     className="bg-transparent text-xs text-white outline-none cursor-pointer max-w-40 disabled:opacity-50"
                   >
                     {categorias.map((nombre) => (
@@ -412,8 +391,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   <button
                     onClick={guardarCategoria}
                     disabled={Boolean(savingAction)}
-                    title="Guardar categoría"
-                    aria-label="Guardar categoría"
+                    title={t("lector.guardar_cat")}
+                    aria-label={t("lector.guardar_cat")}
                     className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50 shrink-0"
                   >
                     <Save size={13} />
@@ -421,8 +400,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   <button
                     onClick={() => setEditandoCategoria(false)}
                     disabled={Boolean(savingAction)}
-                    title="Cancelar"
-                    aria-label="Cancelar edición de categoría"
+                    title={t("comun.cancelar")}
+                    aria-label={t("lector.cancelar_cat")}
                     className="text-gray-400 hover:text-white disabled:opacity-50 shrink-0"
                   >
                     <X size={13} />
@@ -438,8 +417,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   )}
                   <button
                     onClick={iniciarEdicionCategoria}
-                    title="Corregir categoría"
-                    aria-label="Corregir categoría"
+                    title={t("lector.corregir_cat")}
+                    aria-label={t("lector.corregir_cat")}
                     className="flex items-center border border-gray-700/60 bg-gray-800/60 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-gray-400 hover:text-sky-400 hover:border-sky-600/50 transition shrink-0"
                   >
                     <Pencil size={12} />
@@ -448,7 +427,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               )}
               {metodoMostrado && (
                 <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap">
-                  {metodoMostrado === "gemini" ? "IA" : metodoMostrado === "manual" ? "Manual" : "Sin IA"} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
+                  {metodoMostrado === "gemini" ? t("lector.ia") : metodoMostrado === "manual" ? t("lector.manual") : t("lector.sin_ia")} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (
@@ -457,22 +436,22 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {fechaFormateada}
                 </span>
               )}
-              <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap" title={`Lectura estimada: ${minutosLectura} min`}>
+              <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap" title={t("tarjeta.min_titulo", { n: minutosLectura })}>
                 <Clock size={12} className="opacity-75 shrink-0" />
-                {minutosLectura} min
+                {t("tarjeta.min", { n: minutosLectura })}
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               {posicion && total ? (
-                <span className="text-xs text-gray-500 tabular-nums" aria-label={`Noticia ${posicion} de ${total}`}>
+                <span className="text-xs text-gray-500 tabular-nums" aria-label={t("lector.posicion", { a: posicion, b: total })}>
                   {posicion} / {total}
                 </span>
               ) : null}
               <button
                 onClick={ciclarTamanoLectura}
-                title={`Tamaño de letra: ${tamanoLectura} (toca para cambiar)`}
-                aria-label={`Tamaño de letra actual: ${tamanoLectura}. Activar para cambiar.`}
+                title={t("lector.letra_t", { t: tamanoLectura })}
+                aria-label={t("lector.letra_aria", { t: tamanoLectura })}
                 className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
               >
                 <Type size={16} />
@@ -480,8 +459,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               {imagenVisible && !imagenRota && (
                 <button
                   onClick={alternarImagen}
-                  title={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
-                  aria-label={imagenOculta ? "Mostrar imagen de fondo" : "Ocultar imagen de fondo"}
+                  title={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
+                  aria-label={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
                   aria-pressed={imagenOculta}
                   className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
                 >
@@ -490,7 +469,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               )}
               <button
                 onClick={onClose}
-                aria-label="Cerrar lector de noticia"
+                aria-label={t("lector.cerrar")}
                 className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
               >
                 <X size={20} />
@@ -499,13 +478,13 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </div>
 
           {/* Título completo */}
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-snug mb-4 break-words">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-app-fg leading-snug mb-4 break-words">
             {article.titulo}
           </h2>
 
           {/* Cuerpo / Resumen de la noticia (sin scroll interno: usa el scroll del modal) */}
-          <div className={`text-gray-300 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
-            <p>{article.resumen || "Sin resumen disponible para esta noticia."}</p>
+          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
+            <p>{article.resumen || t("lector.sin_resumen")}</p>
           </div>
         </div>
 
@@ -516,7 +495,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         )}
 
         {/* Acciones del pie */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-6 pt-4 border-t border-gray-800">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-6 pt-4 border-t border-app-line">
           <button
             onClick={handleMarcarLeido}
             disabled={Boolean(savingAction)}
@@ -527,7 +506,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             }`}
           >
             <Check size={14} className="shrink-0" />
-            <span className="leading-tight">{savingAction === "leido" ? "Guardando..." : article.leido ? "Leído" : "Marcar como leído"}</span>
+            <span className="leading-tight">{savingAction === "leido" ? t("lector.guardando") : article.leido ? t("lector.leido") : t("lector.marcar")}</span>
           </button>
 
           <button
@@ -540,7 +519,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             }`}
           >
             <Bookmark size={14} className="shrink-0" />
-            <span className="leading-tight">{savingAction === "guardado" ? "Guardando..." : article.guardado ? "Guardado" : "Guardar"}</span>
+            <span className="leading-tight">{savingAction === "guardado" ? t("lector.guardando") : article.guardado ? t("lector.guardado") : t("lector.guardar")}</span>
           </button>
 
           <a
@@ -549,7 +528,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             rel="noopener noreferrer"
             className="px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center transition shadow-lg shadow-sky-600/20 min-w-0"
           >
-            <span className="leading-tight">Ir al sitio oficial</span>
+            <span className="leading-tight">{t("lector.sitio")}</span>
             <ExternalLink size={14} className="shrink-0" />
           </a>
         </div>
@@ -584,7 +563,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             className="animate-swipe-hint flex max-w-full items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm whitespace-nowrap"
           >
             <MoveHorizontal size={16} className="animate-swipe-hint-icon text-sky-400 shrink-0" />
-            <span>Desliza para cambiar de noticia</span>
+            <span>{t("lector.desliza")}</span>
           </div>
         </div>
       )}

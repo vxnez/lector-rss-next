@@ -13,32 +13,32 @@ const ManageSourcesModal = dynamic(() => import("./components/ManageSourcesModal
 const PerfilModal = dynamic(() => import("./components/PerfilModal"), { ssr: false });
 const AjustesPanel = dynamic(() => import("./components/AjustesPanel"), { ssr: false });
 import {
-  Rss,
   Settings,
   Plus,
-  LogIn,
-  UserPlus,
   RotateCw,
   Sparkles,
   Filter,
   ChevronDown,
   Check,
   Trash2,
-  X,
-  ExternalLink,
-  ArrowRight,
   Search,
   XCircle,
   Save,
+  X,
 } from "lucide-react";
 import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
+import { useIdioma } from "@/lib/i18n";
+import { dominioDeUrl } from "@/lib/formato";
+import { paramsFeed, urlBase64ToUint8Array } from "@/lib/feed-utils";
+import AppHeader from "./components/dashboard/AppHeader";
+import StatsCards from "./components/dashboard/StatsCards";
+import Paginacion from "./components/dashboard/Paginacion";
+import Toast from "./components/dashboard/Toast";
+import WelcomeModal from "./components/dashboard/WelcomeModal";
+import ConfirmDeleteModal from "./components/dashboard/ConfirmDeleteModal";
 
 function dominioDeFuente(urlFeed = "") {
-  try {
-    return new URL(urlFeed).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
+  return dominioDeUrl(urlFeed);
 }
 
 function IconoFuentePildora({ fuente }) {
@@ -48,7 +48,7 @@ function IconoFuentePildora({ fuente }) {
     return (
       <span
         aria-hidden="true"
-        className="grid h-4 w-4 shrink-0 place-content-center rounded-full bg-gray-800 text-[9px] font-bold text-sky-400"
+        className="grid h-4 w-4 shrink-0 place-content-center rounded-full bg-app-raised text-[9px] font-bold text-[var(--accent-ink)]"
       >
         {(fuente?.nombre || "?").trim().charAt(0).toUpperCase() || "?"}
       </span>
@@ -57,7 +57,7 @@ function IconoFuentePildora({ fuente }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`https://www.google.com/s2/favicons?domain=${dominio}&sz=64`}
+      src={`/api/icon?domain=${dominio}`}
       alt=""
       aria-hidden="true"
       loading="lazy"
@@ -66,42 +66,6 @@ function IconoFuentePildora({ fuente }) {
       className="h-4 w-4 shrink-0 rounded-full object-cover"
     />
   );
-}
-
-// Construye los query params del feed (página + filtros server-side).
-function paramsFeed({ page, limit, tab, orden, q, categorias, fuentes }) {
-  const params = new URLSearchParams({
-    limit: String(limit),
-    page: String(page),
-    tab,
-    orden,
-  });
-  if (q.trim()) params.set("q", q.trim());
-  if (categorias.length > 0) params.set("categorias", categorias.join(","));
-  if (fuentes.length > 0) params.set("fuentes", fuentes.join(","));
-  return params.toString();
-}
-
-// Convierte la clave VAPID (base64url) al formato que pide PushManager.
-function urlBase64ToUint8Array(base64) {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const raw = atob(base64.replace(/-/g, "+").replace(/_/g, "/") + padding);
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
-}
-
-// Ventana de números de página con elipsis: 1 … c-1 c c+1 … N
-function numerosPagina(total, actual) {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const paginas = new Set([1, 2, total - 1, total, actual - 1, actual, actual + 1]);
-  const lista = [...paginas].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
-  const resultado = [];
-  let anterior = 0;
-  for (const n of lista) {
-    if (n - anterior > 1) resultado.push("…");
-    resultado.push(n);
-    anterior = n;
-  }
-  return resultado;
 }
 
 export default function HomePage() {
@@ -187,9 +151,20 @@ export default function HomePage() {
       return false;
     }
   });
+  const [densidad, setDensidad] = useState(() => {
+    try {
+      return window.localStorage.getItem("lector_densidad") === "compacta"
+        ? "compacta"
+        : "comoda";
+    } catch {
+      return "comoda";
+    }
+  });
   const [toast, setToast] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(true);
+
+  const { t, locale } = useIdioma();
 
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type });
@@ -340,21 +315,21 @@ export default function HomePage() {
           body: JSON.stringify({ endpoint: existente.endpoint }),
         });
         setPushActivado(false);
-        notify("Notificaciones desactivadas.", "success");
+        notify(t("avisos.push_off"), "success");
         return;
       }
       if (Notification.permission === "denied") {
-        notify("Las notificaciones están bloqueadas en tu navegador.", "error");
+        notify(t("avisos.push_bloqueadas"), "error");
         return;
       }
       const permiso = await Notification.requestPermission();
       if (permiso !== "granted") {
-        notify("Sin permiso no se pueden activar los avisos.", "error");
+        notify(t("avisos.push_sin_permiso"), "error");
         return;
       }
       const resKey = await fetch("/api/push", { cache: "no-store" });
       const { publicKey } = await resKey.json();
-      if (!publicKey) throw new Error("Push no configurado en el servidor (falta VAPID_PUBLIC_KEY).");
+      if (!publicKey) throw new Error(t("avisos.push_sin_clave"));
       const suscripcion = await registro.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -364,16 +339,16 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(suscripcion),
       });
-      if (!res.ok) throw new Error("No se pudo guardar la suscripción.");
+      if (!res.ok) throw new Error(t("avisos.push_no_guardada"));
       setPushActivado(true);
-      notify("Notificaciones activadas. Te avisaremos de noticias nuevas.", "success");
+      notify(t("avisos.push_on"), "success");
     } catch (err) {
       console.error("Error con notificaciones push:", err);
-      notify(err.message || "No se pudieron activar las notificaciones.", "error");
+      notify(err.message || t("avisos.push_err"), "error");
     } finally {
       setPushCargando(false);
     }
-  }, [pushCargando, notify]);
+  }, [pushCargando, notify, t]);
 
   // Limpia ?compartir= de la barra sin recargar (no toca estado: sin aviso de lint).
   useEffect(() => {
@@ -386,18 +361,33 @@ export default function HomePage() {
     }
   }, []);
 
-  // Re-aplica tema y movimiento al montar: el script pre-paint ya lo hizo,
-  // pero esto cubre cualquier caso donde no se ejecutara. Idempotente.
+  // Re-aplica tema, movimiento y densidad al montar: el script pre-paint ya
+  // lo hizo, pero esto cubre cualquier caso donde no se ejecutara. Idempotente.
   useEffect(() => {
     aplicarTema(tema);
     try {
       if (window.localStorage.getItem("lector_movimiento") === "reducido") {
         document.documentElement.dataset.motion = "reduced";
       }
+      if (window.localStorage.getItem("lector_densidad") === "compacta") {
+        document.documentElement.dataset.densidad = "compacta";
+      }
     } catch {
       // Sin almacenamiento disponible: se conserva lo aplicado.
     }
   }, [tema]);
+
+  const cambiarDensidad = (valor) => {
+    const normalizada = valor === "compacta" ? "compacta" : "comoda";
+    try {
+      window.localStorage.setItem("lector_densidad", normalizada);
+      if (normalizada === "compacta") document.documentElement.dataset.densidad = "compacta";
+      else delete document.documentElement.dataset.densidad;
+    } catch {
+      // Sin DOM/almacenamiento disponible: solo cambia el estado.
+    }
+    setDensidad(normalizada);
+  };
 
   // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
   // carga el efecto de datos paginados cuando hay sesión.
@@ -522,9 +512,16 @@ export default function HomePage() {
         }
         if (resFacetas.ok) {
           const facetas = await resFacetas.json();
-          setCategoriasDisponibles(
-            (Array.isArray(facetas) ? facetas : []).map((f) => f.categoria).filter(Boolean)
-          );
+          const lista = (Array.isArray(facetas) ? facetas : []).map((f) => f.categoria).filter(Boolean);
+          setCategoriasDisponibles(lista);
+          // Purga en el mismo manejador (sin efecto separado): si una categoría
+          // seleccionada dejó de existir, se retira para no dejar un filtro imposible.
+          const disponibles = new Set(lista);
+          setCategoriasSeleccionadas((actuales) => {
+            if (actuales.length === 0) return actuales;
+            const vigentes = actuales.filter((categoria) => disponibles.has(categoria));
+            return vigentes.length === actuales.length ? actuales : vigentes;
+          });
         }
       } catch (err) {
         if (err.name !== "AbortError") console.error("Error al cargar el feed:", err);
@@ -560,7 +557,7 @@ export default function HomePage() {
         body: JSON.stringify({ action: "refresh", restore_today: true }),
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("No se pudieron actualizar las fuentes.");
+      if (!response.ok) throw new Error(t("avisos.refresh_err_fuentes"));
       const data = await response.json().catch(() => ({}));
 
       // Vuelve a la primera página (o recarga si ya está en ella) y actualiza fuentes/conteos.
@@ -573,19 +570,19 @@ export default function HomePage() {
       const omitidas = Number(data.omitidas) || 0;
       const purgados = Number(data.purgados) || 0;
       let mensaje = restaurados > 0
-        ? `Fuentes actualizadas. Se recuperaron ${restaurados} noticias borradas.`
-        : "Fuentes y noticias actualizadas.";
-      if (omitidas > 0) mensaje += ` ${omitidas} fuentes sin cambios.`;
-      if (purgados > 0) mensaje += ` Se liberaron ${purgados} noticias antiguas.`;
+        ? t("avisos.refresh_restauradas", { n: restaurados })
+        : t("avisos.refresh_ok");
+      if (omitidas > 0) mensaje += t("avisos.sin_cambios", { n: omitidas });
+      if (purgados > 0) mensaje += t("avisos.purgadas", { n: purgados });
       if (pendientes > 0) {
-        mensaje += ` Completando ${pendientes} categorías en segundo plano...`;
+        mensaje += t("avisos.completando", { n: pendientes });
         procesarColaClasificacion();
       }
       notify(mensaje, "success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Error al refrescar las noticias:", err);
-      notify(err.message || "No se pudo actualizar el feed.", "error");
+      notify(err.message || t("avisos.refresh_err_feed"), "error");
     } finally {
       setRefreshing(false);
     }
@@ -602,15 +599,15 @@ export default function HomePage() {
 
     try {
       const res = await fetch("/api/rss?delete_all=true", { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudieron eliminar las publicaciones.");
+      if (!res.ok) throw new Error(t("avisos.eliminar_err"));
       setPagina(1);
       fetchConteos();
-      notify("Publicaciones eliminadas. Con 'Refrescar' se recuperan las de hoy.", "success");
+      notify(t("avisos.eliminadas_ok"), "success");
     } catch (err) {
       console.error("Error al eliminar todas las noticias:", err);
       setArticulos(backupArticulos);
       setNonceRecarga((n) => n + 1);
-      notify(err.message || "No se pudo eliminar el feed.", "error");
+      notify(err.message || t("avisos.eliminar_feed"), "error");
     }
   };
 
@@ -703,7 +700,7 @@ export default function HomePage() {
 
     try {
       const res = await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudo descartar la noticia.");
+      if (!res.ok) throw new Error(t("avisos.eliminar_feed"));
       // Rellena la página desde el servidor y actualiza conteos.
       setNonceRecarga((n) => n + 1);
       fetchConteos();
@@ -713,18 +710,6 @@ export default function HomePage() {
       }
     }
   };
-
-  // Las facetas vienen del servidor (respetan pestaña/búsqueda/fuentes).
-  // Si una categoría seleccionada deja de existir, se retira para no dejar
-  // el feed vacío con un filtro imposible.
-  useEffect(() => {
-    setCategoriasSeleccionadas((actuales) => {
-      if (actuales.length === 0) return actuales;
-      const disponibles = new Set(categoriasDisponibles);
-      const vigentes = actuales.filter((categoria) => disponibles.has(categoria));
-      return vigentes.length === actuales.length ? actuales : vigentes;
-    });
-  }, [categoriasDisponibles]);
 
   const seleccionarTab = (tab) => {
     setActiveTab(tab);
@@ -809,13 +794,13 @@ export default function HomePage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "No se pudo guardar la vista.");
+        throw new Error(data.error || t("avisos.vista_err"));
       }
       setNombreVista("");
       await fetchVistas();
-      notify(`Vista "${nombre}" guardada.`, "success");
+      notify(t("avisos.vista_guardada", { n: nombre }), "success");
     } catch (err) {
-      notify(err.message || "No se pudo guardar la vista.", "error");
+      notify(err.message || t("avisos.vista_err"), "error");
     } finally {
       setGuardandoVista(false);
     }
@@ -824,10 +809,10 @@ export default function HomePage() {
   const eliminarVista = async (id) => {
     try {
       const res = await fetch(`/api/vistas?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudo eliminar la vista.");
+      if (!res.ok) throw new Error(t("avisos.vista_eliminar_err"));
       await fetchVistas();
     } catch (err) {
-      notify(err.message || "No se pudo eliminar la vista.", "error");
+      notify(err.message || t("avisos.vista_eliminar_err"), "error");
     }
   };
 
@@ -887,89 +872,27 @@ export default function HomePage() {
   const totalPendientes = conteos.pendientes;
   const totalPaginas = Math.max(Math.ceil(totalNoticias / tamanoPagina), 1);
 
-  // Engranaje cotidiano en la esquina superior izquierda (icono puro, sin píldora).
-  const botonAjustes = (
-    <button
-      type="button"
-      onClick={() => setPanelAjustes(true)}
-      title="Ajustes"
-      aria-label="Abrir ajustes"
-      aria-expanded={panelAjustes}
-      className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-800/70 hover:text-white"
-    >
-      <Settings size={20} />
-    </button>
-  );
-
-  const logoApp = (
-    <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 min-w-0">
-      <span
-        style={{ backgroundColor: "var(--accent-strong)", color: "var(--on-accent-strong)" }}
-        className="p-1.5 rounded-lg font-black text-sm flex items-center justify-center"
-      >
-        <Rss size={18} className="stroke-[3]" />
-      </span>
-      <span className="truncate">RSS Dashboard</span>
-    </h1>
-  );
+  const tarjetasStats = [
+    { label: t("stats.pendientes"), value: totalPendientes, color: "text-sky-300", tab: "todas", titulo: t("stats.ver_pendientes"), activo: "border-sky-500/60 ring-1 ring-sky-500/40" },
+    { label: t("stats.leidas"), value: totalLeidos, color: "text-emerald-300", tab: "leidas", titulo: t("stats.ver_leidas"), activo: "border-emerald-500/60 ring-1 ring-emerald-500/40" },
+    { label: t("stats.guardadas"), value: totalGuardados, color: "text-amber-300", tab: "guardadas", titulo: t("stats.ver_guardadas"), activo: "border-amber-500/60 ring-1 ring-amber-500/40" },
+    { label: t("stats.fuentes"), value: fuentesDisponibles.length, color: "text-cyan-300", tab: null, titulo: t("stats.ir_fuentes"), activo: "" },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
-      {/* Navbar: ajustes a la izquierda, logo a la derecha.
-          Guía y Cerrar sesión viven en el panel de ajustes (sección Sesión). */}
-      <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-md px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20">
-        <div className="flex items-center gap-2 min-w-0">
-          {session?.user ? (
-            <>
-              {botonAjustes}
-              {esInvitado && (
-                <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">
-                  Modo invitado
-                </span>
-              )}
-            </>
-          ) : (
-            logoApp
-          )}
-        </div>
-
-        {session?.user && !esInvitado && (
-          <p className="hidden md:block flex-1 text-center text-sm text-gray-300 truncate px-2">
-            {session.user.genero === "mujer" ? "Bienvenida" : "Bienvenido"},{" "}
-            <strong className="text-white">{session.user.name || session.user.email}</strong>
-          </p>
-        )}
-
-        <div className="flex items-center gap-4">
-          {session?.user ? (
-            logoApp
-          ) : (
-
-            <div className="flex gap-2 shrink-0">
-              <Link
-                href="/login"
-                className="text-sm bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 transition border border-gray-700"
-              >
-                <LogIn size={16} />
-                <span className="hidden sm:inline">Iniciar Sesión</span>
-              </Link>
-              <Link
-                href="/register"
-                className="text-sm bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 transition"
-              >
-                <UserPlus size={16} />
-                <span className="hidden sm:inline">Registrarse</span>
-              </Link>
-            </div>
-          )}
-        </div>
-      </header>
+    <div className="min-h-screen bg-app-bg text-app-fg flex flex-col">
+      <AppHeader
+        session={session}
+        esInvitado={esInvitado}
+        panelAjustes={panelAjustes}
+        onAbrirAjustes={() => setPanelAjustes(true)}
+        t={t}
+      />
 
       {esInvitado && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:px-6 flex items-center justify-center gap-2 text-center">
           <p className="text-xs text-amber-200">
-            Estás en <strong>modo invitado</strong>: puedes usar todo con normalidad, pero al salir
-            o cerrar la ventana tu información se elimina y nada se conserva. <Link href="/register" className="underline font-medium">Crea una cuenta</Link> para conservar todo.
+            {t("invitado.aviso_1")} <strong>{t("header.invitado").toLowerCase()}</strong>: {t("invitado.aviso_2")} <Link href="/register" className="underline font-medium">{t("invitado.crear")}</Link> {t("invitado.aviso_3")}
           </p>
         </div>
       )}
@@ -979,7 +902,7 @@ export default function HomePage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-48 rounded-xl border border-gray-800 bg-gray-900/70" />
+              <div key={index} className="h-48 rounded-xl border border-app-line bg-app-surface/70" />
             ))}
           </div>
         ) : session?.user ? (
@@ -987,32 +910,12 @@ export default function HomePage() {
             
             {/* Columna Izquierda / Central: Noticias */}
             <div className="contents lg:col-span-3 lg:block lg:space-y-6">
-              <div className="order-1 lg:order-none grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                {[
-                  { label: "Pendientes", value: totalPendientes, color: "text-sky-300", tab: "todas", titulo: "Ver noticias pendientes", activo: "border-sky-500/60 ring-1 ring-sky-500/40" },
-                  { label: "Leídas", value: totalLeidos, color: "text-emerald-300", tab: "leidas", titulo: "Ver noticias leídas", activo: "border-emerald-500/60 ring-1 ring-emerald-500/40" },
-                  { label: "Guardadas", value: totalGuardados, color: "text-amber-300", tab: "guardadas", titulo: "Ver noticias guardadas", activo: "border-amber-500/60 ring-1 ring-amber-500/40" },
-                  { label: "Fuentes activas", value: fuentesDisponibles.length, color: "text-cyan-300", tab: null, titulo: "Ir al filtro de fuentes RSS", activo: "" },
-                ].map((tarjeta) => (
-                  <button
-                    key={tarjeta.label}
-                    type="button"
-                    title={tarjeta.titulo}
-                    aria-pressed={tarjeta.tab ? activeTab === tarjeta.tab : undefined}
-                    onClick={() => {
-                      if (tarjeta.tab) {
-                        seleccionarTab(tarjeta.tab);
-                      } else {
-                        irAFiltroFuentes();
-                      }
-                    }}
-                    className={`border border-gray-800 bg-gray-900/70 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 min-w-0 text-left transition cursor-pointer hover:border-gray-600 ${tarjeta.tab && activeTab === tarjeta.tab ? tarjeta.activo : ""}`}
-                  >
-                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-400 truncate">{tarjeta.label}</p>
-                    <p className={`text-xl sm:text-2xl font-semibold ${tarjeta.color}`}>{tarjeta.value}</p>
-                  </button>
-                ))}
-              </div>
+              <StatsCards
+                tarjetas={tarjetasStats}
+                activeTab={activeTab}
+                onSeleccionarTab={seleccionarTab}
+                onIrFuentes={irAFiltroFuentes}
+              />
 
               <div className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 <label className="relative flex-1">
@@ -1020,38 +923,38 @@ export default function HomePage() {
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Buscar por título o resumen..."
-                    aria-label="Buscar noticias"
-                    className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-sky-600"
+                    placeholder={t("buscar.ph")}
+                    aria-label={t("buscar.aria")}
+                    className="w-full bg-app-surface border border-app-line rounded-xl pl-9 pr-3 py-2.5 text-sm text-app-fg placeholder:text-app-muted focus:border-[var(--accent)]"
                   />
                 </label>
                 <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {lastUpdated ? `Actualizado ${lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}` : "Sin actualizar"}
+                  {lastUpdated ? t("buscar.actualizado", { hora: lastUpdated.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) }) : t("buscar.sin")}
                 </span>
               </div>
 
               <div className="order-4 lg:order-none">
                 {cargandoFeed && articulos.length === 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse" aria-label="Cargando noticias">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse" aria-label={t("vacio.cargando")}>
                     {Array.from({ length: 6 }).map((_, index) => (
-                      <div key={index} className="h-48 rounded-xl border border-gray-800 bg-gray-900/70" />
+                      <div key={index} className="h-48 rounded-xl border border-app-line bg-app-surface/70" />
                     ))}
                   </div>
                 ) : totalNoticias === 0 ? (
                   <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
                   <p className="text-base text-gray-400">
                     {activeTab === "guardadas"
-                      ? "No tienes noticias guardadas con esta categoría."
+                      ? t("vacio.guardadas")
                       : activeTab === "leidas"
-                      ? "No hay noticias leídas en este apartado."
-                      : "¡Estás al día! No hay noticias pendientes por leer."}
+                      ? t("vacio.leidas")
+                      : t("vacio.todas")}
                   </p>
                   {activeTab === "todas" && (
                     <button
                       onClick={() => setIsAddModalOpen(true)}
                       className="inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300 font-medium"
                     >
-                      <Plus size={16} /> Agregar tu primera fuente RSS
+                      <Plus size={16} /> {t("vacio.agregar")}
                     </button>
                   )}
                   </div>
@@ -1065,55 +968,14 @@ export default function HomePage() {
                       onDelete={descartarArticulo}
                       autoMarcarLeida={autoMarcarLeida}
                     />
-                    <div className="mt-6 flex flex-col items-center gap-3">
-                      <p className="text-xs text-gray-400" role="status">
-                        Página {pagina} de {totalPaginas} · {totalNoticias} noticias
-                        {cargandoFeed ? " · cargando..." : ""}
-                      </p>
-                      {totalPaginas > 1 && (
-                        <nav aria-label="Paginación de noticias" className="flex flex-wrap items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => cambiarPagina(pagina - 1)}
-                            disabled={pagina === 1 || cargandoFeed}
-                            aria-label="Página anterior"
-                            className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-40"
-                          >
-                            ← Anterior
-                          </button>
-                          {numerosPagina(totalPaginas, pagina).map((n, i) =>
-                            n === "…" ? (
-                              <span key={`e${i}`} aria-hidden="true" className="px-1 text-xs text-gray-500">…</span>
-                            ) : (
-                              <button
-                                key={n}
-                                type="button"
-                                onClick={() => cambiarPagina(n)}
-                                disabled={cargandoFeed}
-                                aria-label={`Ir a la página ${n}`}
-                                aria-current={n === pagina ? "page" : undefined}
-                                className={`min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${
-                                  n === pagina
-                                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-                                }`}
-                              >
-                                {n}
-                              </button>
-                            )
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => cambiarPagina(pagina + 1)}
-                            disabled={pagina === totalPaginas || cargandoFeed}
-                            aria-label="Página siguiente"
-                            className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-gray-500 hover:text-white disabled:opacity-40"
-                          >
-                            Siguiente →
-                          </button>
-                        </nav>
-                      )}
-                    </div>
+                    <Paginacion
+                      pagina={pagina}
+                      totalPaginas={totalPaginas}
+                      totalNoticias={totalNoticias}
+                      cargando={cargandoFeed}
+                      onCambiar={cambiarPagina}
+                      t={t}
+                    />
                   </>
                 )}
               </div>
@@ -1130,8 +992,8 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => (panelMovilAbierto ? cerrarPanelMovil() : abrirPanelMovil())}
-              title="Abrir controles y filtros"
-              aria-label="Abrir controles y filtros"
+              title={t("controles.abrir")}
+              aria-label={t("controles.abrir")}
               aria-expanded={panelMovilAbierto}
               className="lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm transition hover:bg-sky-500"
             >
@@ -1142,7 +1004,7 @@ export default function HomePage() {
                 )}
               </span>
             </button>
-            <aside className={`dashboard-control-sidebar order-5 lg:order-last bg-gray-900/40 border border-gray-800/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
+            <aside className={`dashboard-control-sidebar order-5 lg:order-last bg-app-surface/40 border border-app-line/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
               <section className="border-b border-gray-800 pb-4 space-y-4">
                 <button
                   type="button"
@@ -1152,7 +1014,7 @@ export default function HomePage() {
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <Settings size={16} className="text-sky-400" />
-                    <span className="truncate">Controles del dashboard</span>
+                    <span className="truncate">{t("controles.titulo")}</span>
                   </span>
                   <ChevronDown size={18} className={`text-gray-400 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -1160,44 +1022,44 @@ export default function HomePage() {
                 {controlsOpen && (
                   <div className="space-y-4 border-t border-gray-800 pt-4">
                     <section className="space-y-3">
-                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Acciones del feed</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">{t("controles.acciones")}</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    title="Actualizar y restaurar noticias de hoy"
+                    title={t("controles.refrescar_titulo")}
                     className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     <RotateCw size={14} className={refreshing ? "animate-spin text-sky-400" : ""} />
-                    <span className="truncate">{refreshing ? "Actualizando..." : "Refrescar"}</span>
+                    <span className="truncate">{refreshing ? t("controles.actualizando") : t("controles.refrescar")}</span>
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
                     className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
                   >
                     <Plus size={14} />
-                    <span className="truncate">Agregar feed</span>
+                    <span className="truncate">{t("controles.agregar")}</span>
                       </button>
                       </div>
                     </section>
 
                     <section className="space-y-3 border-t border-gray-800 pt-4">
-                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">Administración</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">{t("controles.admin")}</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleEliminarTodas}
-                    title="Eliminar todas las publicaciones"
+                    title={t("controles.eliminar_titulo")}
                     className="min-w-0 rounded-lg border border-red-900/50 bg-red-950/40 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-red-300 transition hover:bg-red-900/50 flex items-center justify-center gap-1.5"
                   >
                     <Trash2 size={14} />
-                    <span className="truncate">Eliminar todo</span>
+                    <span className="truncate">{t("controles.eliminar")}</span>
                   </button>
                   <button
                     onClick={() => setIsManageModalOpen(true)}
                     className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
                   >
                     <Settings size={14} />
-                    <span className="truncate">Fuentes</span>
+                    <span className="truncate">{t("controles.fuentes")}</span>
                       </button>
                       </div>
                       {/* Los avisos push se gestionan en Ajustes → Notificaciones */}
@@ -1215,7 +1077,7 @@ export default function HomePage() {
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <Filter size={16} className="text-sky-400" />
-                    <span className="truncate">Filtros y Orden</span>
+                    <span className="truncate">{t("filtros.titulo")}</span>
                   </span>
                   <ChevronDown size={18} className={`text-gray-400 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -1225,12 +1087,12 @@ export default function HomePage() {
                 <div className="space-y-5 sm:space-y-6">
 
               <div className="space-y-2">
-                <span className="text-xs font-medium text-gray-400">Ordenar por</span>
-                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Ordenar por">
+                <span className="text-xs font-medium text-gray-400">{t("filtros.ordenar")}</span>
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("filtros.ordenar")}>
                   {[
-                    { valor: "recientes", etiqueta: "Recientes primero" },
-                    { valor: "az", etiqueta: "Alfabético (A - Z)" },
-                    { valor: "za", etiqueta: "Alfabético (Z - A)" },
+                    { valor: "recientes", etiqueta: t("filtros.recientes") },
+                    { valor: "az", etiqueta: t("filtros.az") },
+                    { valor: "za", etiqueta: t("filtros.za") },
                   ].map((opcion) => {
                     const activo = orden === opcion.valor;
                     return (
@@ -1256,10 +1118,12 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-gray-400">Fuente RSS</span>
+                  <span className="text-xs font-medium text-gray-400">{t("filtros.fuente")}</span>
                   {fuentesSeleccionadas.length > 0 && (
                     <span className="text-[11px] text-sky-400">
-                      {fuentesSeleccionadas.length} seleccionada{fuentesSeleccionadas.length === 1 ? "" : "s"}
+                      {fuentesSeleccionadas.length === 1
+                        ? t("filtros.sel_una", { n: 1 })
+                        : t("filtros.sel_varias", { n: fuentesSeleccionadas.length })}
                     </span>
                   )}
                 </div>
@@ -1290,10 +1154,12 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-gray-400">Categorías</label>
+                  <label className="text-xs font-medium text-gray-400">{t("filtros.categorias")}</label>
                   {categoriasSeleccionadas.length > 0 && (
                     <span className="text-[11px] text-sky-400">
-                      {categoriasSeleccionadas.length} seleccionada{categoriasSeleccionadas.length === 1 ? "" : "s"}
+                      {categoriasSeleccionadas.length === 1
+                        ? t("filtros.sel_una", { n: 1 })
+                        : t("filtros.sel_varias", { n: categoriasSeleccionadas.length })}
                     </span>
                   )}
                 </div>
@@ -1325,17 +1191,17 @@ export default function HomePage() {
                     onClick={() => setCategoriasExpandidas((expandida) => !expandida)}
                     className="lg:hidden text-xs text-sky-400 hover:text-sky-300 font-medium px-1 py-1 text-left"
                   >
-                    {categoriasExpandidas ? "Ver menos" : `Ver todas (${categoriasDisponibles.length})`}
+                    {categoriasExpandidas ? t("filtros.ver_menos") : t("filtros.ver_todas", { n: categoriasDisponibles.length })}
                   </button>
                 )}
 
                 {categoriasDisponibles.length === 0 && (
-                  <p className="px-1 py-2 text-xs text-gray-500">No hay categorías disponibles.</p>
+                  <p className="px-1 py-2 text-xs text-gray-500">{t("filtros.sin_categorias")}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs font-medium text-gray-400">Vistas guardadas</span>
+                <span className="text-xs font-medium text-gray-400">{t("filtros.vistas")}</span>
                 {vistasGuardadas.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {vistasGuardadas.map((vista) => (
@@ -1346,7 +1212,7 @@ export default function HomePage() {
                         <button
                           type="button"
                           onClick={() => aplicarVista(vista)}
-                          title={`Aplicar vista "${vista.nombre}"`}
+                          title={t("filtros.vista_aplicar", { n: vista.nombre })}
                           className="pl-3 pr-1 py-1.5 text-xs font-medium hover:text-white"
                         >
                           {vista.nombre}
@@ -1354,8 +1220,8 @@ export default function HomePage() {
                         <button
                           type="button"
                           onClick={() => eliminarVista(vista.id)}
-                          title={`Eliminar vista "${vista.nombre}"`}
-                          aria-label={`Eliminar vista ${vista.nombre}`}
+                          title={t("filtros.vista_eliminar", { n: vista.nombre })}
+                          aria-label={t("filtros.vista_eliminar", { n: vista.nombre })}
                           className="pr-2.5 pl-1 py-1.5 text-gray-500 hover:text-rose-400"
                         >
                           <X size={13} />
@@ -1368,19 +1234,19 @@ export default function HomePage() {
                   <input
                     value={nombreVista}
                     onChange={(event) => setNombreVista(event.target.value)}
-                    placeholder="Guardar vista actual como..."
-                    aria-label="Nombre de la vista"
+                    placeholder={t("filtros.vista_ph")}
+                    aria-label={t("filtros.vista_aria")}
                     maxLength={100}
                     className="min-w-0 flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-500 focus:border-sky-600"
                   />
                   <button
                     type="submit"
                     disabled={!nombreVista.trim() || guardandoVista}
-                    title="Guardar la combinación actual de filtros"
+                    title={t("filtros.vista_guardar_titulo")}
                     className="shrink-0 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-200 transition disabled:opacity-50 flex items-center gap-1.5"
                   >
                     <Save size={13} />
-                    Guardar
+                    {t("filtros.vista_guardar")}
                   </button>
                 </form>
               </div>
@@ -1390,7 +1256,7 @@ export default function HomePage() {
                   onClick={limpiarFiltros}
                   className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
                 >
-                  <XCircle size={15} /> Limpiar filtros
+                  <XCircle size={15} /> {t("filtros.limpiar")}
                 </button>
               )}
                 </div>
@@ -1404,94 +1270,24 @@ export default function HomePage() {
               <Sparkles size={32} />
             </div>
             <h2 className="text-3xl font-extrabold text-white tracking-tight">
-              Tus fuentes de información en un solo lugar
+              {t("landing.titulo")}
             </h2>
             <p className="text-gray-400 leading-relaxed">
-              Agrega y gestiona tus blogs, periódicos y portales de noticias preferidos mediante RSS. Inicia sesión para sincronizar tus artículos guardados.
+              {t("landing.texto")}
             </p>
             <div className="flex justify-center gap-4 pt-4">
               <Link
                 href="/login"
                 className="bg-sky-600 hover:bg-sky-500 text-white font-medium px-6 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20"
               >
-                Comenzar ahora
+                {t("landing.comenzar")}
               </Link>
             </div>
           </div>
         )}
       </main>
 
-      {/* =======================================================
-          MODAL DE BIENVENIDA / TUTORIAL PARA NUEVOS USUARIOS
-         ======================================================= */}
-      {showWelcomeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto overscroll-contain">
-            
-            <button
-              onClick={closeWelcomeModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/10 text-sky-400 rounded-full text-xs font-semibold border border-sky-500/20">
-                <Sparkles size={14} /> Guía para nuevos usuarios
-              </div>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
-                ¡Bienvenido a tu Feed de Noticias!
-              </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                Este programa te permite centralizar artículos de tus sitios web favoritos mediante enlaces <strong className="text-gray-200">RSS</strong>. Como no todas las páginas web cuentan con RSS visible, puedes consultar una excelente colección de feeds públicos y organizados.
-              </p>
-            </div>
-
-            <div className="space-y-4 bg-gray-950/60 p-4 rounded-xl border border-gray-800 text-xs sm:text-sm text-gray-300">
-              <div className="flex items-start gap-3">
-                <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">1</span>
-                <div>
-                  <strong className="text-white block mb-0.5">Explora un directorio de feeds</strong>
-                  <p className="text-gray-400 mb-2">
-                    Te recomendamos visitar el repositorio de GitHub <a href="https://github.com/vxnez/rssfeeds" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-1 font-medium">vxnez/rssfeeds <ExternalLink size={12} /></a>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">2</span>
-                <div>
-                  <strong className="text-white block mb-0.5">Encuentra tus fuentes de interés</strong>
-                  <p className="text-gray-400">
-                    Navega a través de las categorías y listas de sitios web disponibles en el repositorio para descubrir URLs directas de feeds RSS y atom.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="bg-sky-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs mt-0.5">3</span>
-                <div>
-                  <strong className="text-white block mb-0.5">Copia el enlace y añádelo al programa</strong>
-                  <p className="text-gray-400">
-                    Copia la URL del feed que te interese, pégala en el botón <strong>&quot;Agregar Feed&quot;</strong> de este programa web y ¡listo para obtener tus noticias fácilmente!
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={closeWelcomeModal}
-                className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-sky-600/20"
-              >
-                <span>¡Entendido, comenzar a usar!</span>
-                <ArrowRight size={16} />
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <WelcomeModal abierto={showWelcomeModal} onCerrar={closeWelcomeModal} t={t} />
 
       {/* Panel lateral de ajustes + modales (el perfil no aplica en modo invitado) */}
       <AjustesPanel
@@ -1505,6 +1301,8 @@ export default function HomePage() {
         onAutoMarcar={cambiarAutoMarcar}
         movimientoReducido={movimientoReducido}
         onMovimiento={cambiarMovimiento}
+        densidad={densidad}
+        onDensidad={cambiarDensidad}
         nombreUsuario={session?.user?.name || session?.user?.email || null}
         emailUsuario={esInvitado ? null : session?.user?.email || null}
         imagenUsuario={esInvitado ? null : session?.user?.image || null}
@@ -1541,7 +1339,7 @@ export default function HomePage() {
           fetchSources();
           fetchConteos();
           if (Number(data?.pendientes) > 0) {
-            notify("Fuente agregada. Completando categorías en segundo plano...", "success");
+            notify(t("avisos.cola_agregada"), "success");
             procesarColaClasificacion();
           }
         }}
@@ -1571,40 +1369,13 @@ export default function HomePage() {
         onNotify={notify}
       />
       )}
-      {/* Confirmación de borrado total: modal propio, accesible, sin confirm() nativo */}
-      {confirmarEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-todo" className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 id="titulo-eliminar-todo" className="text-lg font-bold text-white">
-              Eliminar todas las publicaciones
-            </h3>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Se descartarán todas las noticias del feed. Al hacer clic en ‘Refrescar’ se recuperarán las de hoy.
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmarEliminar(false)}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-200 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmarEliminarTodas}
-                className="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg text-sm font-medium text-white transition"
-              >
-                Eliminar todo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {toast && (
-        <div role="status" aria-live="polite" className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${toast.type === "error" ? "border-rose-800 bg-rose-950 text-rose-100" : "border-sky-800 bg-sky-950 text-sky-100"}`}>
-          {toast.message}
-        </div>
-      )}
+      <ConfirmDeleteModal
+        abierto={confirmarEliminar}
+        onCancelar={() => setConfirmarEliminar(false)}
+        onConfirmar={confirmarEliminarTodas}
+        t={t}
+      />
+      <Toast toast={toast} />
     </div>
   );
 }

@@ -13,6 +13,18 @@ export const TEMAS = [
 export const TEMA_POR_DEFECTO = "medianoche";
 const CLAVE_TEMA = "lector_tema";
 
+// Color de la barra del navegador por tema (meta theme-color).
+export const THEME_COLORS = {
+  medianoche: "#070b12",
+  duna: "#211f1f",
+  mineral: "#1d2b26",
+  bosque: "#132a22",
+  ebano: "#191827",
+  celeste: "#e6e7da",
+  menta: "#e2ede9",
+  celadon: "#e0f0dd",
+};
+
 export function esTemaValido(id) {
   return TEMAS.some((t) => t.id === id);
 }
@@ -26,7 +38,7 @@ export function temaGuardado() {
   }
 }
 
-// Aplica el tema al <html>: dataset para el CSS + persistencia.
+// Aplica el tema al <html>: dataset para el CSS + persistencia + theme-color.
 export function aplicarTema(id) {
   const tema = TEMAS.find((t) => t.id === id) || TEMAS[0];
   try {
@@ -34,6 +46,8 @@ export function aplicarTema(id) {
     if (tema.claro) document.documentElement.dataset.temaClaro = "1";
     else delete document.documentElement.dataset.temaClaro;
     window.localStorage.setItem(CLAVE_TEMA, tema.id);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", THEME_COLORS[tema.id] || tema.bg);
   } catch {
     // Sin DOM/almacenamiento: no se puede aplicar ni persistir.
   }

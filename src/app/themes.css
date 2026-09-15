@@ -1,6 +1,31 @@
 [data-theme="medianoche"] {
+  color-scheme: dark;
   --color-sky-600: #0074b8;
   --color-gray-500: #828a94;
+  --color-gray-950: #070b12;
+  --color-gray-900: #0d1420;
+  --color-gray-800: #121c2b;
+  --color-gray-700: #243247;
+  --color-gray-600: #3b4c63;
+  --color-gray-400: #91a0b5;
+  --color-gray-300: #c3cfdd;
+  --color-gray-200: #dbe4ef;
+  --color-gray-100: #e7edf5;
+  --color-sky-500: #27a9e8;
+  --color-sky-400: #5cc6f5;
+  --color-sky-300: #9fdcfc;
+}
+
+/* Toasts y overlays siguen al tema (antes fijos a sky/rose-950 oscuros). */
+.toast-app {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.toast-app-error {
+  background: color-mix(in srgb, #e11d48 18%, var(--surface));
+  border-color: color-mix(in srgb, #e11d48 55%, var(--border));
+  color: var(--foreground);
 }
 
 /* ============ DUNA (Dune #363232 + Copperfield #C47D50) — oscuro ============ */
@@ -273,6 +298,10 @@
 /* Scroll sin barra visible (panel de ajustes): se sigue desplazando con rueda, tacto y teclado. */
 .panel-scroll { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
 .panel-scroll::-webkit-scrollbar { display: none; }
+
+/* Densidad compacta de tarjetas (ajuste de Apariencia). */
+[data-densidad="compacta"] .tarjeta-noticia { padding: 0.75rem; }
+[data-densidad="compacta"] .resumen-noticia { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* ============ Movimiento reducido (ajuste del panel) ============ */
 [data-motion="reduced"] *,
