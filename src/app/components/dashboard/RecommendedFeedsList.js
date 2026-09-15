@@ -3,9 +3,8 @@
 
 import React from "react";
 import { Loader2, Tag, Plus } from "lucide-react";
-import FeedCard from "./FeedCard"; // Asumiremos que FeedCard es exportado o lo definimos aquí
 
-// Nota: FeedCard estaba definido dentro de OnboardingSurvey, lo movemos aquí para modularidad
+// Nota: FeedCard se implementa localmente aquí para evitar dependencias circulares o archivos inexistentes
 function LocalFeedCard({ feed, onAdd, adding, added, t }) {
   return (
     <div className="card-lift bg-gray-950/60 border border-gray-800/80 rounded-2xl p-4 hover:border-gray-600 transition-all">
