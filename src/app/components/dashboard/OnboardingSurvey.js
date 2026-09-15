@@ -94,7 +94,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [totalAgregados, setTotalAgregados] = useState(0);
   const cargandoRef = useRef(false);
 
-  // Cargar feeds recomendados cuando cambien las categorías seleccionadas
+// Cargar feeds recomendados cuando cambien las categorías seleccionadas
   useEffect(() => {
     let cancelado = false;
     const fetchFeeds = async () => {
@@ -119,7 +119,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         if (!cancelado) setCargandoFeeds(false);
       }
     };
-    };
+    
     fetchFeeds();
     return () => { cancelado = true; };
   }, [categoriasSeleccionadas]);
