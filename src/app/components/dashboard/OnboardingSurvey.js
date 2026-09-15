@@ -111,10 +111,14 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
           if (!cancelado) setFeedsRecomendados(data.categorias || {});
         }
       } catch (err) {
-        if (!cancelado) console.error("Error cargando feeds recomendados:", err);
+        if (!cancelado) {
+          console.error("Error cargando feeds recomendados:", err);
+          setFeedsRecomendados({});
+        }
       } finally {
         if (!cancelado) setCargandoFeeds(false);
       }
+    };
     };
     fetchFeeds();
     return () => { cancelado = true; };
@@ -179,7 +183,9 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     onCerrar();
   };
 
-  const totalFeeds = Object.values(feedsRecomendados).reduce((acc, arr) => acc + arr.length, 0);
+  const totalFeeds = feedsRecomendados 
+    ? Object.values(feedsRecomendados || {}).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0) 
+    : 0;
 
   if (!abierto) return null;
 
