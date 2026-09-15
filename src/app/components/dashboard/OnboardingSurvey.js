@@ -38,10 +38,10 @@ function CategoryPill({ category, selected, onClick, t }) {
     <button
       type="button"
       onClick={onClick}
-      className={`btn-press flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all min-w-0 ${
+      className={`btn-press flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-[transform,border-color,background-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
         selected
-          ? "border-sky-500 bg-sky-500/15 text-sky-300 shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
-          : "border-gray-700 bg-gray-900/50 text-gray-300 hover:border-gray-500 hover:text-white"
+          ? "border-[var(--accent)]/80 bg-[var(--accent)]/15 text-[var(--accent-ink)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
+          : "border-app-line bg-app-surface/60 text-app-muted hover:border-[var(--accent)]/60 hover:bg-app-raised/70 hover:text-app-fg"
         }`}
       aria-pressed={selected}
     >
@@ -177,8 +177,13 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
 
 
   return (
-    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="anim-modal scroll-oculto bg-app-surface border border-app-line rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
+    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        className="anim-modal scroll-oculto relative max-h-[90vh] w-full max-w-3xl space-y-6 overflow-y-auto overscroll-contain rounded-2xl border border-app-line bg-app-surface p-6 shadow-2xl sm:p-8"
+      >
         <button
           onClick={handleOmitir}
           aria-label={t("comun.cerrar")}
@@ -217,7 +222,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent-ink)] rounded-full text-xs font-semibold border border-[var(--accent)]/20">
             <Sparkles size={14} /> {t("onboarding.etiqueta")}
           </div>
-          <h3 className="text-2xl font-bold text-app-fg tracking-tight">{t("onboarding.titulo")}</h3>
+          <h3 id="onboarding-title" className="text-2xl font-bold tracking-tight text-app-fg">{t("onboarding.titulo")}</h3>
           <p className="text-sm text-app-muted leading-relaxed">{t("onboarding.subtitulo")}</p>
         </div>
 
@@ -293,7 +298,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
               <button
                 type="button"
                 onClick={handleOmitir}
-                className="btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl"
+                className="btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.omitir")}
               </button>
@@ -301,7 +306,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 type="button"
                 onClick={siguientePaso}
                 disabled={categoriasSeleccionadas.length === 0}
-                className="btn-press group bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("onboarding.continuar")}
                 <ArrowRightIcon size={16} />
@@ -313,14 +318,14 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
               <button
                 type="button"
                 onClick={() => setPaso(1)}
-                className="btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl"
+                className="btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 <MorphIcon icon={ArrowRightData} size={16} className="rotate-180" /> {t("onboarding.continuar")}
               </button>
               <button
                 type="button"
                 onClick={siguientePaso}
-                className="btn-press group bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+                className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.continuar")}
                 <ArrowRightIcon size={16} />
@@ -331,7 +336,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
             <button
               type="button"
               onClick={handleCompletar}
-              className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+              className="btn-press group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               {t("onboarding.ver_dashboard")}
             </button>

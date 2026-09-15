@@ -7,26 +7,26 @@ import { Loader2, Tag, Plus } from "lucide-react";
 // Nota: FeedCard se implementa localmente aquí para evitar dependencias circulares o archivos inexistentes
 function LocalFeedCard({ feed, onAdd, adding, added, t }) {
   return (
-    <div className="card-lift bg-gray-950/60 border border-gray-800/80 rounded-2xl p-4 hover:border-gray-600 transition-all">
+    <div className="card-lift rounded-2xl border border-app-line/80 bg-app-bg/60 p-4 hover:border-[var(--accent)]/50">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+          <div className="mb-1 flex items-center gap-2 text-xs text-app-muted">
             <Tag size={12} className="opacity-75" />
             <span>{feed.categoria}</span>
           </div>
-          <h4 className="text-white font-semibold text-base truncate mb-1">{feed.titulo}</h4>
-          <p className="text-gray-500 text-sm line-clamp-2">{feed.descripcion}</p>
+          <h4 className="mb-1 truncate text-base font-semibold text-app-fg">{feed.titulo}</h4>
+          <p className="line-clamp-2 text-sm text-app-muted">{feed.descripcion}</p>
         </div>
         <button
           type="button"
           onClick={onAdd}
           disabled={adding || added}
-          className={`btn-press shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+          className={`btn-press flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-[transform,border-color,background-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
             added
-              ? "bg-emerald-950/40 text-emerald-300 border-emerald-900/40 cursor-default"
+              ? "border-emerald-900/40 bg-emerald-950/40 text-emerald-300 cursor-default"
               : adding
-              ? "bg-sky-600/20 text-sky-400 border-sky-500/30 cursor-wait"
-              : "bg-sky-600 hover:bg-sky-500 text-white border-sky-500/30 hover:shadow-lg hover:shadow-sky-600/20"
+              ? "border-[var(--accent)]/30 bg-[var(--accent)]/15 text-[var(--accent-ink)] cursor-wait"
+              : "border-[var(--accent)]/40 bg-[var(--accent-strong)] text-[var(--on-accent-strong)] hover:opacity-90 hover:shadow-[0_8px_20px_-12px_var(--accent)]"
           }`}
         >
           {adding && <Loader2 size={14} className="animate-spin" />}
@@ -68,15 +68,15 @@ export default function RecommendedFeedsList({
 
   return (
     <>
-      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+      <div className="scroll-oculto max-h-[50vh] space-y-3 overflow-y-auto overscroll-contain pr-1">
         {categorias.map((categoria) => {
           const lista = safeFeeds[categoria];
           if (!Array.isArray(lista)) return null;
           return (
             <div key={categoria} className="space-y-2">
-              <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
-                  <Tag size={10} className="text-sky-400" />
+              <h5 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-app-muted">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)]/15">
+                  <Tag size={10} className="text-[var(--accent-ink)]" />
                 </span>
                 {categoria} ({lista.length})
               </h5>
@@ -106,7 +106,7 @@ export default function RecommendedFeedsList({
           type="button"
           onClick={onAddAll}
           disabled={totalAgregados === safeTotal}
-          className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+          className="btn-press mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-medium text-[var(--accent-ink)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-50"
         >
           <Plus size={16} /> {t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
         </button>
