@@ -126,14 +126,25 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   };
 
   const handleAgregarTodas = async () => {
-    if (!feedsRecomendados) return;
-    const todas = Object.values(feedsRecomendados || {}).flat();
-    if (!Array.isArray(todas)) return;
+    if (!feedsRecomendados || typeof feedsRecomendados !== 'object') return;
+    
+    const categorias = Object.keys(feedsRecomendados);
+    const todas = [];
+    
+    for (const cat of categorias) {
+      const lista = feedsRecomendados[cat];
+      if (Array.isArray(lista)) {
+        for (const feed of lista) {
+          todas.push(feed);
+        }
+      }
+    }
+
     for (const feed of todas) {
       const feedKey = `${feed.titulo}|${feed.url}`;
       if (!feedsAgregados.has(feedKey) && !feedsAgregando.has(feedKey)) {
         await handleAgregarFeed(feed);
-        await new Promise((r) => setTimeout(r, 150)); // Pequeña pausa entre requests
+        await new Promise((r) => setTimeout(r, 150));
       }
     }
   };

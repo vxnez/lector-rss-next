@@ -399,10 +399,15 @@ export default function HomePage() {
 
         if (sessionData?.user) {
           setSession(sessionData);
-          const hasSeenWelcome = localStorage.getItem(`welcome_seen_${sessionData.user.email || sessionData.user.id}`);
-          if (!hasSeenWelcome) setShowOnboardingSurvey(true);
+          // Simplificación de la clave: usamos solo el email o el id para evitar inconsistencias
+          const userId = sessionData.user.email || sessionData.user.id;
+          const welcomeKey = `welcome_seen_${userId}`;
+          const hasSeenWelcome = localStorage.getItem(welcomeKey);
+          
+          if (!hasSeenWelcome) {
+            setShowOnboardingSurvey(true);
+          }
         } else {
-          // Sin cuenta: se entra como invitado si hay cookie de sesión válida.
           try {
             const resInvitado = await fetch("/api/auth/invitado", {
               cache: "no-store",
@@ -410,8 +415,9 @@ export default function HomePage() {
             });
             if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
-            const hasSeenWelcome = localStorage.getItem("welcome_seen_invitado");
-            if (!hasSeenWelcome) setShowOnboardingSurvey(true);
+            if (!localStorage.getItem("welcome_seen_invitado")) {
+              setShowOnboardingSurvey(true);
+            }
           } catch (err) {
             if (err.name !== "AbortError") console.error("Error al cargar invitado:", err);
           }
