@@ -15,11 +15,10 @@ import {
   ChevronRight,
   ChevronLeft,
   Palette,
-  IdCard,
   ShieldCheck,
   BellRing,
   Database,
-  Heart,
+  Languages,
   Info,
   User,
   Download,
@@ -28,7 +27,6 @@ import {
   LogOut,
   HelpCircle,
   Star,
-  Coffee,
   TriangleAlert,
 } from "lucide-react";
 import { TEMAS } from "@/lib/temas";
@@ -233,9 +231,11 @@ export default function AjustesPanel({
 
   const abrirVista = (id) => {
     setVista(id);
-    if (id === "cuenta" || id === "seguridad") cargarPerfil();
-    if (id === "seguridad") cargarActividad();
-    if (id === "proyecto") cargarRepo();
+    if (id === "cuenta") {
+      cargarPerfil();
+      cargarActividad();
+    }
+    if (id === "ayuda") cargarRepo();
   };
 
   const exportarDatos = async () => {
@@ -301,7 +301,6 @@ export default function AjustesPanel({
     await signOut({ callbackUrl: "/login" });
   };
 
-  const inicial = (nombreUsuario || "?").trim().charAt(0).toUpperCase() || "?";
   const locale = idioma === "en" ? "en-US" : "es-ES";
 
   // Métodos vinculados a la cuenta (insignias traducidas).
@@ -329,12 +328,11 @@ export default function AjustesPanel({
 
   const titulos = {
     apariencia: t("ajustes.apariencia_t"),
-    cuenta: t("ajustes.cuenta_t"),
-    seguridad: t("ajustes.seguridad_t"),
+    cuenta: t("ajustes.cuenta_seg_t"),
+    lectura: t("ajustes.lectura_t"),
     notificaciones: t("ajustes.noti_t"),
     datos: t("ajustes.datos_t"),
-    apoyo: t("ajustes.apoyo_t"),
-    proyecto: t("ajustes.proyecto_t"),
+    ayuda: t("ajustes.ayuda_t"),
   };
 
   return (
@@ -378,63 +376,33 @@ export default function AjustesPanel({
         <div className="panel-scroll flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
           {!vista && (
             <>
-              {/* Guía RSS primero, antes de la cuenta */}
-              <button
-                type="button"
-                onClick={() => {
-                  cerrar();
-                  onAbrirGuia();
-                }}
-                className="flex w-full items-center gap-3 rounded-2xl border border-sky-800 bg-sky-950 px-3.5 py-3 text-left transition hover:border-sky-600"
-              >
-                <span
-                  aria-hidden="true"
-                  className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-sky-600 text-white"
-                >
-                  <HelpCircle size={20} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-sky-100">{t("ajustes.guia_t")}</span>
-                  <span className="block truncate text-xs text-sky-100/70">
-                    {t("ajustes.guia_d")}
-                  </span>
-                </span>
-                <ChevronRight size={18} className="shrink-0 text-sky-100/70" />
-              </button>
-
-              {/* Cabecera de cuenta (abre Cuenta) */}
-              <button
-                type="button"
-                onClick={() => abrirVista("cuenta")}
-                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left btn-press card-lift hover:border-gray-500"
-              >
-                {imagenUsuario && !esInvitado ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imagenUsuario}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-11 w-11 shrink-0 rounded-full border border-gray-700 object-cover"
-                  />
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-sky-600 text-lg font-bold text-white"
-                  >
-                    {inicial}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-gray-100">
-                    {nombreUsuario || t("ajustes.sin_sesion")}
-                  </span>
-                  <span className="block truncate text-xs text-gray-500">
-                    {esInvitado ? t("ajustes.invitado_tag") : emailUsuario || ""}
-                  </span>
-                </span>
-                <ChevronRight size={18} className="shrink-0 text-gray-500" />
-              </button>
-
+              {/* Seis apartados funcionales, sin duplicados: la cuenta vive en
+                  un solo lugar, la guía dentro de Ayuda y el repo con un
+                  único enlace. */}
+              <TarjetaAjuste
+                icono={
+                  imagenUsuario && !esInvitado ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imagenUsuario}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-11 w-11 rounded-full object-cover"
+                    />
+                  ) : (
+                    <ShieldCheck size={20} />
+                  )
+                }
+                fondoIcono="#dcfce7"
+                tintaIcono="#166534"
+                titulo={t("ajustes.cuenta_seg_t")}
+                descripcion={
+                  esInvitado
+                    ? t("ajustes.invitado_tag")
+                    : (nombreUsuario || emailUsuario || t("ajustes.cuenta_seg_d"))
+                }
+                onAbrir={() => abrirVista("cuenta")}
+              />
               <TarjetaAjuste
                 icono={<Palette size={20} />}
                 fondoIcono="#e0e7ff"
@@ -444,20 +412,12 @@ export default function AjustesPanel({
                 onAbrir={() => abrirVista("apariencia")}
               />
               <TarjetaAjuste
-                icono={<IdCard size={20} />}
-                fondoIcono="#dcfce7"
-                tintaIcono="#166534"
-                titulo={t("ajustes.cuenta_t")}
-                descripcion={t("ajustes.cuenta_d")}
-                onAbrir={() => abrirVista("cuenta")}
-              />
-              <TarjetaAjuste
-                icono={<ShieldCheck size={20} />}
-                fondoIcono="#dbeafe"
-                tintaIcono="#1e40af"
-                titulo={t("ajustes.seguridad_t")}
-                descripcion={t("ajustes.seguridad_d")}
-                onAbrir={() => abrirVista("seguridad")}
+                icono={<Languages size={20} />}
+                fondoIcono="#fef9c3"
+                tintaIcono="#854d0e"
+                titulo={t("ajustes.lectura_t")}
+                descripcion={t("ajustes.lectura_d")}
+                onAbrir={() => abrirVista("lectura")}
               />
               <TarjetaAjuste
                 icono={<BellRing size={20} />}
@@ -476,20 +436,12 @@ export default function AjustesPanel({
                 onAbrir={() => abrirVista("datos")}
               />
               <TarjetaAjuste
-                icono={<Heart size={20} />}
-                fondoIcono="#fce7f3"
-                tintaIcono="#9d174d"
-                titulo={t("ajustes.apoyo_t")}
-                descripcion={t("ajustes.apoyo_d")}
-                onAbrir={() => abrirVista("apoyo")}
-              />
-              <TarjetaAjuste
                 icono={<Info size={20} />}
                 fondoIcono="#f3f4f6"
                 tintaIcono="#374151"
-                titulo={t("ajustes.proyecto_t")}
-                descripcion={t("ajustes.proyecto_d")}
-                onAbrir={() => abrirVista("proyecto")}
+                titulo={t("ajustes.ayuda_t")}
+                descripcion={t("ajustes.ayuda_d")}
+                onAbrir={() => abrirVista("ayuda")}
               />
 
             </>
@@ -532,37 +484,42 @@ export default function AjustesPanel({
                     );
                   })}
                 </div>
-                <div>
-                  <span id="ajustes-idioma" className="mb-1.5 block text-xs font-medium text-gray-400">
-                    {t("ajustes.idioma")}
-                  </span>
-                  <p className="mb-1.5 text-xs leading-relaxed text-gray-500">
-                    {t("ajustes.idioma_d")}
-                  </p>
-                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-idioma">
-                    {[
-                      { id: "es", etiqueta: "Español" },
-                      { id: "en", etiqueta: "English" },
-                    ].map((op) => {
-                      const activo = idioma === op.id;
-                      return (
-                        <button
-                          key={op.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={activo}
-                          onClick={() => setIdioma(op.id)}
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                            activo
-                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-                          }`}
-                        >
-                          {op.etiqueta}
-                        </button>
-                      );
-                    })}
-                  </div>
+              </div>
+            </section>
+          )}
+
+          {vista === "lectura" && (
+            <section className="space-y-4">
+              <div className="space-y-2.5">
+                <span id="ajustes-idioma" className="mb-1.5 block text-xs font-medium text-gray-400">
+                  {t("ajustes.idioma")}
+                </span>
+                <p className="mb-1.5 text-xs leading-relaxed text-gray-500">
+                  {t("ajustes.idioma_d")}
+                </p>
+                <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-idioma">
+                  {[
+                    { id: "es", etiqueta: "Español" },
+                    { id: "en", etiqueta: "English" },
+                  ].map((op) => {
+                    const activo = idioma === op.id;
+                    return (
+                      <button
+                        key={op.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={activo}
+                        onClick={() => setIdioma(op.id)}
+                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          activo
+                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        {op.etiqueta}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -677,17 +634,6 @@ export default function AjustesPanel({
                   >
                     <LogOut size={15} /> {t("ajustes.cerrar_sesion")}
                   </button>
-                </>
-              )}
-            </section>
-          )}
-
-          {vista === "seguridad" && (
-            <section className="space-y-2.5">
-              {esInvitado ? (
-                <FilaDato etiqueta={t("ajustes.metodo")} valor={t("ajustes.invitado_tag")} />
-              ) : (
-                <>
                   <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
                     <p className="text-[11px] uppercase tracking-wide text-gray-500">
                       {t("ajustes.metodos")}
@@ -735,18 +681,10 @@ export default function AjustesPanel({
                       {t("ajustes.cambiar_pass")}
                     </Link>
                   )}
-                </>
-              )}
-              <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                  {t("ajustes.actividad")}
-                </p>
-                {esInvitado ? (
-                  <p className="text-xs leading-relaxed text-gray-400">
-                    {t("ajustes.actividad_invitado")}
-                  </p>
-                ) : (
-                  <>
+                  <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                      {t("ajustes.actividad")}
+                    </p>
                     <p className="truncate text-sm font-medium text-gray-100">
                       {actividad?.ultimaFuente
                         ? `${t("ajustes.ultima_fuente")}: ${actividad.ultimaFuente.titulo}`
@@ -762,9 +700,9 @@ export default function AjustesPanel({
                         (estadisticas?.guardadas || 0)}{" "}
                       {t("ajustes.noticias_en")}
                     </p>
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </section>
           )}
 
@@ -854,59 +792,30 @@ export default function AjustesPanel({
             </section>
           )}
 
-          {vista === "apoyo" && (
+          {vista === "ayuda" && (
             <section className="space-y-2.5">
-              <a
-                href={URL_REPOSITORIO}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left btn-press card-lift hover:border-gray-500"
+              <button
+                type="button"
+                onClick={() => {
+                  cerrar();
+                  onAbrirGuia();
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-sky-800 bg-sky-950 px-3.5 py-3 text-left btn-press card-lift hover:border-sky-600"
               >
                 <span
                   aria-hidden="true"
-                  className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-gray-800 text-gray-100"
+                  className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-sky-600 text-white"
                 >
-                  <GitHubIcon size={20} />
+                  <HelpCircle size={20} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-gray-100">{t("ajustes.repo_t")}</span>
-                  <span className="block truncate text-xs text-gray-500">
-                    vxnez/lector-rss-next
+                  <span className="block text-sm font-semibold text-sky-100">{t("ajustes.guia_t")}</span>
+                  <span className="block truncate text-xs text-sky-100/70">
+                    {t("ajustes.guia_d")}
                   </span>
                 </span>
-              </a>
-              <a
-                href={URL_REPOSITORIO}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 btn-press hover:bg-amber-500/20"
-              >
-                <Star size={15} /> {t("ajustes.estrella")}
-              </a>
-              <button
-                type="button"
-                onClick={compartirApp}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
-              >
-                <Share2 size={15} /> {t("ajustes.compartir")}
+                <ChevronRight size={18} className="shrink-0 text-sky-100/70" />
               </button>
-              <a
-                href={URL_REPOSITORIO}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={t("ajustes.cafe_titulo")}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 btn-press hover:bg-amber-500/20"
-              >
-                <Coffee size={15} /> {t("ajustes.cafe")}
-              </a>
-              <p className="text-xs leading-relaxed text-gray-500">
-                {t("ajustes.apoyo_nota")}
-              </p>
-            </section>
-          )}
-
-          {vista === "proyecto" && (
-            <section className="space-y-2.5">
               <FilaDato
                 etiqueta={t("ajustes.app")}
                 valor={`RSS Dashboard v${versionTexto}`}
@@ -931,6 +840,14 @@ export default function AjustesPanel({
                 })}
               />
               <a
+                href={URL_REPOSITORIO}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+              >
+                <GitHubIcon size={15} /> {t("ajustes.repositorio")}
+              </a>
+              <a
                 href={URL_APP}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -942,10 +859,20 @@ export default function AjustesPanel({
                 href={URL_REPOSITORIO}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 btn-press hover:bg-amber-500/20"
+              >
+                <Star size={15} /> {t("ajustes.estrella")}
+              </a>
+              <button
+                type="button"
+                onClick={compartirApp}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
               >
-                <GitHubIcon size={15} /> {t("ajustes.repositorio")}
-              </a>
+                <Share2 size={15} /> {t("ajustes.compartir")}
+              </button>
+              <p className="text-xs leading-relaxed text-gray-500">
+                {t("ajustes.apoyo_nota")}
+              </p>
             </section>
           )}
         </div>
