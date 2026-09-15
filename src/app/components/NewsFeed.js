@@ -3,7 +3,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Check, Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
+import { Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
+import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { getCategoryStyle } from "@/lib/categoryStyles";
@@ -132,7 +133,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
             }`}
             title={isLeido ? t("tarjeta.desmarcar") : t("tarjeta.marcar")}
           >
-            <Check size={13} aria-hidden="true" />
+            <MorphIcon icon={isLeido ? CheckCheckData : CheckData} size={13} aria-hidden="true" />
           </button>
           <button
             onClick={() => onToggleSave(art.id, isGuardado)}

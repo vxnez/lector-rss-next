@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
 import NewsFeed from "./components/NewsFeed";
@@ -17,15 +18,23 @@ const AjustesPanel = dynamic(() => import("./components/AjustesPanel"), { ssr: f
 import {
   Settings,
   Plus,
-  RotateCw,
   Sparkles,
   Filter,
-  Check,
   Trash2,
   Search,
   XCircle,
 } from "lucide-react";
-import { Settings as SettingsData, X as XData, ChevronDown as ChevronDownData, ChevronUp as ChevronUpData } from "lucide";
+import {
+  Check as CheckData,
+  Circle as CircleData,
+  Filter as FilterData,
+  LoaderCircle as LoaderCircleData,
+  RotateCw as RotateCwData,
+  Settings as SettingsData,
+  X as XData,
+  ChevronDown as ChevronDownData,
+  ChevronUp as ChevronUpData,
+} from "lucide";
 import MorphIcon from "./components/MorphIcon";
 import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
 import { useIdioma } from "@/lib/i18n";
@@ -70,6 +79,7 @@ function IconoFuentePildora({ fuente }) {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [session, setSession] = useState(null);
   const [articulos, setArticulos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -184,7 +194,8 @@ export default function HomePage() {
     setPagina(1);
     setTotalNoticias(0);
     setConteos({ pendientes: 0, leidas: 0, guardadas: 0 });
-  }, []);
+    router.push("/login");
+  }, [router]);
 
 
 
@@ -417,9 +428,7 @@ export default function HomePage() {
             });
             if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
-            if (!localStorage.getItem("welcome_seen_invitado")) {
-              setShowOnboardingSurvey(true);
-            }
+            setShowOnboardingSurvey(true);
           } catch (err) {
             if (err.name !== "AbortError") console.error("Error al cargar invitado:", err);
           }
@@ -955,47 +964,53 @@ export default function HomePage() {
               title={t("controles.abrir")}
               aria-label={t("controles.abrir")}
               aria-expanded={panelMovilAbierto}
-              className="btn-press lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm hover:bg-sky-500"
+              className="btn-press fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-sky-300/40 bg-sky-600/95 p-2.5 text-white shadow-[0_10px_28px_-10px_rgba(14,165,233,0.9)] backdrop-blur-sm hover:bg-sky-500 lg:hidden"
             >
               <span className="relative block">
-                <MorphIcon icon={panelMovilAbierto ? XData : SettingsData} size={20} />
+                <MorphIcon icon={panelMovilAbierto ? XData : FilterData} size={21} strokeWidth={2.25} />
                 {hayFiltrosActivos && (
                   <span aria-hidden="true" className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" />
                 )}
               </span>
             </button>
-            <aside className={`dashboard-control-sidebar scroll-oculto order-5 lg:order-last bg-app-surface/40 border border-app-line/80 rounded-2xl p-4 sm:p-5 space-y-5 sm:space-y-6 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-3 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
-              <section className="border-b border-gray-800 pb-4 space-y-4">
+            <aside className={`dashboard-control-sidebar scroll-oculto order-5 lg:order-last space-y-3 rounded-3xl border border-app-line/80 bg-app-surface/85 p-3 shadow-[0_20px_55px_-28px_color-mix(in_srgb,var(--accent)_55%,transparent)] backdrop-blur-xl sm:p-4 lg:sticky lg:top-24 ${panelMovilAbierto ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-20 max-lg:z-40 max-lg:max-h-[calc(70dvh-4rem)] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl" : "max-lg:hidden"}`}>
+              <section className="rounded-2xl border border-app-line/70 bg-app-bg/35 p-3 sm:p-3.5">
                 <button
                   type="button"
                   onClick={() => setControlsOpen((open) => !open)}
                   aria-expanded={controlsOpen}
-                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-white font-semibold text-[clamp(0.75rem,1vw,0.875rem)]"
+                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-app-fg font-semibold text-[clamp(0.75rem,1vw,0.875rem)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <Settings size={16} className="text-sky-400" />
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[var(--accent)]/12 text-[var(--accent-ink)]">
+                      <Settings size={15} />
+                    </span>
                     <span className="truncate">{t("controles.titulo")}</span>
                   </span>
-                  <MorphIcon icon={controlsOpen ? ChevronUpData : ChevronDownData} size={18} className="text-gray-400" />
+                  <MorphIcon icon={controlsOpen ? ChevronUpData : ChevronDownData} size={18} className="text-app-muted" />
                 </button>
 
                 {controlsOpen && (
-                  <div className="space-y-4 border-t border-gray-800 pt-4">
+                  <div className="stagger-in space-y-4 border-t border-app-line/70 pt-3.5">
                     <section className="space-y-3">
-                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">{t("controles.acciones")}</h2>
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-[0.12em] text-app-muted">{t("controles.acciones")}</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
                     title={t("controles.refrescar_titulo")}
-                    className="btn-press min-w-0 rounded-xl border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="btn-press flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-app-line bg-app-raised/70 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-app-fg hover:border-[var(--accent)]/50 hover:bg-app-raised disabled:opacity-50"
                   >
-                    <RotateCw size={14} className={refreshing ? "animate-spin text-sky-400" : ""} />
+                    <MorphIcon
+                      icon={refreshing ? LoaderCircleData : RotateCwData}
+                      size={14}
+                      className={refreshing ? "animate-spin text-sky-400" : ""}
+                    />
                     <span className="truncate">{refreshing ? t("controles.actualizando") : t("controles.refrescar")}</span>
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="btn-press group min-w-0 rounded-xl bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white hover:bg-sky-500 flex items-center justify-center gap-1.5 hover:shadow-lg hover:shadow-sky-600/20"
+                    className="btn-press group flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-strong)] px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-[var(--on-accent-strong)] hover:opacity-90 hover:shadow-[0_8px_22px_-12px_var(--accent)]"
                   >
                     <Plus size={14} />
                     <span className="truncate">{t("controles.agregar")}</span>
@@ -1003,22 +1018,22 @@ export default function HomePage() {
                       </div>
                     </section>
 
-                    <section className="space-y-3 border-t border-gray-800 pt-4">
-                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-wide text-gray-400">{t("controles.admin")}</h2>
+                    <section className="space-y-3 border-t border-app-line/70 pt-4">
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-[0.12em] text-app-muted">{t("controles.admin")}</h2>
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleEliminarTodas}
                     title={t("controles.eliminar_titulo")}
-                    className="btn-press min-w-0 rounded-xl border border-red-900/50 bg-red-950/40 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-red-300 hover:bg-red-900/50 flex items-center justify-center gap-1.5"
+                    className="btn-press flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/15"
                   >
                     <Trash2 size={14} />
                     <span className="truncate">{t("controles.eliminar")}</span>
                   </button>
                   <button
                     onClick={() => setIsManageModalOpen(true)}
-                    className="btn-press min-w-0 rounded-xl border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 hover:bg-gray-800 flex items-center justify-center gap-1.5"
+                    className="btn-press flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-app-line bg-app-raised/70 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-app-fg hover:border-[var(--accent)]/50 hover:bg-app-raised"
                   >
-                    <Settings size={14} />
+                    <MorphIcon icon={isManageModalOpen ? XData : SettingsData} size={14} />
                     <span className="truncate">{t("controles.fuentes")}</span>
                       </button>
                       </div>
@@ -1028,18 +1043,20 @@ export default function HomePage() {
                 )}
               </section>
 
-              <section className="pt-4">
+              <section className="rounded-2xl border border-app-line/70 bg-app-bg/25 p-3 sm:p-3.5">
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
                   aria-expanded={filtersOpen}
-                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-white font-semibold text-[clamp(0.75rem,1vw,0.875rem)]"
+                  className="flex w-full min-w-0 items-center justify-between gap-3 text-left text-app-fg font-semibold text-[clamp(0.75rem,1vw,0.875rem)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <Filter size={16} className="text-sky-400" />
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[var(--accent)]/12 text-[var(--accent-ink)]">
+                      <Filter size={15} />
+                    </span>
                     <span className="truncate">{t("filtros.titulo")}</span>
                   </span>
-                  <MorphIcon icon={filtersOpen ? ChevronUpData : ChevronDownData} size={18} className="text-gray-400" />
+                  <MorphIcon icon={filtersOpen ? ChevronUpData : ChevronDownData} size={18} className="text-app-muted" />
                 </button>
               </section>
 
@@ -1048,7 +1065,7 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <span className="text-xs font-medium text-gray-400">{t("filtros.ordenar")}</span>
-                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("filtros.ordenar")}>
+                <div className="flex flex-wrap gap-1.5 rounded-xl border border-app-line/50 bg-app-surface/40 p-2" role="radiogroup" aria-label={t("filtros.ordenar")}>
                   {[
                     { valor: "recientes", etiqueta: t("filtros.recientes") },
                     { valor: "az", etiqueta: t("filtros.az") },
@@ -1068,7 +1085,12 @@ export default function HomePage() {
                             : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >
-                        {activo && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        <MorphIcon
+                          icon={activo ? CheckData : CircleData}
+                          size={13}
+                          strokeWidth={2.5}
+                          className="shrink-0"
+                        />
                         {opcion.etiqueta}
                       </button>
                     );
@@ -1103,7 +1125,12 @@ export default function HomePage() {
                             : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >
-                        {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        <MorphIcon
+                          icon={activa ? CheckData : CircleData}
+                          size={13}
+                          strokeWidth={2.5}
+                          className="shrink-0"
+                        />
                         <IconoFuentePildora fuente={fuente} />
                         <span className="truncate">{fuente.nombre}</span>
                       </button>
@@ -1138,7 +1165,12 @@ export default function HomePage() {
                             : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >
-                        {activa && <Check size={13} strokeWidth={3} className="shrink-0" />}
+                        <MorphIcon
+                          icon={activa ? CheckData : CircleData}
+                          size={13}
+                          strokeWidth={2.5}
+                          className="shrink-0"
+                        />
                         {categoria}
                       </button>
                     );
@@ -1225,7 +1257,7 @@ export default function HomePage() {
         abierto={showOnboardingSurvey}
         onCerrar={closeOnboardingSurvey}
         t={t}
-        onCompletado={() => {}}
+        onCompletado={handleRefresh}
         onAgregarFuente={handleAgregarFuenteOnboarding}
       />
 

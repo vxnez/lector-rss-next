@@ -88,8 +88,8 @@ export default function LoginPage() {
     <div className="auth-ambient min-h-screen flex items-center justify-center bg-app-bg text-app-fg p-4">
       <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
         <div className="bezel-inner p-8 shadow-2xl">
-          <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
-          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">Iniciar Sesión</h2>
+          <p className="eyebrow mx-auto flex w-fit">RSS Dashboard</p>
+          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">{t("login.titulo")}</h2>
 
           {error && (
             <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
@@ -177,7 +177,7 @@ export default function LoginPage() {
             disabled={loading}
             className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? "Entrando..." : "Iniciar Sesión"}
+            {loading ? t("login.entrando") : t("login.entrar")}
           </button>
         </form>
 
@@ -215,7 +215,7 @@ export default function LoginPage() {
           className="btn-press w-full mt-3 bg-app-raised/40 hover:bg-app-raised border border-dashed border-app-line py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-app-fg"
         >
           <UserRound size={16} className="text-app-muted" />
-          Continuar como invitado
+          {t("login.invitado")}
         </button>
 
         <p className="text-center text-xs text-app-muted mt-6">
@@ -243,7 +243,7 @@ export default function LoginPage() {
               <span className="flex items-center gap-2 text-amber-300">
                 <TriangleAlert size={20} />
                 <strong id="aviso-invitado-titulo" className="text-sm font-semibold text-app-fg">
-                  Entrar como invitado
+                  {t("login.aviso_titulo")}
                 </strong>
               </span>
               <button
@@ -270,14 +270,14 @@ export default function LoginPage() {
                 disabled={loadingInvitado}
                 className="btn-press rounded-xl border border-app-line bg-app-raised px-3 py-2.5 text-sm font-medium text-app-fg hover:opacity-90 disabled:opacity-60"
               >
-                Cancelar
+                {t("login.cancelar")}
               </button>
               <button
                 onClick={entrarComoInvitado}
                 disabled={loadingInvitado}
                 className="btn-press rounded-xl bg-[var(--accent-strong)] px-3 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 disabled:opacity-60 hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)]"
               >
-                {loadingInvitado ? "Entrando..." : "Entendido, entrar"}
+                {loadingInvitado ? t("login.entrando") : t("login.entendido")}
               </button>
             </div>
           </div>

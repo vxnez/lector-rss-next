@@ -1619,11 +1619,11 @@ async function normalizarArticulosExistentes(userId) {
       try {
         await connection.beginTransaction();
         const [filas] = await connection.query(
-          `SELECT id, fuente_id, url_original, leido, guardado, descartado
+          `SELECT a.id, a.fuente_id, a.url_original, a.leido, a.guardado, a.descartado
            FROM articulos_publicados a
            INNER JOIN fuentes_rss f ON f.id = a.fuente_id
            WHERE f.usuario_id = ?
-           ORDER BY fuente_id ASC, id ASC
+           ORDER BY a.fuente_id ASC, a.id ASC
            FOR UPDATE`,
           [userId]
         );

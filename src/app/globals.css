@@ -436,7 +436,7 @@ textarea:focus-visible {
 
 /* Etiqueta eyebrow: micro-badge editorial sobre títulos y estados vacíos. */
 .eyebrow {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.375rem;
   border-radius: 9999px;

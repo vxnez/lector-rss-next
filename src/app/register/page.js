@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, User } from "lucide-react";
+import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
+import MorphIcon from "../components/MorphIcon";
 import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ nombre: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verPassword, setVerPassword] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -39,7 +42,7 @@ export default function RegisterPage() {
     <div className="auth-ambient min-h-screen flex items-center justify-center bg-app-bg text-app-fg p-4">
       <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
         <div className="bezel-inner p-8 shadow-2xl">
-          <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
+          <p className="eyebrow mx-auto flex w-fit">RSS Dashboard</p>
           <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">Crear Cuenta</h2>
         
           {error && (
@@ -88,12 +91,23 @@ export default function RegisterPage() {
                 <Lock size={18} />
               </span>
               <input
-                type="password"
+                type={verPassword ? "text" : "password"}
                 required
                 placeholder="••••••••"
-                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
+                autoComplete="new-password"
+                className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-11 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
+              <button
+                type="button"
+                onClick={() => setVerPassword((visible) => !visible)}
+                title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-pressed={verPassword}
+                className="btn-press absolute inset-y-0 right-0 flex items-center pr-3 text-app-muted hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <MorphIcon icon={verPassword ? EyeOffData : EyeData} size={18} />
+              </button>
             </div>
           </div>
 

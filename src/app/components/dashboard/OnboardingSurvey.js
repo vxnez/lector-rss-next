@@ -62,6 +62,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [feedsAgregando, setFeedsAgregando] = useState(new Set());
   const [feedsAgregados, setFeedsAgregados] = useState(new Set());
   const [totalAgregados, setTotalAgregados] = useState(0);
+  const [completando, setCompletando] = useState(false);
   const cargandoRef = useRef(false);
 
   useEffect(() => {
@@ -157,9 +158,14 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     }
   };
 
-  const handleCompletar = () => {
-    if (onCompletado) onCompletado();
-    onCerrar(true);
+  const handleCompletar = async () => {
+    setCompletando(true);
+    try {
+      if (onCompletado) await onCompletado();
+      onCerrar(true);
+    } finally {
+      setCompletando(false);
+    }
   };
 
   const handleOmitir = () => {
@@ -332,9 +338,10 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
             <button
               type="button"
               onClick={handleCompletar}
-              className="btn-press group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              disabled={completando}
+              className="btn-press group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
             >
-              {t("onboarding.ver_dashboard")}
+              {completando ? t("comun.cargando") : t("onboarding.ver_dashboard")}
             </button>
           )}
         </div>

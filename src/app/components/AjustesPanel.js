@@ -11,7 +11,6 @@ import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
   X,
-  Check,
   ChevronRight,
   ChevronLeft,
   Palette,
@@ -29,6 +28,8 @@ import {
   Star,
   TriangleAlert,
 } from "lucide-react";
+import { BellRing as BellRingData, BellOff as BellOffData, Circle as CircleData, CheckCircle2 as CheckCircleData } from "lucide";
+import MorphIcon from "./MorphIcon";
 import { TEMAS } from "@/lib/temas";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
@@ -58,29 +59,29 @@ function TarjetaAjuste({ icono, fondoIcono, tintaIcono, titulo, descripcion, onA
     <button
       type="button"
       onClick={onAbrir}
-      className="btn-press card-lift group flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left hover:border-gray-500"
+      className="btn-press card-lift group flex min-h-[4.75rem] w-full items-center gap-3 overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 px-3.5 py-3 text-left hover:border-[var(--accent)]/60 hover:bg-app-raised/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <span
         aria-hidden="true"
         style={{ backgroundColor: fondoIcono, color: tintaIcono }}
-        className="grid h-11 w-11 shrink-0 place-content-center rounded-full"
+        className="grid h-11 w-11 shrink-0 place-content-center rounded-full transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-105"
       >
         {icono}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-gray-100">{titulo}</span>
-        <span className="block truncate text-xs text-gray-500">{descripcion}</span>
+        <span className="block text-sm font-semibold text-app-fg">{titulo}</span>
+        <span className="block line-clamp-2 text-xs leading-relaxed text-app-muted">{descripcion}</span>
       </span>
-      <ChevronRight size={18} className="shrink-0 text-gray-500" />
+      <ChevronRight size={18} className="shrink-0 text-app-muted transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5 group-hover:text-app-fg" />
     </button>
   );
 }
 
 function FilaDato({ etiqueta, valor }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500">{etiqueta}</p>
-      <p className="truncate text-sm font-medium text-gray-100">{valor}</p>
+    <div className="rounded-xl border border-app-line bg-app-surface/70 px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-wide text-app-muted">{etiqueta}</p>
+      <p className="truncate text-sm font-medium text-app-fg">{valor}</p>
     </div>
   );
 }
@@ -93,11 +94,11 @@ function Interruptor({ activado, onCambiar, etiqueta, descripcion }) {
       aria-checked={activado}
       aria-label={etiqueta}
       onClick={() => onCambiar(!activado)}
-      className="btn-press flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left hover:border-gray-500"
+      className="btn-press flex w-full items-center justify-between gap-3 rounded-2xl border border-app-line bg-app-surface/70 px-3 py-2.5 text-left hover:border-[var(--accent)]/60 hover:bg-app-raised/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-gray-200">{etiqueta}</span>
-        {descripcion && <span className="block text-xs text-gray-500">{descripcion}</span>}
+        <span className="block truncate text-sm font-medium text-app-fg">{etiqueta}</span>
+        {descripcion && <span className="block text-xs text-app-muted">{descripcion}</span>}
       </span>
       <span
         aria-hidden="true"
@@ -444,11 +445,22 @@ export default function AjustesPanel({
                 onAbrir={() => abrirVista("ayuda")}
               />
 
+              <div className="border-t border-app-line pt-3">
+                <button
+                  type="button"
+                  onClick={cerrarSesion}
+                  className="btn-press flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-sm font-medium text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400"
+                >
+                  <LogOut size={16} />
+                  {t("ajustes.cerrar_sesion")}
+                </button>
+              </div>
+
             </>
           )}
 
           {vista === "apariencia" && (
-            <section className="space-y-4">
+            <section className="stagger-in space-y-4">
               <div className="space-y-2.5">
                 <p className="text-xs font-medium text-gray-400">{t("ajustes.tema_grupo")}</p>
                 <p className="text-xs leading-relaxed text-gray-500">
@@ -479,7 +491,12 @@ export default function AjustesPanel({
                         <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-200">
                           {item.nombre}
                         </span>
-                        {activo && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
+                        <MorphIcon
+                          icon={activo ? CheckCircleData : CircleData}
+                          size={15}
+                          strokeWidth={2.5}
+                          className={`shrink-0 ${activo ? "text-sky-400" : "text-gray-600"}`}
+                        />
                       </button>
                     );
                   })}
@@ -489,7 +506,7 @@ export default function AjustesPanel({
           )}
 
           {vista === "lectura" && (
-            <section className="space-y-4">
+            <section className="stagger-in space-y-4">
               <div className="space-y-2.5">
                 <span id="ajustes-idioma" className="mb-1.5 block text-xs font-medium text-gray-400">
                   {t("ajustes.idioma")}
@@ -600,7 +617,7 @@ export default function AjustesPanel({
           )}
 
           {vista === "cuenta" && (
-            <section className="space-y-2.5">
+            <section className="stagger-in space-y-2.5">
               {esInvitado ? (
                 <>
                   <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
@@ -707,7 +724,7 @@ export default function AjustesPanel({
           )}
 
           {vista === "notificaciones" && (
-            <section className="space-y-2.5">
+            <section className="stagger-in space-y-2.5">
               {!pushSoportado ? (
                 <p className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs leading-relaxed text-gray-400">
                   {t("ajustes.noti_no")}
@@ -725,8 +742,13 @@ export default function AjustesPanel({
                     onClick={onGestionarPush}
                     disabled={pushCargando}
                     aria-pressed={pushActivado}
-                    className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white disabled:opacity-50"
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium btn-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-50 ${
+                      pushActivado
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                        : "border-app-line bg-app-surface/70 text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-raised/70"
+                    }`}
                   >
+                    <MorphIcon icon={pushActivado ? BellRingData : BellOffData} size={16} />
                     {pushCargando
                       ? t("ajustes.noti_config")
                       : pushActivado
@@ -742,7 +764,7 @@ export default function AjustesPanel({
           )}
 
           {vista === "datos" && (
-            <section className="space-y-2.5">
+            <section className="stagger-in space-y-2.5">
               <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-wide text-gray-500">{t("ajustes.que_guarda")}</p>
                 <p className="text-xs leading-relaxed text-gray-400">
@@ -793,7 +815,7 @@ export default function AjustesPanel({
           )}
 
           {vista === "ayuda" && (
-            <section className="space-y-2.5">
+            <section className="stagger-in space-y-2.5">
               <button
                 type="button"
                 onClick={() => {

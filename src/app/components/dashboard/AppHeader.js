@@ -2,7 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { Rss, Settings, LogIn, UserPlus } from "lucide-react";
+import { Rss, LogIn, UserPlus } from "lucide-react";
+import { Menu as MenuData, X as XData } from "lucide";
+import MorphIcon from "../MorphIcon";
 
 export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAjustes, t }) {
   const botonAjustes = (
@@ -14,7 +16,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
       aria-expanded={panelAjustes}
       className="btn-press rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
-      <Settings size={20} />
+      <MorphIcon icon={panelAjustes ? XData : MenuData} size={21} strokeWidth={2.25} />
     </button>
   );
 

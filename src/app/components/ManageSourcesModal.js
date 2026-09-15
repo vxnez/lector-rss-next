@@ -2,7 +2,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save, Plus, Upload, Download, ChevronLeft } from "lucide-react";
+import { X, Trash2, Rss, Pencil, Save, Plus, Upload, Download, ChevronLeft } from "lucide-react";
+import {
+  LoaderCircle as LoaderCircleData,
+  RefreshCcw as RefreshCcwData,
+  RotateCw as RotateCwData,
+  Upload as UploadData,
+  X as XData,
+} from "lucide";
+import MorphIcon from "./MorphIcon";
 import { useIdioma } from "@/lib/i18n";
 import { parsearOPML, construirOPML, normalizarUrlFeed, descargarTexto } from "@/lib/opml";
 
@@ -272,13 +280,13 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   };
 
-  // Borrado en dos pasos (sin confirm() nativo): el primer clic arma la
-  // confirmación y el segundo ejecuta. Se desarma al cerrar o cambiar.
-  const handleDelete = async (sourceId) => {
-    if (confirmarEliminarId !== sourceId) {
-      setConfirmarEliminarId(sourceId);
-      return;
-    }
+  const handleDelete = (sourceId) => {
+    setConfirmarEliminarId(sourceId);
+  };
+
+  const confirmarEliminacion = async () => {
+    const sourceId = confirmarEliminarId;
+    if (!sourceId) return;
     setConfirmarEliminarId(null);
 
     try {
@@ -374,7 +382,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                   : "bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700"
               }`}
             >
-              <Upload size={14} />
+              <MorphIcon icon={vistaOpml ? XData : UploadData} size={14} />
               <span className="hidden sm:inline">{t("fuentes.importar")}</span>
             </button>
             <button
@@ -392,7 +400,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               aria-label={t("fuentes.refrescar_todo_aria")}
               className="btn-press bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 disabled:opacity-50"
             >
-              <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
+              <MorphIcon
+                icon={refreshingAll ? LoaderCircleData : RefreshCcwData}
+                size={14}
+                className={refreshingAll ? "animate-spin" : ""}
+              />
               <span className="hidden sm:inline">{refreshingAll ? t("fuentes.actualizando_todo") : t("fuentes.refrescar_todo")}</span>
             </button>
           </div>
@@ -537,7 +549,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         <div className="scroll-oculto overflow-y-auto space-y-3 flex-1 pr-1">
           {loading ? (
             <div className="flex justify-center items-center py-12 text-gray-400 gap-2">
-              <RotateCw size={18} className="animate-spin text-sky-500" />
+              <MorphIcon icon={LoaderCircleData} size={18} className="animate-spin text-sky-500" />
               <span className="text-sm">{t("fuentes.cargando")}</span>
             </div>
           ) : visibleSources.length === 0 ? (
@@ -635,7 +647,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           title={t("fuentes.refrescar_titulo")}
                           className="btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
                         >
-                          <RotateCw size={12} className={isRefreshingThis ? "animate-spin" : ""} />
+                          <MorphIcon
+                            icon={isRefreshingThis ? LoaderCircleData : RotateCwData}
+                            size={12}
+                            className={isRefreshingThis ? "animate-spin" : ""}
+                          />
                           <span>{isRefreshingThis ? t("fuentes.actualizando") : t("fuentes.refrescar")}</span>
                         </button>
                       </>
@@ -643,16 +659,12 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
                     <button
                       onClick={() => handleDelete(sId)}
-                      title={confirmarEliminarId === sId ? t("fuentes.eliminar_confirmar") : t("fuentes.eliminar_titulo")}
+                      title={t("fuentes.eliminar_titulo")}
                       aria-live="polite"
-                      className={`btn-press text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
-                        confirmarEliminarId === sId
-                          ? "bg-red-700 hover:bg-red-600 text-white border-red-600"
-                          : "bg-red-950/30 hover:bg-red-900/40 text-red-400 border-red-900/30"
-                      }`}
+                      className="btn-press flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/40"
                     >
                       <Trash2 size={12} />
-                      <span>{confirmarEliminarId === sId ? t("fuentes.eliminar_confirmar") : t("fuentes.eliminar")}</span>
+                      <span>{t("fuentes.eliminar")}</span>
                     </button>
                   </div>
                 </div>
@@ -661,6 +673,47 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           )}
         </div>
         </>
+        )}
+
+        {confirmarEliminarId && (
+          <div
+            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            role="presentation"
+            onClick={() => setConfirmarEliminarId(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="titulo-eliminar-fuente"
+              onClick={(event) => event.stopPropagation()}
+              className="anim-modal w-full max-w-sm space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
+            >
+              <h3 id="titulo-eliminar-fuente" className="text-lg font-bold text-app-fg">
+                {t("fuentes.eliminar_modal_titulo")}
+              </h3>
+              <p className="text-sm leading-relaxed text-app-muted">
+                {t("fuentes.eliminar_modal_texto", {
+                  nombre: sources.find((source) => source.id === confirmarEliminarId)?.titulo || t("fuentes.sin_nombre"),
+                })}
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmarEliminarId(null)}
+                  className="btn-press rounded-xl bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:opacity-90"
+                >
+                  {t("comun.cancelar")}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarEliminacion}
+                  className="btn-press rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600 hover:shadow-lg hover:shadow-red-900/30"
+                >
+                  {t("fuentes.eliminar")}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Footer del Modal */}

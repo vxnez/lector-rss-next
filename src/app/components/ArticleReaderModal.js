@@ -1,8 +1,8 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type } from "lucide-react";
-import { Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type } from "lucide-react";
+import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
@@ -510,7 +510,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
             }`}
           >
-            <Check size={14} className="shrink-0" />
+            <MorphIcon icon={article.leido ? CheckCheckData : CheckData} size={14} className="shrink-0" />
             <span className="leading-tight">{savingAction === "leido" ? t("lector.guardando") : article.leido ? t("lector.leido") : t("lector.marcar")}</span>
           </button>
 
