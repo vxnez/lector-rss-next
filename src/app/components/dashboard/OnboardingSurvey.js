@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Sparkles, Check, Plus, Loader2, ArrowRight, Heart, Tag } from "lucide-react";
+import { X, Sparkles, Check, Plus, Loader2, ArrowRight as ArrowRightIcon, Heart, Tag } from "lucide-react";
+import { ArrowRight as ArrowRightData } from "lucide";
 import { useIdioma } from "@/lib/i18n";
 import MorphIcon from "../MorphIcon";
 import RecommendedFeedsList from "./RecommendedFeedsList";
@@ -303,7 +304,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 className="btn-press group bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t("onboarding.continuar")}
-                <ArrowRight size={16} />
+                <ArrowRightIcon size={16} />
               </button>
             </>
           )}
@@ -314,7 +315,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 onClick={() => setPaso(1)}
                 className="btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl"
               >
-                <MorphIcon icon={ArrowRight} size={16} className="rotate-180" /> {t("onboarding.continuar")}
+                <MorphIcon icon={ArrowRightData} size={16} className="rotate-180" /> {t("onboarding.continuar")}
               </button>
               <button
                 type="button"
@@ -322,7 +323,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 className="btn-press group bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
               >
                 {t("onboarding.continuar")}
-                <ArrowRight size={16} />
+                <ArrowRightIcon size={16} />
               </button>
             </>
           )}
