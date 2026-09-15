@@ -178,11 +178,11 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
 
   const handleCompletar = () => {
     if (onCompletado) onCompletado();
-    onCerrar();
+    onCerrar(true);
   };
 
   const handleOmitir = () => {
-    onCerrar();
+    onCerrar(false);
   };
 
   const totalFeeds = feedsRecomendados 

@@ -517,14 +517,14 @@ export default function HomePage() {
     return () => controller.abort();
   }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, nonceRecarga]);
 
-  const closeOnboardingSurvey = () => {
-    if (session?.user) {
+  const closeOnboardingSurvey = (completado = false) => {
+    if (completado && session?.user) {
       const clave = esInvitado ? "invitado" : (session.user.email || session.user.id);
       if (clave) {
         try {
           localStorage.setItem(`welcome_seen_${clave}`, "true");
         } catch {
-          // Sin almacenamiento disponible: solo se cierra el modal.
+          // Sin almacenamiento disponible
         }
       }
     }
