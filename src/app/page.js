@@ -918,14 +918,14 @@ export default function HomePage() {
               />
 
               <div className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                <label className="relative flex-1">
+                <label className="relative flex-1 rounded-2xl border border-app-line bg-app-surface transition duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-within:border-[var(--accent)]/70 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={t("buscar.ph")}
                     aria-label={t("buscar.aria")}
-                    className="w-full bg-app-surface border border-app-line rounded-xl pl-9 pr-3 py-2.5 text-sm text-app-fg placeholder:text-app-muted focus:border-[var(--accent)]"
+                    className="w-full bg-transparent rounded-2xl pl-9 pr-3 py-2.5 text-sm text-app-fg placeholder:text-app-muted outline-none"
                   />
                 </label>
                 <span className="text-xs text-gray-400 whitespace-nowrap">
@@ -941,22 +941,28 @@ export default function HomePage() {
                     ))}
                   </div>
                 ) : totalNoticias === 0 ? (
-                  <div className="border border-dashed border-gray-800 bg-gray-900/30 rounded-2xl p-12 text-center text-gray-500 my-8 space-y-3">
-                  <p className="text-base text-gray-400">
-                    {activeTab === "guardadas"
-                      ? t("vacio.guardadas")
-                      : activeTab === "leidas"
-                      ? t("vacio.leidas")
-                      : t("vacio.todas")}
-                  </p>
-                  {activeTab === "todas" && (
-                    <button
-                      onClick={() => setIsAddModalOpen(true)}
-                      className="inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300 font-medium"
-                    >
-                      <Plus size={16} /> {t("vacio.agregar")}
-                    </button>
-                  )}
+                  <div className="bezel-outer my-8">
+                    <div className="bezel-inner p-12 text-center space-y-4">
+                      <p className="eyebrow mx-auto w-fit">{t("filtros.titulo")}</p>
+                      <p className="text-base text-app-muted max-w-md mx-auto">
+                        {activeTab === "guardadas"
+                          ? t("vacio.guardadas")
+                          : activeTab === "leidas"
+                            ? t("vacio.leidas")
+                            : t("vacio.todas")}
+                      </p>
+                      {activeTab === "todas" && (
+                        <button
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] transition hover:opacity-90"
+                        >
+                          <Plus size={16} /> {t("vacio.agregar")}
+                          <span aria-hidden="true" className="cta-icon">
+                            →
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <>

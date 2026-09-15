@@ -12,7 +12,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
       title={t("header.ajustes_titulo")}
       aria-label={t("header.ajustes_aria")}
       aria-expanded={panelAjustes}
-      className="rounded-xl p-2 text-app-muted transition hover:bg-app-raised/70 hover:text-app-fg"
+      className="btn-press rounded-xl p-2 text-app-muted transition hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <Settings size={20} />
     </button>
@@ -21,8 +21,12 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
   const logoApp = (
     <h1 className="text-base sm:text-xl font-bold tracking-tight text-app-fg flex items-center gap-2 min-w-0">
       <span
-        style={{ backgroundColor: "var(--accent-strong)", color: "var(--on-accent-strong)" }}
-        className="p-1.5 rounded-lg font-black text-sm flex items-center justify-center"
+        style={{
+          backgroundColor: "var(--accent-strong)",
+          color: "var(--on-accent-strong)",
+          boxShadow: "0 6px 20px -8px color-mix(in srgb, var(--accent) 70%, transparent)",
+        }}
+        className="p-1.5 rounded-xl font-black text-sm flex items-center justify-center transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
       >
         <Rss size={18} className="stroke-[3]" />
       </span>
@@ -31,7 +35,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
   );
 
   return (
-    <header className="border-b border-app-line bg-app-surface/60 backdrop-blur-md px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20">
+    <header className="border-b border-app-line bg-app-surface/70 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/60 px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20 shadow-[0_1px_0_color-mix(in_srgb,var(--accent)_12%,transparent)]">
       <div className="flex items-center gap-2 min-w-0">
         {session?.user ? (
           <>
@@ -59,17 +63,20 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
           <div className="flex gap-2 shrink-0">
             <Link
               href="/login"
-              className="text-sm bg-app-raised hover:opacity-90 text-app-fg px-4 py-2 rounded-lg flex items-center gap-1.5 transition border border-app-line"
+              className="btn-press text-sm bg-app-raised hover:opacity-90 text-app-fg px-4 py-2 rounded-full flex items-center gap-1.5 transition border border-app-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <LogIn size={16} />
               <span className="hidden sm:inline">{t("header.login")}</span>
             </Link>
             <Link
               href="/register"
-              className="text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-lg flex items-center gap-1.5 transition"
+              className="btn-press group text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-full flex items-center gap-2 transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <UserPlus size={16} />
               <span className="hidden sm:inline">{t("header.registro")}</span>
+              <span aria-hidden="true" className="cta-icon hidden sm:grid">
+                →
+              </span>
             </Link>
           </div>
         )}

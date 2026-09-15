@@ -25,7 +25,7 @@ const pillDominioStyle = {
 const getCategoryColor = (categoria) => getCategoryStyle(categoria);
 
 // Tarjeta memorizada: evita re-render de toda la grilla al marcar una sola.
-const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead, onToggleSave, onDelete, t, locale }) {
+const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, onToggleRead, onToggleSave, onDelete, t, locale }) {
   const isLeido = Boolean(art.leido);
   const isGuardado = Boolean(art.guardado);
   const nombreFuente = nombreFuenteDeArticulo(art, t("tarjeta.fuente_generica"));
@@ -33,10 +33,11 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead
   const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
   return (
     <div
-      className={`tarjeta-noticia p-5 rounded-xl flex flex-col justify-between transition-all duration-300 group shadow-lg ${
+      style={{ "--stagger-delay": `${Math.min(indice * 40, 320)}ms` }}
+      className={`tarjeta-noticia stagger-in card-lift group p-5 rounded-2xl flex flex-col justify-between focus-within:border-[var(--accent)]/60 ${
         isLeido
           ? "bg-app-surface/70 border border-app-line/40 opacity-40 grayscale-[25%]"
-          : "bg-app-surface border border-app-line hover:border-app-muted opacity-100"
+          : "bg-app-surface border border-app-line hover:border-[var(--accent)]/50 hover:shadow-[0_16px_40px_-20px_color-mix(in_srgb,var(--accent)_45%,transparent)] opacity-100"
       }`}
     >
       <div>
@@ -66,7 +67,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead
             onClick={() => onDelete(art.id)}
             aria-label={t("tarjeta.descartar_aria")}
             title={t("tarjeta.descartar_titulo")}
-            className="text-app-muted hover:text-rose-400 p-1 rounded hover:bg-app-raised transition shrink-0"
+            className="btn-press text-app-muted hover:text-rose-400 p-1.5 rounded-lg hover:bg-app-raised transition shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <Trash2 size={15} />
           </button>
@@ -89,10 +90,10 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead
         </p>
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1 text-xs">
-        <button
-          onClick={() => onAbrir(art)}
-          className="text-[var(--accent)] hover:underline flex items-center gap-1 font-medium text-xs"
-        >
+          <button
+            onClick={() => onAbrir(art)}
+            className="btn-press text-[var(--accent)] hover:underline flex items-center gap-1.5 font-medium text-xs rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
           <span>{t("tarjeta.leer")}</span>
           <ExternalLink size={12} />
         </button>
@@ -107,7 +108,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead
             onClick={() => onToggleRead(art.id, isLeido)}
             aria-label={isLeido ? t("tarjeta.desmarcar") : t("tarjeta.marcar")}
             aria-pressed={isLeido}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
               isLeido
                 ? "bg-emerald-950/80 border-emerald-700 text-emerald-400"
                 : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
@@ -120,7 +121,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, onAbrir, onToggleRead
             onClick={() => onToggleSave(art.id, isGuardado)}
             aria-label={isGuardado ? t("tarjeta.guardar_quitar") : t("tarjeta.guardar_nuevo")}
             aria-pressed={isGuardado}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
               isGuardado
                 ? "bg-amber-950/80 border-amber-700 text-amber-400"
                 : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
@@ -177,10 +178,11 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {articles.map((art) => (
+        {articles.map((art, indice) => (
           <TarjetaNoticia
             key={art.id}
             art={art}
+            indice={indice}
             onAbrir={abrirArticuloCb}
             onToggleRead={onToggleRead}
             onToggleSave={onToggleSave}
