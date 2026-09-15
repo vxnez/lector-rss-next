@@ -1,9 +1,10 @@
 // src/app/components/ManageSourcesModal.js
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save, Plus } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { X, Trash2, RotateCw, RefreshCcw, Rss, Pencil, Save, Plus, Upload, Download, ChevronLeft } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
+import { parsearOPML, construirOPML, normalizarUrlFeed, descargarTexto } from "@/lib/opml";
 
 export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify, onAgregarFuente }) {
   const { t, locale } = useIdioma();
@@ -14,6 +15,14 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const [editingSourceId, setEditingSourceId] = useState(null);
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null);
   const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General" });
+  // Sub-vista OPML: importar (archivo → selección → alta) y exportar.
+  const [vistaOpml, setVistaOpml] = useState(false);
+  const [opmlItems, setOpmlItems] = useState([]);
+  const [opmlError, setOpmlError] = useState("");
+  const [importando, setImportando] = useState(false);
+  const [progreso, setProgreso] = useState({ a: 0, b: 0 });
+  const [importeResumen, setImporteResumen] = useState(null);
+  const archivoRef = useRef(null);
 
   const fetchSources = useCallback(async (signal) => {
     try {
@@ -50,7 +59,115 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   const cerrar = () => {
     setConfirmarEliminarId(null);
+    setVistaOpml(false);
+    setOpmlItems([]);
+    setOpmlError("");
+    setImporteResumen(null);
     onClose();
+  };
+
+  // Exporta las fuentes actuales a un OPML descargable (agrupadas por categoría).
+  const exportarOPML = () => {
+    if (sources.length === 0) {
+      onNotify?.(t("fuentes.opml_sin_fuentes"), "error");
+      return;
+    }
+    const fecha = new Date().toISOString().slice(0, 10);
+    descargarTexto(construirOPML(sources), `mis-fuentes-${fecha}.opml`);
+    onNotify?.(t("fuentes.opml_descargado", { n: sources.length }), "success");
+  };
+
+  // Lee el archivo elegido, lo parsea y marca duplicadas contra las actuales.
+  const alElegirArchivo = async (event) => {
+    const archivo = event.target.files?.[0];
+    event.target.value = "";
+    if (!archivo) return;
+    setOpmlError("");
+    setImporteResumen(null);
+    let texto = "";
+    try {
+      texto = await archivo.text();
+    } catch {
+      setOpmlError(t("fuentes.opml_leer_err"));
+      return;
+    }
+    let items = [];
+    try {
+      items = parsearOPML(texto);
+    } catch {
+      setOpmlError(t("fuentes.opml_invalido_err"));
+      return;
+    }
+    if (items.length === 0) {
+      setOpmlError(t("fuentes.opml_vacio_err"));
+      return;
+    }
+    const existentes = new Set((sources || []).map((s) => normalizarUrlFeed(s.url_feed || "")));
+    setOpmlItems(items.map((item) => {
+      const duplicada = existentes.has(normalizarUrlFeed(item.url));
+      return { ...item, duplicada, seleccionada: !duplicada };
+    }));
+  };
+
+  const alternarSeleccion = (url) => {
+    setOpmlItems((prev) => prev.map((item) => (
+      item.url === url ? { ...item, seleccionada: !item.seleccionada } : item
+    )));
+  };
+
+  const seleccionarTodas = (valor) => {
+    setOpmlItems((prev) => prev.map((item) => (
+      item.duplicada ? item : { ...item, seleccionada: valor }
+    )));
+  };
+
+  // Alta secuencial por /api/rss (igual que Agregar: descarga y clasifica).
+  // Las duplicadas que detecte el servidor se cuentan como omitidas.
+  const importarSeleccionadas = async () => {
+    const pendientes = opmlItems.filter((item) => item.seleccionada && !item.duplicada);
+    if (pendientes.length === 0 || importando) return;
+    setImportando(true);
+    setImporteResumen(null);
+    let ok = 0;
+    let dup = 0;
+    const fallos = [];
+    const urlsFallidas = new Set();
+    for (let i = 0; i < pendientes.length; i++) {
+      const item = pendientes[i];
+      setProgreso({ a: i + 1, b: pendientes.length });
+      try {
+        const res = await fetch("/api/rss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url_feed: item.url, categoria: item.categoria || "General" }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || t("fuentes.err_conexion"));
+        ok += 1;
+      } catch (err) {
+        const mensaje = err.message || "";
+        if (/ya est[aá] registrada/i.test(mensaje)) dup += 1;
+        else {
+          fallos.push(`${item.titulo}: ${mensaje}`);
+          urlsFallidas.add(item.url);
+        }
+      }
+    }
+    setImportando(false);
+    setProgreso({ a: 0, b: 0 });
+    // Del listado salen las que entraron o ya existían; las fallidas quedan para reintentar.
+    setOpmlItems((prev) => prev
+      .filter((item) => !pendientes.some((p) => p.url === item.url) || urlsFallidas.has(item.url))
+      .map((item) => ({ ...item, seleccionada: false })));
+    const resumen = { ok, dup, fail: fallos.length, fallos: fallos.slice(0, 5) };
+    setImporteResumen(resumen);
+    const sourcesArr = await fetchSources();
+    setSources(sourcesArr);
+    if (onChange) await onChange();
+    onNotify?.(
+      t("fuentes.opml_resumen", { ok, dup, fail: fallos.length }),
+      fallos.length > 0 ? "error" : "success"
+    );
   };
 
   useEffect(() => {
@@ -239,6 +356,29 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               <span className="hidden sm:inline">{t("fuentes.agregar")}</span>
             </button>
             <button
+              onClick={() => setVistaOpml((v) => !v)}
+              title={t("fuentes.importar_titulo")}
+              aria-label={t("fuentes.importar_aria")}
+              aria-pressed={vistaOpml}
+              className={`btn-press text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border ${
+                vistaOpml
+                  ? "bg-sky-600/20 text-sky-300 border-sky-500/40"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700"
+              }`}
+            >
+              <Upload size={14} />
+              <span className="hidden sm:inline">{t("fuentes.importar")}</span>
+            </button>
+            <button
+              onClick={exportarOPML}
+              title={t("fuentes.exportar_titulo")}
+              aria-label={t("fuentes.exportar_aria")}
+              className="btn-press bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border border-gray-700"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">{t("fuentes.exportar")}</span>
+            </button>
+            <button
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
               aria-label={t("fuentes.refrescar_todo_aria")}
@@ -258,6 +398,141 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           </div>
         </div>
 
+        {/* Sub-vista OPML: elegir archivo, seleccionar feeds e importar */}
+        {vistaOpml ? (
+          <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+            <button
+              type="button"
+              onClick={() => setVistaOpml(false)}
+              className="btn-press flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-white"
+            >
+              <ChevronLeft size={15} /> {t("fuentes.opml_volver")}
+            </button>
+            <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-3 sm:p-4 space-y-3">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Upload size={15} className="text-sky-400" /> {t("fuentes.opml_titulo")}
+              </h4>
+              <p className="text-xs leading-relaxed text-gray-400">{t("fuentes.opml_texto")}</p>
+              <input
+                ref={archivoRef}
+                type="file"
+                accept=".opml,.xml,.txt,application/xml,text/xml"
+                aria-label={t("fuentes.opml_archivo_aria")}
+                onChange={alElegirArchivo}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => archivoRef.current?.click()}
+                className="btn-press w-full rounded-xl border border-dashed border-gray-700 bg-gray-900 px-3 py-3 text-sm font-medium text-gray-200 hover:border-sky-500 hover:text-white flex items-center justify-center gap-2"
+              >
+                <Upload size={15} className="text-sky-400" /> {t("fuentes.opml_elegir")}
+              </button>
+              {opmlError && (
+                <p role="alert" className="anim-toast rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {opmlError}
+                </p>
+              )}
+              {importeResumen && (
+                <p role="status" className="anim-toast rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                  {t("fuentes.opml_ok")} {t("fuentes.opml_resumen", { ok: importeResumen.ok, dup: importeResumen.dup, fail: importeResumen.fail })}
+                </p>
+              )}
+              {importeResumen?.fallos?.length > 0 && (
+                <ul className="space-y-1 rounded-xl border border-red-900/40 bg-red-950/30 px-3 py-2 text-[11px] text-red-300">
+                  {importeResumen.fallos.map((f) => (
+                    <li key={f} className="truncate" title={f}>{f}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {opmlItems.length > 0 && (
+              <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-3 sm:p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-gray-400">
+                    <strong className="text-emerald-300">{t("fuentes.opml_nuevas", { n: opmlItems.filter((i) => !i.duplicada).length })}</strong>
+                    {" · "}
+                    {t("fuentes.opml_duplicadas", { n: opmlItems.filter((i) => i.duplicada).length })}
+                  </p>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => seleccionarTodas(true)}
+                      className="btn-press rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1 text-[11px] font-medium text-gray-300 hover:text-white"
+                    >
+                      {t("fuentes.opml_todas")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => seleccionarTodas(false)}
+                      className="btn-press rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1 text-[11px] font-medium text-gray-300 hover:text-white"
+                    >
+                      {t("fuentes.opml_ninguna")}
+                    </button>
+                  </div>
+                </div>
+                <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                  {opmlItems.map((item) => (
+                    <li key={item.url}>
+                      <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
+                        item.duplicada
+                          ? "border-gray-800 bg-gray-900/50 opacity-60"
+                          : item.seleccionada
+                            ? "border-sky-500/50 bg-sky-500/10"
+                            : "border-gray-800 bg-gray-900 hover:border-gray-600"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={item.seleccionada}
+                          disabled={item.duplicada || importando}
+                          onChange={() => alternarSeleccion(item.url)}
+                          aria-label={item.titulo}
+                          className="h-4 w-4 shrink-0 accent-sky-500"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-medium text-gray-100">{item.titulo}</span>
+                          <span className="block truncate text-[11px] text-gray-500">{item.url}</span>
+                        </span>
+                        {item.categoria && (
+                          <span className="shrink-0 rounded-md bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                            {item.categoria}
+                          </span>
+                        )}
+                        {item.duplicada && (
+                          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                            {t("fuentes.opml_duplicada_tag")}
+                          </span>
+                        )}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                {importando && (
+                  <div className="space-y-1.5" role="status" aria-live="polite">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
+                      <div
+                        className="step-fill h-full rounded-full bg-sky-500"
+                        style={{ transform: `scaleX(${progreso.b > 0 ? progreso.a / progreso.b : 0})` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">{t("fuentes.opml_importando", { a: progreso.a, b: progreso.b })}</p>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={importarSeleccionadas}
+                  disabled={importando || opmlItems.filter((i) => i.seleccionada && !i.duplicada).length === 0}
+                  className="btn-press w-full rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50 shadow-lg shadow-sky-600/20 flex items-center justify-center gap-2"
+                >
+                  <Upload size={15} />
+                  {t("fuentes.opml_importar_btn", { n: opmlItems.filter((i) => i.seleccionada && !i.duplicada).length })}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Lista de Fuentes */}
         <div className="overflow-y-auto space-y-3 flex-1 pr-1">
           {loading ? (
@@ -385,6 +660,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
             })
           )}
         </div>
+        </>
+        )}
 
         {/* Footer del Modal */}
         <div className="flex justify-end pt-2 border-t border-gray-800">
