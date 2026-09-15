@@ -53,7 +53,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account }) {
-      // Registro automático para usuarios de Google y GitHub
+      // Registro automático y vinculación para Google y GitHub: si el correo
+      // ya existe (p. ej. cuenta de correo+contraseña), se vincula el
+      // proveedor a la misma cuenta en vez de crear un duplicado.
       if (account?.provider === "google" || account?.provider === "github") {
         try {
           const [existingUsers] = await db.query("SELECT * FROM usuarios WHERE email = ?", [user.email]);
@@ -63,6 +65,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               "INSERT INTO usuarios (nombre, email, imagen_url, proveedor) VALUES (?, ?, ?, ?)",
               [user.name, user.email, user.image, account.provider]
             );
+          } else {
+            const actuales = String(existingUsers[0].proveedor || "")
+              .split(",")
+              .map((p) => p.trim())
+              .filter(Boolean);
+            if (!actuales.includes(account.provider)) {
+              await db.query("UPDATE usuarios SET proveedor = ? WHERE id = ?", [
+                [...actuales, account.provider].join(","),
+                existingUsers[0].id,
+              ]);
+            }
           }
         } catch (error) {
           console.error("Error al guardar usuario OAuth:", error);

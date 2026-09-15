@@ -1,11 +1,12 @@
 // src/app/components/AjustesPanel.js — Ajustes estilo Cuenta de Google.
 // Menú de tarjetas (icono + título + descripción) con subvistas internas:
-// Apariencia, Lectura, Información personal, Seguridad, Apps vinculadas,
-// Notificaciones, Datos y privacidad, Apoyo al creador y Sobre el proyecto.
+// Apariencia, Cuenta, Seguridad, Notificaciones, Datos y privacidad,
+// Apoyo al creador y Sobre el proyecto.
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { signOut } from "next-auth/react";
+import { useBloquearScroll } from "@/lib/useBloquearScroll";
+import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
   X,
@@ -13,10 +14,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Palette,
-  BookOpen,
   IdCard,
   ShieldCheck,
-  Link2,
   BellRing,
   Database,
   Heart,
@@ -27,7 +26,9 @@ import {
   Share2,
   LogOut,
   HelpCircle,
-  Rss,
+  Star,
+  Coffee,
+  TriangleAlert,
 } from "lucide-react";
 import { TEMAS } from "@/lib/temas";
 
@@ -45,9 +46,27 @@ function GitHubIcon({ size = 18 }) {
 }
 
 function etiquetaProveedor(proveedor) {
-  if (proveedor === "google") return "Google";
-  if (proveedor === "github") return "GitHub";
+  const lista = String(proveedor || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p && p !== "credentials" && p !== "invitado");
+  const nombres = lista.map((p) => (p === "google" ? "Google" : p === "github" ? "GitHub" : p));
+  if (nombres.length > 0) return nombres.join(" + ");
   return "Correo y contraseña";
+}
+
+// Métodos vinculados a la cuenta (para mostrar insignias y ofrecer vincular).
+function metodosVinculados(perfil) {
+  const metodos = [];
+  if (Number(perfil?.tiene_password) === 1) {
+    metodos.push({ id: "correo", etiqueta: "Correo y contraseña" });
+  }
+  const lista = String(perfil?.proveedor || "")
+    .split(",")
+    .map((p) => p.trim());
+  if (lista.includes("google")) metodos.push({ id: "google", etiqueta: "Google" });
+  if (lista.includes("github")) metodos.push({ id: "github", etiqueta: "GitHub" });
+  return metodos;
 }
 
 function formatearFecha(valor) {
@@ -132,6 +151,8 @@ export default function AjustesPanel({
   onAutoMarcar,
   movimientoReducido,
   onMovimiento,
+  densidad,
+  onDensidad,
   nombreUsuario,
   emailUsuario,
   imagenUsuario,
@@ -149,10 +170,38 @@ export default function AjustesPanel({
   const [vista, setVista] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [actividad, setActividad] = useState(null);
-  const [dispositivos, setDispositivos] = useState([]);
+  const [infoRepo, setInfoRepo] = useState(null);
   const [exportando, setExportando] = useState(false);
   const [pasoEliminar, setPasoEliminar] = useState("idle");
   const cerrarRef = useRef(null);
+
+  const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
+
+  // Versión viva: v1.<commits en GitHub> + último cambio (se actualiza solo).
+  const cargarRepo = async () => {
+    if (infoRepo) return;
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/vxnez/lector-rss-next/commits?per_page=1"
+      );
+      if (!res.ok) return;
+      const datos = await res.json().catch(() => []);
+      const cabecera = res.headers.get("Link") || "";
+      const coincidencia = cabecera.match(/[?&]page=(\d+)>;\s*rel="last"/);
+      const commits = coincidencia ? Number(coincidencia[1]) : 0;
+      const primero = Array.isArray(datos) ? datos[0] : null;
+      setInfoRepo({
+        commits,
+        mensaje: String(primero?.commit?.message || "").split("\n")[0].slice(0, 80),
+        fecha: primero?.commit?.author?.date || null,
+      });
+    } catch {
+      // Sin red hacia GitHub: se muestra la versión base.
+    }
+  };
+
+  // La página de fondo no se desplaza mientras el panel está abierto.
+  useBloquearScroll(abierto);
 
   // Foco inicial + Escape (retrocede de subvista o cierra). Sin setState
   // en el cuerpo del efecto: los cambios van en el listener del teclado.
@@ -161,13 +210,18 @@ export default function AjustesPanel({
     cerrarRef.current?.focus();
     const alTeclado = (event) => {
       if (event.key !== "Escape") return;
+      // El modal de eliminar cuenta se cierra primero.
+      if (pasoEliminar === "modal") {
+        setPasoEliminar("idle");
+        return;
+      }
       setPasoEliminar("idle");
       if (vista) setVista(null);
       else onCerrar();
     };
     document.addEventListener("keydown", alTeclado);
     return () => document.removeEventListener("keydown", alTeclado);
-  }, [abierto, vista, onCerrar]);
+  }, [abierto, vista, pasoEliminar, onCerrar]);
 
   if (!abierto) return null;
 
@@ -192,15 +246,6 @@ export default function AjustesPanel({
     }
   };
 
-  const cargarDispositivos = async () => {
-    try {
-      const res = await fetch("/api/push?dispositivos=1", { cache: "no-store" });
-      if (res.ok) setDispositivos(await res.json());
-    } catch {
-      // Sin lista: se muestra el conteo local.
-    }
-  };
-
   const cargarActividad = async () => {
     if (actividad || esInvitado) return;
     try {
@@ -213,9 +258,9 @@ export default function AjustesPanel({
 
   const abrirVista = (id) => {
     setVista(id);
-    if (id === "personal" || id === "seguridad" || id === "apps") cargarPerfil();
+    if (id === "cuenta" || id === "seguridad") cargarPerfil();
     if (id === "seguridad") cargarActividad();
-    if (id === "apps") cargarDispositivos();
+    if (id === "proyecto") cargarRepo();
   };
 
   const exportarDatos = async () => {
@@ -223,13 +268,17 @@ export default function AjustesPanel({
     try {
       const res = await fetch("/api/datos", { cache: "no-store" });
       if (!res.ok) throw new Error("No se pudieron exportar los datos.");
-      const blob = await res.blob();
+      const datos = await res.json();
+      // El enlace debe estar en el DOM: si no, Firefox/Safari ignoran el clic.
+      const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
-      enlace.download = "mis-datos-rss.json";
+      enlace.download = `mis-datos-rss-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(enlace);
       enlace.click();
-      URL.revokeObjectURL(url);
+      enlace.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       onNotify("Datos exportados en JSON.", "success");
     } catch (err) {
       onNotify(err.message || "No se pudo exportar.", "error");
@@ -247,18 +296,7 @@ export default function AjustesPanel({
       await signOut({ callbackUrl: "/login" });
     } catch (err) {
       onNotify(err.message || "No se pudo eliminar.", "error");
-      setPasoEliminar("idle");
-    }
-  };
-
-  const desvincularDispositivos = async () => {
-    try {
-      const res = await fetch("/api/push?all=true", { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudieron desvincular.");
-      setDispositivos([]);
-      onNotify("Dispositivos desvinculados.", "success");
-    } catch (err) {
-      onNotify(err.message || "No se pudo completar.", "error");
+      setPasoEliminar("modal");
     }
   };
 
@@ -295,10 +333,8 @@ export default function AjustesPanel({
 
   const titulos = {
     apariencia: "Apariencia",
-    lectura: "Lectura",
-    personal: "Información personal",
+    cuenta: "Cuenta",
     seguridad: "Seguridad y acceso",
-    apps: "Apps vinculadas",
     notificaciones: "Notificaciones",
     datos: "Datos y privacidad",
     apoyo: "Apoyo al creador",
@@ -346,10 +382,34 @@ export default function AjustesPanel({
         <div className="panel-scroll flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
           {!vista && (
             <>
-              {/* Cabecera de cuenta (abre Información personal) */}
+              {/* Guía RSS primero, antes de la cuenta */}
               <button
                 type="button"
-                onClick={() => abrirVista("personal")}
+                onClick={() => {
+                  cerrar();
+                  onAbrirGuia();
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-sky-800 bg-sky-950 px-3.5 py-3 text-left transition hover:border-sky-600"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-sky-600 text-white"
+                >
+                  <HelpCircle size={20} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-sky-100">Guía RSS</span>
+                  <span className="block truncate text-xs text-sky-100/70">
+                    Cómo encontrar y agregar fuentes
+                  </span>
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-sky-100/70" />
+              </button>
+
+              {/* Cabecera de cuenta (abre Cuenta) */}
+              <button
+                type="button"
+                onClick={() => abrirVista("cuenta")}
                 className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left transition hover:border-gray-600"
               >
                 {imagenUsuario && !esInvitado ? (
@@ -384,40 +444,24 @@ export default function AjustesPanel({
                 fondoIcono="#e0e7ff"
                 tintaIcono="#3730a3"
                 titulo="Apariencia"
-                descripcion="Temas de color"
+                descripcion="Temas, lectura y densidad"
                 onAbrir={() => abrirVista("apariencia")}
-              />
-              <TarjetaAjuste
-                icono={<BookOpen size={20} />}
-                fondoIcono="#fef3c7"
-                tintaIcono="#92400e"
-                titulo="Lectura"
-                descripcion="Página, automarcado, animaciones"
-                onAbrir={() => abrirVista("lectura")}
               />
               <TarjetaAjuste
                 icono={<IdCard size={20} />}
                 fondoIcono="#dcfce7"
                 tintaIcono="#166534"
-                titulo="Información personal"
-                descripcion="Nombre, correo y proveedor"
-                onAbrir={() => abrirVista("personal")}
+                titulo="Cuenta"
+                descripcion="Perfil y sesión"
+                onAbrir={() => abrirVista("cuenta")}
               />
               <TarjetaAjuste
                 icono={<ShieldCheck size={20} />}
                 fondoIcono="#dbeafe"
                 tintaIcono="#1e40af"
                 titulo="Seguridad y acceso"
-                descripcion="Acceso, contraseña y sesión"
+                descripcion="Acceso, contraseña y actividad"
                 onAbrir={() => abrirVista("seguridad")}
-              />
-              <TarjetaAjuste
-                icono={<Link2 size={20} />}
-                fondoIcono="#f3e8ff"
-                tintaIcono="#7e22ce"
-                titulo="Apps vinculadas"
-                descripcion="Proveedor y dispositivos"
-                onAbrir={() => abrirVista("apps")}
               />
               <TarjetaAjuste
                 icono={<BellRing size={20} />}
@@ -452,127 +496,140 @@ export default function AjustesPanel({
                 onAbrir={() => abrirVista("proyecto")}
               />
 
-              {/* Sesión: ayuda y salida (antes en la barra superior) */}
-              <div className="space-y-2 border-t border-gray-800 pt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    cerrar();
-                    onAbrirGuia();
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left transition hover:border-gray-600"
-                >
-                  <HelpCircle size={17} className="shrink-0 text-sky-400" />
-                  <span className="flex-1 text-sm font-medium text-gray-200">Guía RSS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={cerrarSesion}
-                  className="flex w-full items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left transition hover:border-gray-600"
-                >
-                  <LogOut size={17} className="shrink-0 text-gray-400" />
-                  <span className="flex-1 text-sm font-medium text-gray-200">
-                    {esInvitado ? "Salir y borrar datos" : "Cerrar sesión"}
-                  </span>
-                </button>
-                <p className="flex items-center justify-center gap-1.5 px-1 pt-1 text-[11px] text-gray-500">
-                  <Rss size={11} aria-hidden="true" /> RSS Dashboard v1.0
-                </p>
-              </div>
             </>
           )}
 
           {vista === "apariencia" && (
-            <section className="space-y-2.5">
-              <p className="text-xs leading-relaxed text-gray-500">
-                El tema se aplica en toda la app y se guarda en este navegador.
-              </p>
-              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tema de color">
-                {TEMAS.map((t) => {
-                  const activo = tema === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={activo}
-                      onClick={() => onTema(t.id)}
-                      title={t.claro ? `${t.nombre} (claro)` : `${t.nombre} (oscuro)`}
-                      className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
-                        activo
-                          ? "border-sky-500 bg-sky-500/15"
-                          : "border-gray-800 bg-gray-950 hover:border-gray-600"
-                      }`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        style={{ background: `linear-gradient(135deg, ${t.bg} 50%, ${t.accent} 50%)` }}
-                        className="h-7 w-7 shrink-0 rounded-full border border-gray-700"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-200">
-                        {t.nombre}
-                      </span>
-                      {activo && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {vista === "lectura" && (
-            <section className="space-y-2.5">
-              <div>
-                <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-gray-400">
-                  Noticias por página
-                </span>
-                <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-pagina">
-                  {TAMANOS_PAGINA.map((n) => {
-                    const activo = tamanoPagina === n;
+            <section className="space-y-4">
+              <div className="space-y-2.5">
+                <p className="text-xs font-medium text-gray-400">Tema de color</p>
+                <p className="text-xs leading-relaxed text-gray-500">
+                  Se aplica en toda la app y se guarda en este navegador.
+                </p>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tema de color">
+                  {TEMAS.map((t) => {
+                    const activo = tema === t.id;
                     return (
                       <button
-                        key={n}
+                        key={t.id}
                         type="button"
                         role="radio"
                         aria-checked={activo}
-                        onClick={() => onTamanoPagina(n)}
-                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                        onClick={() => onTema(t.id)}
+                        title={t.claro ? `${t.nombre} (claro)` : `${t.nombre} (oscuro)`}
+                        className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
                           activo
-                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                            : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                            ? "border-sky-500 bg-sky-500/15"
+                            : "border-gray-800 bg-gray-950 hover:border-gray-600"
                         }`}
                       >
-                        {n}
+                        <span
+                          aria-hidden="true"
+                          style={{ background: `linear-gradient(135deg, ${t.bg} 50%, ${t.accent} 50%)` }}
+                          className="h-7 w-7 shrink-0 rounded-full border border-gray-700"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-200">
+                          {t.nombre}
+                        </span>
+                        {activo && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
                       </button>
                     );
                   })}
                 </div>
               </div>
-              <Interruptor
-                activado={autoMarcarLeida}
-                onCambiar={onAutoMarcar}
-                etiqueta="Marcar como leída al abrir"
-                descripcion="Al abrir una noticia se marca leída sola."
-              />
-              <Interruptor
-                activado={movimientoReducido}
-                onCambiar={onMovimiento}
-                etiqueta="Reducir animaciones"
-                descripcion="Calma transiciones y efectos de movimiento."
-              />
-              <p className="text-xs leading-relaxed text-gray-500">
-                El tamaño de letra se ajusta dentro del lector de noticias (icono A).
-              </p>
+
+              <div className="space-y-2.5 border-t border-gray-800 pt-4">
+                <p className="text-xs font-medium text-gray-400">Lectura</p>
+                <div>
+                  <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-gray-400">
+                    Noticias por página
+                  </span>
+                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-pagina">
+                    {TAMANOS_PAGINA.map((n) => {
+                      const activo = tamanoPagina === n;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => onTamanoPagina(n)}
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            activo
+                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <span id="ajustes-densidad" className="mb-1.5 block text-xs font-medium text-gray-400">
+                    Densidad de tarjetas
+                  </span>
+                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-densidad">
+                    {[
+                      { id: "comoda", etiqueta: "Cómoda" },
+                      { id: "compacta", etiqueta: "Compacta" },
+                    ].map((op) => {
+                      const activo = densidad === op.id;
+                      return (
+                        <button
+                          key={op.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => onDensidad(op.id)}
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            activo
+                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                          }`}
+                        >
+                          {op.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Interruptor
+                  activado={autoMarcarLeida}
+                  onCambiar={onAutoMarcar}
+                  etiqueta="Marcar como leída al abrir"
+                  descripcion="Al abrir una noticia se marca leída sola."
+                />
+                <Interruptor
+                  activado={movimientoReducido}
+                  onCambiar={onMovimiento}
+                  etiqueta="Reducir animaciones"
+                  descripcion="Calma transiciones y efectos de movimiento."
+                />
+                <p className="text-xs leading-relaxed text-gray-500">
+                  El tamaño de letra se ajusta dentro del lector de noticias (icono A).
+                </p>
+              </div>
             </section>
           )}
 
-          {vista === "personal" && (
+          {vista === "cuenta" && (
             <section className="space-y-2.5">
               {esInvitado ? (
-                <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
-                  Estás en modo invitado: no hay perfil permanente. Crea una cuenta para conservar
-                  tu información.
-                </p>
+                <>
+                  <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
+                    Estás en modo invitado: no hay perfil permanente. Crea una cuenta para conservar
+                    tu información.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onCerrarSesion}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                  >
+                    <LogOut size={15} /> Salir y borrar datos
+                  </button>
+                </>
               ) : (
                 <>
                   <FilaDato etiqueta="Nombre" valor={perfil?.nombre || nombreUsuario || "—"} />
@@ -600,23 +657,59 @@ export default function AjustesPanel({
 
           {vista === "seguridad" && (
             <section className="space-y-2.5">
-              <FilaDato
-                etiqueta="Método de acceso"
-                valor={esInvitado ? "Invitado (temporal)" : etiquetaProveedor(proveedor)}
-              />
-              {!esInvitado && !proveedor && (
-                <Link
-                  href="/recuperar"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
-                >
-                  Cambiar contraseña
-                </Link>
-              )}
-              {!esInvitado && proveedor && proveedor !== "credenciales" && (
-                <p className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs leading-relaxed text-gray-400">
-                  Tu acceso lo protege {etiquetaProveedor(proveedor)}: la contraseña se gestiona
-                  ahí, no en esta app.
-                </p>
+              {esInvitado ? (
+                <FilaDato etiqueta="Método de acceso" valor="Invitado (temporal)" />
+              ) : (
+                <>
+                  <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                      Métodos vinculados
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {metodosVinculados(perfil).map((m) => (
+                        <span
+                          key={m.id}
+                          className="rounded-full border border-emerald-700 bg-emerald-950/60 px-2.5 py-1 text-xs font-medium text-emerald-300"
+                        >
+                          {m.etiqueta}
+                        </span>
+                      ))}
+                      {metodosVinculados(perfil).length === 0 && (
+                        <span className="text-xs text-gray-500">Cargando métodos…</span>
+                      )}
+                    </div>
+                  </div>
+                  {!metodosVinculados(perfil).some((m) => m.id === "google") && (
+                    <button
+                      type="button"
+                      onClick={() => signIn("google", { callbackUrl: "/" })}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    >
+                      Conectar con Google
+                    </button>
+                  )}
+                  {!metodosVinculados(perfil).some((m) => m.id === "github") && (
+                    <button
+                      type="button"
+                      onClick={() => signIn("github", { callbackUrl: "/" })}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    >
+                      Conectar con GitHub
+                    </button>
+                  )}
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    Vincula sin salirte: usa el mismo correo de tu cuenta y ambos accesos abren lo
+                    mismo.
+                  </p>
+                  {metodosVinculados(perfil).some((m) => m.id === "correo") && (
+                    <Link
+                      href="/recuperar"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    >
+                      Cambiar contraseña
+                    </Link>
+                  )}
+                </>
               )}
               <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-wide text-gray-500">
@@ -646,46 +739,6 @@ export default function AjustesPanel({
                   </>
                 )}
               </div>
-            </section>
-          )}
-
-          {vista === "apps" && (
-            <section className="space-y-2.5">
-              <FilaDato
-                etiqueta="Proveedor de acceso"
-                valor={esInvitado ? "Ninguno (invitado)" : etiquetaProveedor(proveedor)}
-              />
-              <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                  Dispositivos con avisos push
-                </p>
-                <p className="text-sm font-medium text-gray-100">
-                  {dispositivos.length === 0
-                    ? "Ninguno vinculado"
-                    : `${dispositivos.length} vinculado${dispositivos.length === 1 ? "" : "s"}`}
-                </p>
-                {dispositivos.length > 0 && (
-                  <ul className="mt-1.5 space-y-1">
-                    {dispositivos.map((d) => (
-                      <li key={d.id} className="text-xs text-gray-500">
-                        Dispositivo del {formatearFecha(d.creado_en)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              {dispositivos.length > 0 && (
-                <button
-                  type="button"
-                  onClick={desvincularDispositivos}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
-                >
-                  Desvincular todos
-                </button>
-              )}
-              <p className="text-xs leading-relaxed text-gray-500">
-                Solo esta app y tu proveedor de acceso manejan tus datos de sesión.
-              </p>
             </section>
           )}
 
@@ -761,39 +814,13 @@ export default function AjustesPanel({
                     <Download size={15} /> {exportando ? "Exportando..." : "Exportar mis datos (JSON)"}
                   </button>
                   <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2.5">
-                    {pasoEliminar === "confirmar" ? (
-                      <>
-                        <p className="text-xs leading-relaxed text-red-200">
-                          Se borrarán tu cuenta, fuentes, noticias, vistas y dispositivos. No se
-                          puede deshacer. ¿Continuar?
-                        </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPasoEliminar("idle")}
-                            className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-700"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={eliminarCuenta}
-                            disabled={pasoEliminar === "eliminando"}
-                            className="rounded-lg bg-red-700 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
-                          >
-                            {pasoEliminar === "eliminando" ? "Eliminando..." : "Sí, eliminar todo"}
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setPasoEliminar("confirmar")}
-                        className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 transition hover:text-red-200"
-                      >
-                        <Trash2 size={15} /> Eliminar mi cuenta y datos
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPasoEliminar("modal")}
+                      className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 transition hover:text-red-200"
+                    >
+                      <Trash2 size={15} /> Eliminar mi cuenta y datos
+                    </button>
                   </div>
                 </>
               )}
@@ -821,12 +848,28 @@ export default function AjustesPanel({
                   </span>
                 </span>
               </a>
+              <a
+                href={URL_REPOSITORIO}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20"
+              >
+                <Star size={15} /> Regalar una estrella en GitHub
+              </a>
               <button
                 type="button"
                 onClick={compartirApp}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
               >
                 <Share2 size={15} /> Compartir la app
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Disponible en próximas ediciones"
+                className="flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-500 disabled:opacity-60"
+              >
+                <Coffee size={15} /> Invítame un café (próximamente)
               </button>
               <p className="text-xs leading-relaxed text-gray-500">
                 Proyecto universitario de código abierto. Compartirlo es la mejor forma de apoyarlo.
@@ -836,7 +879,18 @@ export default function AjustesPanel({
 
           {vista === "proyecto" && (
             <section className="space-y-2.5">
-              <FilaDato etiqueta="App" valor={`RSS Dashboard v${VERSION_APP}`} />
+              <FilaDato
+                etiqueta="App"
+                valor={`RSS Dashboard v${versionTexto}`}
+              />
+              <FilaDato
+                etiqueta="Último cambio"
+                valor={
+                  infoRepo
+                    ? `${infoRepo.mensaje} · ${formatearFecha(infoRepo.fecha)}`
+                    : "Consultando GitHub…"
+                }
+              />
               <FilaDato etiqueta="Stack" valor="Next.js 16 · React 19 · MySQL · Gemini · Tailwind" />
               <FilaDato
                 etiqueta="Tu actividad"
@@ -866,6 +920,62 @@ export default function AjustesPanel({
           )}
         </div>
       </aside>
+
+      {/* Confirmación grande de eliminar cuenta: centrada, con consecuencias */}
+      {(pasoEliminar === "modal" || pasoEliminar === "eliminando") && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => {
+            if (pasoEliminar === "modal") setPasoEliminar("idle");
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-eliminar-cuenta"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-red-900/60 bg-gray-900 p-6 shadow-2xl sm:p-8"
+          >
+            <div className="mx-auto mb-4 grid h-14 w-14 place-content-center rounded-full border border-red-800 bg-red-950/60 text-red-400">
+              <TriangleAlert size={26} />
+            </div>
+            <h3 id="titulo-eliminar-cuenta" className="text-center text-xl font-bold text-white">
+              ¿Eliminar tu cuenta?
+            </h3>
+            <p className="mt-2 text-center text-sm text-gray-400">
+              Esto borra para siempre:
+            </p>
+            <ul className="mx-auto mt-3 max-w-xs list-disc space-y-1 pl-5 text-sm text-gray-300">
+              <li>Tus fuentes RSS y todas las noticias</li>
+              <li>Tus vistas guardadas y dispositivos vinculados</li>
+              <li>Tu perfil, acceso y preferencias</li>
+            </ul>
+            <p className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-center text-xs leading-relaxed text-amber-200">
+              Para volver a usar la app necesitarás crear una cuenta nueva con tu correo. Esta
+              acción no se puede deshacer.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPasoEliminar("idle")}
+                disabled={pasoEliminar === "eliminando"}
+                className="rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={eliminarCuenta}
+                disabled={pasoEliminar === "eliminando"}
+                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {pasoEliminar === "eliminando" ? "Eliminando…" : "Sí, eliminar todo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

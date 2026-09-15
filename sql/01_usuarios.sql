@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email         VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NULL COMMENT 'NULL en cuentas OAuth (Google/GitHub)',
   imagen_url    TEXT NULL,
-  proveedor     VARCHAR(50) NOT NULL DEFAULT 'credentials' COMMENT 'credentials | google | github | invitado',
+  proveedor     VARCHAR(50) NOT NULL DEFAULT 'credentials' COMMENT 'CSV de metodos vinculados: credentials | google | github | invitado (p. ej. credentials,google)',
   genero        VARCHAR(20) NULL,
   creado_en     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

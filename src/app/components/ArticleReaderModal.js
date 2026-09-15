@@ -4,6 +4,7 @@
 import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal, Clock, Type } from "lucide-react";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
+import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useEffect, useRef, useState } from "react";
 
 const TAMANOS_LECTURA = {
@@ -93,6 +94,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const ultimoAvisoContadoId = useRef(null);
   // Dirección con la que se entró a esta noticia: define la animación de entrada.
   const [direccionEntrada] = useState(() => direccionNavegacion);
+  // La página de fondo no se desplaza mientras el lector está abierto.
+  useBloquearScroll(Boolean(article));
 
   // Navegación centralizada: registra la dirección para animar la entrada y el
   // instante del cambio para el enfriamiento del scroll con rueda.

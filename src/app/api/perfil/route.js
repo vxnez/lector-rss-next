@@ -53,7 +53,9 @@ export async function GET() {
     await ensurePerfilSchema();
 
     const [rows] = await db.query(
-      "SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero FROM usuarios WHERE id = ?",
+      `SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero,
+              (password_hash IS NOT NULL) AS tiene_password
+       FROM usuarios WHERE id = ?`,
       [userId]
     );
     if (!rows[0]) {
@@ -99,7 +101,9 @@ export async function PUT(req) {
     await db.query("UPDATE usuarios SET nombre = ?, imagen_url = ?, genero = COALESCE(?, genero) WHERE id = ?", [nombre, imagen.valor, genero, userId]);
 
     const [rows] = await db.query(
-      "SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero FROM usuarios WHERE id = ?",
+      `SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero,
+              (password_hash IS NOT NULL) AS tiene_password
+       FROM usuarios WHERE id = ?`,
       [userId]
     );
     return NextResponse.json({ message: "Perfil actualizado correctamente", perfil: rows[0] });
