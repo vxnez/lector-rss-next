@@ -3,7 +3,9 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Check, Bookmark, Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
+import { Check, Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
+import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
+import MorphIcon from "./MorphIcon";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
@@ -131,7 +133,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
             }`}
             title={isGuardado ? t("tarjeta.guardar_quitar") : t("tarjeta.guardar_nuevo")}
           >
-            <Bookmark size={13} aria-hidden="true" />
+            <MorphIcon icon={isGuardado ? BookmarkCheckData : BookmarkData} size={13} aria-hidden="true" />
           </button>
         </div>
       </div>

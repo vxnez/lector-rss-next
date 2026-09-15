@@ -1,7 +1,9 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Bookmark, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Eye, EyeOff, MoveHorizontal, Clock, Type } from "lucide-react";
+import { X, ExternalLink, Check, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type } from "lucide-react";
+import { Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
+import MorphIcon from "./MorphIcon";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
@@ -467,7 +469,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   aria-pressed={imagenOculta}
                   className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
                 >
-                  {imagenOculta ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <MorphIcon icon={imagenOculta ? EyeOffData : EyeData} size={16} />
                 </button>
               )}
               <button
@@ -521,7 +523,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
             }`}
           >
-            <Bookmark size={14} className="shrink-0" />
+            <MorphIcon icon={article.guardado ? BookmarkCheckData : BookmarkData} size={14} className="shrink-0" />
             <span className="leading-tight">{savingAction === "guardado" ? t("lector.guardando") : article.guardado ? t("lector.guardado") : t("lector.guardar")}</span>
           </button>
 

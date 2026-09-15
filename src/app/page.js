@@ -18,7 +18,6 @@ import {
   RotateCw,
   Sparkles,
   Filter,
-  ChevronDown,
   Check,
   Trash2,
   Search,
@@ -26,6 +25,8 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { Settings as SettingsData, X as XData, ChevronDown as ChevronDownData, ChevronUp as ChevronUpData } from "lucide";
+import MorphIcon from "./components/MorphIcon";
 import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
 import { useIdioma } from "@/lib/i18n";
 import { dominioDeUrl } from "@/lib/formato";
@@ -1008,7 +1009,7 @@ export default function HomePage() {
               className="btn-press lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm hover:bg-sky-500"
             >
               <span className="relative block">
-                <Settings size={20} />
+                <MorphIcon icon={panelMovilAbierto ? XData : SettingsData} size={20} />
                 {hayFiltrosActivos && (
                   <span aria-hidden="true" className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" />
                 )}
@@ -1026,7 +1027,7 @@ export default function HomePage() {
                     <Settings size={16} className="text-sky-400" />
                     <span className="truncate">{t("controles.titulo")}</span>
                   </span>
-                  <ChevronDown size={18} className={`text-gray-400 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] ${controlsOpen ? "rotate-180" : ""}`} />
+                  <MorphIcon icon={controlsOpen ? ChevronUpData : ChevronDownData} size={18} className="text-gray-400" />
                 </button>
 
                 {controlsOpen && (
@@ -1089,7 +1090,7 @@ export default function HomePage() {
                     <Filter size={16} className="text-sky-400" />
                     <span className="truncate">{t("filtros.titulo")}</span>
                   </span>
-                  <ChevronDown size={18} className={`text-gray-400 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] ${filtersOpen ? "rotate-180" : ""}`} />
+                  <MorphIcon icon={filtersOpen ? ChevronUpData : ChevronDownData} size={18} className="text-gray-400" />
                 </button>
               </section>
 

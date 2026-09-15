@@ -4,7 +4,9 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, UserRound, TriangleAlert, X } from "lucide-react";
+import { Mail, Lock, UserRound, TriangleAlert, X } from "lucide-react";
+import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
+import MorphIcon from "../components/MorphIcon";
 import { useIdioma } from "@/lib/i18n";
 
 const RECORDAR_CORREO_CLAVE = "lector_recordar_correo";
@@ -140,7 +142,7 @@ export default function LoginPage() {
                 aria-pressed={verPassword}
                 className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100"
               >
-                {verPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                <MorphIcon icon={verPassword ? EyeOffData : EyeData} size={18} />
               </button>
             </div>
           </div>

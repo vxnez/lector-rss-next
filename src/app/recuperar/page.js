@@ -4,7 +4,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, Lock, Eye, EyeOff, CheckCircle2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Mail, KeyRound, Lock, CheckCircle2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
+import MorphIcon from "../components/MorphIcon";
 
 export default function RecuperarPage() {
   const [paso, setPaso] = useState(1);
@@ -242,7 +244,7 @@ export default function RecuperarPage() {
                   aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100"
                 >
-                  {verPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <MorphIcon icon={verPassword ? EyeOffData : EyeData} size={18} />
                 </button>
               </div>
             </div>
