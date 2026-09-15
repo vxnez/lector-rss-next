@@ -56,7 +56,6 @@ function CategoryPill({ category, selected, onClick, t }) {
 
 
 export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente }) {
-  const [hasMounted, setHasMounted] = useState(false);
   const [paso, setPaso] = useState(1); // 1: categorías, 2: feeds, 3: completado
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [feedsRecomendados, setFeedsRecomendados] = useState({});
@@ -186,7 +185,8 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     ? Object.values(feedsRecomendados).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0) 
     : 0;
 
-  if (!abierto || !hasMounted) return null;
+  if (!abierto) return null;
+
 
 
   return (

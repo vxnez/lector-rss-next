@@ -7,6 +7,15 @@ import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
 import NewsFeed from "./components/NewsFeed";
 
+function ClientOnly({ children }) {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => setHasMounted(true), []);
+  if (!hasMounted) return null;
+  return <>{children}</>;
+}
+
+// Modales diferidos: no entran al bundle inicial, se cargan al abrirse.
+
 // Modales diferidos: no entran al bundle inicial, se cargan al abrirse.
 const AddFeedModal = dynamic(() => import("./components/AddFeedModal"), { ssr: false });
 const ManageSourcesModal = dynamic(() => import("./components/ManageSourcesModal"), { ssr: false });
@@ -1219,13 +1228,15 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <OnboardingSurvey
-        abierto={showOnboardingSurvey}
-        onCerrar={closeOnboardingSurvey}
-        t={t}
-        onCompletado={() => {}}
-        onAgregarFuente={handleAgregarFuenteOnboarding}
-      />
+      <ClientOnly>
+        <OnboardingSurvey
+          abierto={showOnboardingSurvey}
+          onCerrar={closeOnboardingSurvey}
+          t={t}
+          onCompletado={() => {}}
+          onAgregarFuente={handleAgregarFuenteOnboarding}
+        />
+      </ClientOnly>
 
       {/* Panel lateral de ajustes + modales (el perfil no aplica en modo invitado) */}
       <AjustesPanel
