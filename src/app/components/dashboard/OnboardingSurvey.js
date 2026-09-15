@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Sparkles, Check, Plus, Loader2, ArrowRight, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
 import MorphIcon from "../MorphIcon";
+import RecommendedFeedsList from "./RecommendedFeedsList";
 
 const CATEGORIES = [
   { id: "Tecnología", icon: "💻", color: "bg-sky-500" },
@@ -40,7 +41,7 @@ function CategoryPill({ category, selected, onClick, t }) {
         selected
           ? "border-sky-500 bg-sky-500/15 text-sky-300 shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
           : "border-gray-700 bg-gray-900/50 text-gray-300 hover:border-gray-500 hover:text-white"
-      }`}
+        }`}
       aria-pressed={selected}
     >
       <span className="text-lg">{category.icon}</span>
@@ -50,39 +51,9 @@ function CategoryPill({ category, selected, onClick, t }) {
   );
 }
 
-function FeedCard({ feed, onAdd, adding, added, t }) {
-  return (
-    <div className="card-lift bg-gray-950/60 border border-gray-800/80 rounded-2xl p-4 hover:border-gray-600 transition-all">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-            <Tag size={12} className="opacity-75" />
-            <span>{feed.categoria}</span>
-          </div>
-          <h4 className="text-white font-semibold text-base truncate mb-1">{feed.titulo}</h4>
-          <p className="text-gray-500 text-sm line-clamp-2">{feed.descripcion}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={adding || added}
-          className={`btn-press shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-            added
-              ? "bg-emerald-950/40 text-emerald-300 border-emerald-900/40 cursor-default"
-              : adding
-              ? "bg-sky-600/20 text-sky-400 border-sky-500/30 cursor-wait"
-              : "bg-sky-600 hover:bg-sky-500 text-white border-sky-500/30 hover:shadow-lg hover:shadow-sky-600/20"
-          }`}
-          aria-label={added ? t("onboarding.agregada") : adding ? t("onboarding.agregando") : t("onboarding.agregar")}
-        >
-          {adding && <Loader2 size={14} className="animate-spin" />}
-          {added ? <Check size={14} strokeWidth={3} /> : <Plus size={14} />}
-          <span className="hidden sm:inline">{added ? t("onboarding.agregada") : adding ? t("onboarding.agregando") : t("onboarding.agregar")}</span>
-        </button>
-      </div>
-    </div>
-  );
-}
+
+// Eliminado FeedCard ya que está en RecommendedFeedsList
+
 
 export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente }) {
   const [paso, setPaso] = useState(1); // 1: categorías, 2: feeds, 3: completado
@@ -269,51 +240,17 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
              <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
                <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.feeds_titulo")}</h4>
                <p className="text-xs text-app-muted mb-4">{t("onboarding.feeds_subtitulo")}</p>
- 
-               {cargandoFeeds ? (
-                 <div className="flex justify-center items-center py-8 text-app-muted gap-2">
-                   <Loader2 size={20} className="animate-spin text-sky-500" />
-                   <span>{t("fuentes.cargando")}</span>
-                 </div>
-               ) : (!feedsRecomendados || totalFeeds === 0) ? (
-                 <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>
-               ) : (
-                 <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                   {Object.entries(feedsRecomendados || {}).map(([categoria, feeds]) => (
-                     <div key={categoria} className="space-y-2">
-                       <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                         <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
-                           <Tag size={10} className="text-sky-400" />
-                         </span>
-                         {categoria} ({Array.isArray(feeds) ? feeds.length : 0})
-                       </h5>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                         {Array.isArray(feeds) && feeds.map((feed) => (
-                           <FeedCard
-                             key={`${categoria}-${feed.titulo}`}
-                             feed={{ ...feed, categoria }}
-                             onAdd={() => handleAgregarFeed(feed)}
-                             adding={feedsAgregando.has(`${feed.titulo}|${feed.url}`)}
-                             added={feedsAgregados.has(`${feed.titulo}|${feed.url}`)}
-                             t={t}
-                           />
-                         ))}
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               )}
- 
-               {totalFeeds > 0 && totalAgregados < totalFeeds && (
-                 <button
-                   type="button"
-                   onClick={handleAgregarTodas}
-                   disabled={totalAgregados === totalFeeds}
-                   className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                 >
-                   <Plus size={16} /> {t("onboarding.agregar_todas", { n: totalFeeds - totalAgregados })}
-                 </button>
-               )}
+               <RecommendedFeedsList
+                 cargando={cargandoFeeds}
+                 feeds={feedsRecomendados}
+                 total={totalFeeds}
+                 totalAgregados={totalAgregados}
+                 onAdd={handleAgregarFeed}
+                 onAddAll={handleAgregarTodas}
+                 feedsAgregando={feedsAgregando}
+                 feedsAgregados={feedsAgregados}
+                 t={t}
+               />
              </div>
            </div>
          )}
