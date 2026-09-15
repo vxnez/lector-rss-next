@@ -22,8 +22,6 @@ import {
   Trash2,
   Search,
   XCircle,
-  Save,
-  X,
 } from "lucide-react";
 import { Settings as SettingsData, X as XData, ChevronDown as ChevronDownData, ChevronUp as ChevronUpData } from "lucide";
 import MorphIcon from "./components/MorphIcon";
@@ -104,9 +102,6 @@ export default function HomePage() {
   const [panelMovilAbierto, setPanelMovilAbierto] = useState(false);
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
-  const [vistasGuardadas, setVistasGuardadas] = useState([]);
-  const [nombreVista, setNombreVista] = useState("");
-  const [guardandoVista, setGuardandoVista] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -432,19 +427,7 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  const fetchVistas = useCallback(async (signal) => {
-    try {
-      const res = await fetch("/api/vistas", { cache: "no-store", signal });
-      if (res.ok) {
-        const data = await res.json();
-        setVistasGuardadas(Array.isArray(data) ? data : []);
-      }
-    } catch (err) {
-      if (err.name !== "AbortError") console.error("Error al obtener vistas:", err);
-    }
-  }, []);
-
-  // Fuentes + conteos + vistas: al iniciar sesión y tras cambios estructurales.
+  // Fuentes + conteos: al iniciar sesión y tras cambios estructurales.
   useEffect(() => {
     if (!session?.user) return undefined;
     const controller = new AbortController();
@@ -452,12 +435,11 @@ export default function HomePage() {
       await Promise.all([
         fetchSources(controller.signal),
         fetchConteos(controller.signal),
-        fetchVistas(controller.signal),
       ]);
     }
     cargarMeta();
     return () => controller.abort();
-  }, [session, fetchSources, fetchConteos, fetchVistas, nonceRecarga]);
+  }, [session, fetchSources, fetchConteos, nonceRecarga]);
 
   // Debounce de búsqueda: 400ms tras dejar de teclear.
   const busquedaRef = useRef("");
@@ -754,67 +736,6 @@ export default function HomePage() {
     setCategoriasSeleccionadas([]);
     setFuentesSeleccionadas([]);
     setPagina(1);
-  };
-
-  // Vistas guardadas: aplican pestaña + orden + categorías + fuentes + búsqueda.
-  const aplicarVista = (vista) => {
-    const config = vista.config || {};
-    setActiveTab(config.tab || "todas");
-    setOrden(config.orden || "recientes");
-    setCategoriasSeleccionadas(Array.isArray(config.categorias) ? config.categorias : []);
-    setFuentesSeleccionadas(
-      (Array.isArray(config.fuentes) ? config.fuentes : []).map((id) => String(id))
-    );
-    const q = String(config.q || "");
-    setSearchQuery(q);
-    setBusquedaAplicada(q);
-    busquedaRef.current = q;
-    setPagina(1);
-    if (panelMovilAbierto) setPanelMovilAbierto(false);
-  };
-
-  const guardarVistaActual = async (event) => {
-    event.preventDefault();
-    const nombre = nombreVista.trim();
-    if (!nombre || guardandoVista) return;
-    setGuardandoVista(true);
-    try {
-      const res = await fetch("/api/vistas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre,
-          config: {
-            tab: activeTab,
-            orden,
-            categorias: categoriasSeleccionadas,
-            fuentes: fuentesSeleccionadas,
-            q: searchQuery.trim(),
-          },
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("avisos.vista_err"));
-      }
-      setNombreVista("");
-      await fetchVistas();
-      notify(t("avisos.vista_guardada", { n: nombre }), "success");
-    } catch (err) {
-      notify(err.message || t("avisos.vista_err"), "error");
-    } finally {
-      setGuardandoVista(false);
-    }
-  };
-
-  const eliminarVista = async (id) => {
-    try {
-      const res = await fetch(`/api/vistas?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(t("avisos.vista_eliminar_err"));
-      await fetchVistas();
-    } catch (err) {
-      notify(err.message || t("avisos.vista_eliminar_err"), "error");
-    }
   };
 
   const hayFiltrosActivos = Boolean(
@@ -1209,57 +1130,6 @@ export default function HomePage() {
                 {categoriasDisponibles.length === 0 && (
                   <p className="px-1 py-2 text-xs text-gray-500">{t("filtros.sin_categorias")}</p>
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-xs font-medium text-gray-400">{t("filtros.vistas")}</span>
-                {vistasGuardadas.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {vistasGuardadas.map((vista) => (
-                      <span
-                        key={vista.id}
-                        className="btn-press inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 text-gray-300 hover:border-gray-500"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => aplicarVista(vista)}
-                          title={t("filtros.vista_aplicar", { n: vista.nombre })}
-                          className="pl-3 pr-1 py-1.5 text-xs font-medium hover:text-white"
-                        >
-                          {vista.nombre}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => eliminarVista(vista.id)}
-                          title={t("filtros.vista_eliminar", { n: vista.nombre })}
-                          aria-label={t("filtros.vista_eliminar", { n: vista.nombre })}
-                          className="pr-2.5 pl-1 py-1.5 text-gray-500 hover:text-rose-400"
-                        >
-                          <X size={13} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <form onSubmit={guardarVistaActual} className="flex gap-1.5">
-                  <input
-                    value={nombreVista}
-                    onChange={(event) => setNombreVista(event.target.value)}
-                    placeholder={t("filtros.vista_ph")}
-                    aria-label={t("filtros.vista_aria")}
-                    maxLength={100}
-                    className="min-w-0 flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-500 focus:border-sky-600"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!nombreVista.trim() || guardandoVista}
-                    title={t("filtros.vista_guardar_titulo")}
-                    className="shrink-0 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-200 transition disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    <Save size={13} />
-                    {t("filtros.vista_guardar")}
-                  </button>
-                </form>
               </div>
 
               {(searchQuery || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0) && (

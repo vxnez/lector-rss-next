@@ -32,20 +32,11 @@ export async function GET() {
        ORDER BY a.id`,
       [userId]
     );
-    const [vistas] = await db.query(
-      "SELECT id, nombre, config, creado_en FROM vistas_guardadas WHERE usuario_id = ? ORDER BY id",
-      [userId]
-    );
-
     return NextResponse.json({
       exportado_en: new Date().toISOString(),
       usuario,
       fuentes,
       articulos,
-      vistas: vistas.map((v) => ({
-        ...v,
-        config: typeof v.config === "string" ? JSON.parse(v.config) : v.config,
-      })),
     });
   } catch (error) {
     console.error("Error al exportar datos:", error);
@@ -61,7 +52,7 @@ export async function DELETE() {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    // Cascada por FK: fuentes, artículos, vistas, suscripciones push y perfil.
+    // Cascada por FK: fuentes, artículos, suscripciones push y perfil.
     await db.query("DELETE FROM usuarios WHERE id = ?", [userId]);
     return NextResponse.json({ message: "Cuenta y datos eliminados" });
   } catch (error) {
