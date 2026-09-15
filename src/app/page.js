@@ -967,7 +967,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="btn-press group min-w-0 rounded-xl bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white hover:bg-sky-500 flex items-center justify-center gap-1.5 shadow-lg shadow-sky-600/20"
+                    className="btn-press group min-w-0 rounded-xl bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white hover:bg-sky-500 flex items-center justify-center gap-1.5 hover:shadow-lg hover:shadow-sky-600/20"
                   >
                     <Plus size={14} />
                     <span className="truncate">{t("controles.agregar")}</span>
@@ -1159,7 +1159,7 @@ export default function HomePage() {
             <div className="flex justify-center gap-4 pt-4">
               <Link
                 href="/login"
-                className="bg-sky-600 hover:bg-sky-500 text-white font-medium px-6 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20"
+                className="bg-sky-600 hover:bg-sky-500 text-white font-medium px-6 py-2.5 rounded-xl transition hover:shadow-lg hover:shadow-sky-600/20"
               >
                 {t("landing.comenzar")}
               </Link>

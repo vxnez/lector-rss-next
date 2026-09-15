@@ -378,7 +378,7 @@ textarea:focus-visible {
 .github-float-min {
   background: linear-gradient(to bottom, var(--accent), var(--accent-strong));
   cursor: pointer;
-  box-shadow: -2px 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: none;
   transition: width 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
 .github-float-min:hover {

@@ -21,7 +21,7 @@ export default function ConfirmDeleteModal({ abierto, onCancelar, onConfirmar, t
           <button
             type="button"
             onClick={onConfirmar}
-            className="btn-press px-4 py-2 bg-red-700 hover:bg-red-600 rounded-xl text-sm font-medium text-white shadow-lg shadow-red-900/30"
+            className="btn-press px-4 py-2 bg-red-700 hover:bg-red-600 rounded-xl text-sm font-medium text-white hover:shadow-lg hover:shadow-red-900/30"
           >
             {t("eliminar.confirmar")}
           </button>

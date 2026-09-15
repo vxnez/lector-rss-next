@@ -32,11 +32,11 @@ export default function Paginacion({ pagina, totalPaginas, totalNoticias, cargan
                 disabled={cargando}
                 aria-label={t("pag.ir_a", { n })}
                 aria-current={n === pagina ? "page" : undefined}
-                className={`btn-press min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium tabular-nums disabled:opacity-40 ${
-                  n === pagina
-                    ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent-ink)] shadow-[0_0_16px_-4px_var(--accent)]"
-                    : "border-app-line bg-app-surface text-app-muted hover:border-app-muted hover:text-app-fg"
-                }`}
+                  className={`btn-press min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium tabular-nums disabled:opacity-40 hover:shadow-[0_0_16px_-4px_var(--accent)] ${
+                    n === pagina
+                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent-ink)]"
+                      : "border-app-line bg-app-surface text-app-muted hover:border-app-muted hover:text-app-fg"
+                  }`}
               >
                 {n}
               </button>

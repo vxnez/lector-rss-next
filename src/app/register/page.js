@@ -100,7 +100,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Registrando..." : "Registrarse"}
           </button>

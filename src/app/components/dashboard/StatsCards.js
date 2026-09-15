@@ -26,9 +26,9 @@ export default function StatsCards({ tarjetas, activeTab, onSeleccionarTab, onIr
               else onIrFuentes();
             }}
             style={{ "--stagger-delay": `${Math.min(indice * 60, 180)}ms` }}
-            className={`stagger-in btn-press card-lift group border rounded-2xl p-[3px] min-w-0 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+            className={`stagger-in btn-press card-lift group border rounded-2xl p-[3px] min-w-0 text-left cursor-pointer hover:shadow-[0_8px_30px_-12px_color-mix(in_srgb,var(--accent)_55%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
               activa
-                ? "border-[var(--accent)]/60 shadow-[0_8px_30px_-12px_color-mix(in_srgb,var(--accent)_55%,transparent)]"
+                ? "border-[var(--accent)]/60"
                 : "border-app-line hover:border-app-muted"
             } bg-app-surface/70`}
           >
@@ -56,7 +56,7 @@ export default function StatsCards({ tarjetas, activeTab, onSeleccionarTab, onIr
               {activa && (
                 <span
                   aria-hidden="true"
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)] shadow-[0_0_12px_var(--accent)]"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]"
                 />
               )}
             </span>

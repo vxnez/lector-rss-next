@@ -157,7 +157,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+              className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? "Generando código..." : "Generar código de recuperación"}
             </button>
@@ -198,7 +198,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-press w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60"
+              className="btn-press w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60"
             >
               {loading ? "Verificando..." : "Verificar código"}
             </button>
@@ -266,7 +266,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-press w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60"
+              className="btn-press w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm disabled:opacity-60"
             >
               {loading ? "Guardando..." : "Restablecer contraseña"}
             </button>

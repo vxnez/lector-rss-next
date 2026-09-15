@@ -924,7 +924,7 @@ export default function AjustesPanel({
                 type="button"
                 onClick={eliminarCuenta}
                 disabled={pasoEliminar === "eliminando"}
-                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white btn-press hover:bg-red-600 disabled:opacity-50 shadow-lg shadow-red-900/30"
+                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white btn-press hover:bg-red-600 disabled:opacity-50 hover:shadow-lg hover:shadow-red-900/30"
               >
                 {pasoEliminar === "eliminando" ? t("ajustes.modal_eliminando") : t("ajustes.modal_confirmar")}
               </button>

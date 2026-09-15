@@ -118,7 +118,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
             <button
               type="submit"
               disabled={loading}
-              className="btn-press group px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-xl text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2 min-w-0 shadow-lg shadow-sky-600/20"
+              className="btn-press group px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-xl text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2 min-w-0 hover:shadow-lg hover:shadow-sky-600/20"
             >
               {loading ? (
                 <>

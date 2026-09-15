@@ -24,9 +24,8 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
         style={{
           backgroundColor: "var(--accent-strong)",
           color: "var(--on-accent-strong)",
-          boxShadow: "0 6px 20px -8px color-mix(in srgb, var(--accent) 70%, transparent)",
         }}
-        className="p-1.5 rounded-xl font-black text-sm flex items-center justify-center transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+        className="p-1.5 rounded-xl font-black text-sm flex items-center justify-center transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:shadow-[0_6px_20px_-8px_color-mix(in_srgb,var(--accent)_70%,transparent)]"
       >
         <Rss size={18} className="stroke-[3]" />
       </span>
@@ -36,7 +35,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
 
   return (
     <div className="sticky top-3 z-20 mx-auto w-full max-w-[1440px] px-3 sm:px-6">
-    <header translate="no" className="rounded-2xl border border-app-line bg-app-surface/80 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/70 px-3 py-3 sm:px-5 sm:py-3.5 flex justify-between items-center gap-3 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--accent)_45%,transparent),inset_0_1px_0_rgba(255,255,255,0.06)] notranslate">
+    <header translate="no" className="rounded-2xl border border-app-line bg-app-surface/80 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/70 px-3 py-3 sm:px-5 sm:py-3.5 flex justify-between items-center gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] notranslate">
       <div className="flex items-center gap-2 min-w-0">
         {session?.user ? (
           <>
@@ -71,7 +70,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
             </Link>
             <Link
               href="/register"
-              className="btn-press group text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="btn-press group text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-full flex items-center gap-2 hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <UserPlus size={16} />
               <span className="hidden sm:inline">{t("header.registro")}</span>
