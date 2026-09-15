@@ -5,7 +5,7 @@ import { numerosPagina } from "@/lib/feed-utils";
 
 export default function Paginacion({ pagina, totalPaginas, totalNoticias, cargando, onCambiar, t }) {
   return (
-    <div className="mt-6 flex flex-col items-center gap-3">
+    <div className="mt-6 flex flex-col items-center gap-3 notranslate" translate="no">
       <p className="text-xs text-app-muted" role="status">
         {t("pag.estado", { a: pagina, b: totalPaginas, n: totalNoticias })}
         {cargando ? t("pag.cargando") : ""}

@@ -170,6 +170,10 @@ const DICCIONARIO = {
       err_guardado: "No se pudo actualizar el estado guardado.",
       err_categoria: "No se pudo actualizar la categoría.",
       err_catalogo: "No se pudo cargar el catálogo de categorías.",
+      error_eyebrow: "Lector",
+      error_titulo: "Esta noticia no se pudo mostrar",
+      error_texto: "El traductor del navegador pudo haber interferido con la vista. Reintenta para volver a cargarla.",
+      reintentar: "Reintentar",
     },
     addfeed: {
       titulo: "Agregar Fuente RSS",
@@ -639,6 +643,10 @@ const DICCIONARIO = {
       err_guardado: "Could not update the saved status.",
       err_categoria: "Could not update the category.",
       err_catalogo: "Could not load the category catalog.",
+      error_eyebrow: "Reader",
+      error_titulo: "This story could not be shown",
+      error_texto: "The browser translator may have interfered with the view. Retry to load it again.",
+      reintentar: "Retry",
     },
     addfeed: {
       titulo: "Add RSS Source",

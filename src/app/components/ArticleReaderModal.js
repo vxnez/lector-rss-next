@@ -364,7 +364,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
         {/* Cabecera del modal */}
         <div>
-          <div className="flex justify-between items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
+          {/* Píldoras y acciones del chrome: no traducibles (la app ya tiene
+              ES/EN propio) para que el traductor no reestructure nodos que
+              React desmonta al navegar. El título y el resumen sí se traducen. */}
+          <div className="flex justify-between items-start gap-2 sm:gap-4 mb-2 sm:mb-3 notranslate" translate="no">
             <div className="flex min-w-0 flex-1 items-center gap-1.5 flex-wrap text-[11px] sm:text-xs text-gray-400">
               {article.fuente_nombre && (
                 <span className="flex min-w-0 max-w-[52vw] sm:max-w-none items-center gap-1 bg-gray-800 border border-gray-700 text-sky-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium">
@@ -495,7 +498,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         )}
 
         {/* Acciones del pie */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-6 pt-4 border-t border-app-line">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-6 pt-4 border-t border-app-line notranslate" translate="no">
           <button
             onClick={handleMarcarLeido}
             disabled={Boolean(savingAction)}
@@ -560,7 +563,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           <div
             role="status"
             aria-live="polite"
-            className="animate-swipe-hint flex max-w-full items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm whitespace-nowrap"
+            translate="no"
+            className="animate-swipe-hint flex max-w-full items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm whitespace-nowrap notranslate"
           >
             <MoveHorizontal size={16} className="animate-swipe-hint-icon text-sky-400 shrink-0" />
             <span>{t("lector.desliza")}</span>

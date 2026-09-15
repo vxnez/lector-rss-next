@@ -8,6 +8,7 @@ import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
 import { useIdioma } from "@/lib/i18n";
+import ErrorBoundary, { LectorErrorFallback } from "./ErrorBoundary";
 
 // El lector solo se necesita cuando se abre una noticia: fuera del bundle inicial.
 const ArticleReaderModal = dynamic(() => import("./ArticleReaderModal"), { ssr: false });
@@ -41,7 +42,9 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
       }`}
     >
       <div>
-        <div className="flex items-center justify-between gap-2 mb-2">
+        {/* Chrome de la tarjeta (píldoras y descartar): no traducible para no
+            romper la reconciliación al filtrar/recargar. Título y resumen sí. */}
+        <div className="flex items-center justify-between gap-2 mb-2 notranslate" translate="no">
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span
               style={pillDominioStyle}
@@ -89,7 +92,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
           {art.resumen}
         </p>
       </div>
-      <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1 text-xs">
+      <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1 text-xs notranslate" translate="no">
           <button
             onClick={() => onAbrir(art)}
             className="btn-press text-[var(--accent)] hover:underline flex items-center gap-1.5 font-medium text-xs rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
@@ -225,19 +228,24 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
         ))}
       </div>
 
-      <ArticleReaderModal
-        key={selectedArticle?.id ?? "vacio"}
-        article={selectedArticle}
-        onClose={cerrarLector}
-        onToggleRead={onToggleRead}
-        onToggleSave={onToggleSave}
-        onUpdateCategory={onUpdateCategory}
-        onIrAId={irAId}
-        anteriorId={anteriorId}
-        siguienteId={siguienteId}
-        posicion={indiceSeleccionado >= 0 ? indiceSeleccionado + 1 : null}
-        total={lista.length}
-      />
+      {/* El boundary contiene un crash del lector (p. ej. DOM tocado por el
+          traductor del navegador) sin tumbar el dashboard; se resetea solo
+          al cambiar de noticia. */}
+      <ErrorBoundary resetKey={selectedArticle?.id ?? "vacio"} fallback={LectorErrorFallback}>
+        <ArticleReaderModal
+          key={selectedArticle?.id ?? "vacio"}
+          article={selectedArticle}
+          onClose={cerrarLector}
+          onToggleRead={onToggleRead}
+          onToggleSave={onToggleSave}
+          onUpdateCategory={onUpdateCategory}
+          onIrAId={irAId}
+          anteriorId={anteriorId}
+          siguienteId={siguienteId}
+          posicion={indiceSeleccionado >= 0 ? indiceSeleccionado + 1 : null}
+          total={lista.length}
+        />
+      </ErrorBoundary>
     </>
   );
 }

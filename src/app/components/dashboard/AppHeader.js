@@ -35,7 +35,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
   );
 
   return (
-    <header className="border-b border-app-line bg-app-surface/70 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/60 px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20 shadow-[0_1px_0_color-mix(in_srgb,var(--accent)_12%,transparent)]">
+    <header translate="no" className="border-b border-app-line bg-app-surface/70 backdrop-blur-xl supports-[backdrop-filter]:bg-app-surface/60 px-3 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3 sticky top-0 z-20 shadow-[0_1px_0_color-mix(in_srgb,var(--accent)_12%,transparent)] notranslate">
       <div className="flex items-center gap-2 min-w-0">
         {session?.user ? (
           <>

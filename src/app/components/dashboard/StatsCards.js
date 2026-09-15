@@ -11,7 +11,7 @@ const ICONOS_POR_TAB = {
 
 export default function StatsCards({ tarjetas, activeTab, onSeleccionarTab, onIrFuentes }) {
   return (
-    <div className="order-1 lg:order-none grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+    <div className="order-1 lg:order-none grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 notranslate" translate="no">
       {tarjetas.map((tarjeta, indice) => {
         const activa = tarjeta.tab ? activeTab === tarjeta.tab : false;
         const Icono = tarjeta.tab ? (ICONOS_POR_TAB[tarjeta.tab] ?? Newspaper) : Rss;
