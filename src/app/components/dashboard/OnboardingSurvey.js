@@ -155,7 +155,8 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   };
 
   const handleAgregarTodas = async () => {
-    const todas = Object.values(feedsRecomendados).flat();
+    if (!feedsRecomendados) return;
+    const todas = Object.values(feedsRecomendados || {}).flat();
     for (const feed of todas) {
       const feedKey = `${feed.titulo}|${feed.url}`;
       if (!feedsAgregados.has(feedKey) && !feedsAgregando.has(feedKey)) {
