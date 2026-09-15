@@ -65,35 +65,38 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [totalAgregados, setTotalAgregados] = useState(0);
   const cargandoRef = useRef(false);
 
-// Cargar feeds recomendados cuando cambien las categorías seleccionadas
+  const fetchFeeds = useCallback(async (seleccionadas = categoriasSeleccionadas) => {
+    if (seleccionadas.length === 0) {
+      setFeedsRecomendados({});
+      return;
+    }
+    setCargandoFeeds(true);
+    try {
+      const params = new URLSearchParams({ categorias: seleccionadas.join(",") });
+      const res = await fetch(`/api/recommended-feeds?${params}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setFeedsRecomendados(data.categorias || {});
+      }
+    } catch (err) {
+      console.error("Error cargando feeds recomendados:", err);
+      setFeedsRecomendados({});
+    } finally {
+      setCargandoFeeds(false);
+    }
+  }, [categoriasSeleccionadas]);
+
   useEffect(() => {
     let cancelado = false;
-    const fetchFeeds = async () => {
-      if (categoriasSeleccionadas.length === 0) {
-        if (!cancelado) setFeedsRecomendados({});
-        return;
-      }
-      if (!cancelado) setCargandoFeeds(true);
-      try {
-        const params = new URLSearchParams({ categorias: categoriasSeleccionadas.join(",") });
-        const res = await fetch(`/api/recommended-feeds?${params}`, { cache: "no-store" });
-        if (!cancelado && res.ok) {
-          const data = await res.json();
-          if (!cancelado) setFeedsRecomendados(data.categorias || {});
-        }
-      } catch (err) {
-        if (!cancelado) {
-          console.error("Error cargando feeds recomendados:", err);
-          setFeedsRecomendados({});
-        }
-      } finally {
-        if (!cancelado) setCargandoFeeds(false);
-      }
-    };
-    
-    fetchFeeds();
+    if (categoriasSeleccionadas.length > 0) {
+      fetchFeeds().then(() => {
+        if (cancelado) setFeedsRecomendados({});
+      });
+    } else {
+      setFeedsRecomendados({});
+    }
     return () => { cancelado = true; };
-  }, [categoriasSeleccionadas]);
+  }, [categoriasSeleccionadas, fetchFeeds]);
 
   const alternarCategoria = (categoria) => {
     setCategoriasSeleccionadas((actuales) =>
@@ -153,10 +156,8 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     if (paso === 1) {
       if (categoriasSeleccionadas.length === 0) return;
       
-      // CAMBIO CRÍTICO: Primero cambiamos el paso para que la UI reaccione inmediatamente
       setPaso(2);
       
-      // Luego cargamos los feeds en segundo plano
       try {
         await fetchFeeds();
       } catch (err) {
