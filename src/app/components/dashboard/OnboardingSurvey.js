@@ -263,30 +263,30 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
           </div>
         )}
 
-        {/* Paso 2: Feeds recomendados */}
-        {paso === 2 && (
-          <div className="space-y-4">
-            <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
-              <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.feeds_titulo")}</h4>
-              <p className="text-xs text-app-muted mb-4">{t("onboarding.feeds_subtitulo")}</p>
-
-              {cargandoFeeds ? (
-                <div className="flex justify-center items-center py-8 text-app-muted gap-2">
-                  <Loader2 size={20} className="animate-spin text-sky-500" />
-                  <span>{t("fuentes.cargando")}</span>
-                </div>
-              ) : totalFeeds === 0 ? (
-                <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>
-              ) : (
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {Object.entries(feedsRecomendados).map(([categoria, feeds]) => (
-                    <div key={categoria} className="space-y-2">
-                      <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
-                          <Tag size={10} className="text-sky-400" />
-                        </span>
-                        {categoria} ({feeds.length})
-                      </h5>
+         {/* Paso 2: Feeds recomendados */}
+         {paso === 2 && (
+           <div className="space-y-4">
+             <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
+               <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.feeds_titulo")}</h4>
+               <p className="text-xs text-app-muted mb-4">{t("onboarding.feeds_subtitulo")}</p>
+ 
+               {cargandoFeeds ? (
+                 <div className="flex justify-center items-center py-8 text-app-muted gap-2">
+                   <Loader2 size={20} className="animate-spin text-sky-500" />
+                   <span>{t("fuentes.cargando")}</span>
+                 </div>
+               ) : (!feedsRecomendados || totalFeeds === 0) ? (
+                 <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>
+               ) : (
+                 <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                   {Object.entries(feedsRecomendados || {}).map(([categoria, feeds]) => (
+                     <div key={categoria} className="space-y-2">
+                       <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                         <span className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center">
+                           <Tag size={10} className="text-sky-400" />
+                         </span>
+                         {categoria} ({Array.isArray(feeds) ? feeds.length : 0})
+                       </h5>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                          {Array.isArray(feeds) && feeds.map((feed) => (
                            <FeedCard
@@ -299,24 +299,24 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                            />
                          ))}
                        </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {totalFeeds > 0 && totalAgregados < totalFeeds && (
-                <button
-                  type="button"
-                  onClick={handleAgregarTodas}
-                  disabled={totalAgregados === totalFeeds}
-                  className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Plus size={16} /> {t("onboarding.agregar_todas", { n: totalFeeds - totalAgregados })}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+                     </div>
+                   ))}
+                 </div>
+               )}
+ 
+               {totalFeeds > 0 && totalAgregados < totalFeeds && (
+                 <button
+                   type="button"
+                   onClick={handleAgregarTodas}
+                   disabled={totalAgregados === totalFeeds}
+                   className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   <Plus size={16} /> {t("onboarding.agregar_todas", { n: totalFeeds - totalAgregados })}
+                 </button>
+               )}
+             </div>
+           </div>
+         )}
 
         {/* Paso 3: Completado */}
         {paso === 3 && (
