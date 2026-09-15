@@ -177,8 +177,8 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     onCerrar(false);
   };
 
-  const totalFeeds = feedsRecomendados 
-    ? Object.values(feedsRecomendados || {}).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0) 
+  const totalFeeds = (feedsRecomendados && typeof feedsRecomendados === 'object')
+    ? Object.values(feedsRecomendados).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0) 
     : 0;
 
   if (!abierto) return null;

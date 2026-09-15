@@ -59,17 +59,19 @@ export default function RecommendedFeedsList({
       );
     }
 
-    const safeFeeds = (feeds && typeof feeds === 'object') ? feeds : {};
+    const safeFeeds = (feeds && typeof feeds === 'object' && !Array.isArray(feeds)) ? feeds : {};
     const safeTotal = total || 0;
 
-    if (Object.keys(safeFeeds).length === 0 || safeTotal === 0) {
+    const categorias = Object.keys(safeFeeds);
+
+    if (categorias.length === 0 || safeTotal === 0) {
       return <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>;
     }
 
     return (
       <>
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-          {Object.keys(safeFeeds).map((categoria) => {
+          {categorias.map((categoria) => {
             const lista = safeFeeds[categoria];
             if (!Array.isArray(lista)) return null;
             return (
