@@ -59,14 +59,18 @@ export default function RecommendedFeedsList({
       );
     }
 
-    if (!feeds || Object.keys(feeds).length === 0 || total === 0) {
+    const safeFeeds = (feeds && typeof feeds === 'object') ? feeds : {};
+    const safeTotal = total || 0;
+
+    if (Object.keys(safeFeeds).length === 0 || safeTotal === 0) {
       return <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>;
     }
 
     return (
       <>
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-          {Object.entries(feeds || {}).map(([categoria, lista]) => {
+          {Object.keys(safeFeeds).map((categoria) => {
+            const lista = safeFeeds[categoria];
             if (!Array.isArray(lista)) return null;
             return (
               <div key={categoria} className="space-y-2">
@@ -78,6 +82,7 @@ export default function RecommendedFeedsList({
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {lista.map((feed) => {
+                    if (!feed || typeof feed !== 'object') return null;
                     const key = `${feed.titulo}|${feed.url}`;
                     return (
                       <LocalFeedCard
@@ -96,14 +101,14 @@ export default function RecommendedFeedsList({
           })}
         </div>
 
-        {total > 0 && totalAgregados < total && (
+        {safeTotal > 0 && totalAgregados < safeTotal && (
           <button
             type="button"
             onClick={onAddAll}
-            disabled={totalAgregados === total}
+            disabled={totalAgregados === safeTotal}
             className="btn-press w-full mt-4 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <Plus size={16} /> {t("onboarding.agregar_todas", { n: total - totalAgregados })}
+            <Plus size={16} /> {t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
           </button>
         )}
       </>

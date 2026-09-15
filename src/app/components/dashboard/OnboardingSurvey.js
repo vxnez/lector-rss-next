@@ -138,9 +138,18 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     }
   };
 
-  const siguientePaso = () => {
+  const siguientePaso = async () => {
     if (paso === 1) {
       if (categoriasSeleccionadas.length === 0) return;
+      
+      // LIMPIEZA CRÍTICA: Forzamos la limpieza de datos previos antes de cargar nuevos
+      // para evitar que el renderizador intente usar datos corruptos del estado anterior.
+      setFeedsRecomendados({});
+      setTotalAgregados(0);
+      setFeedsAgregados(new Set());
+      setFeedsAgregando(new Set());
+      
+      await fetchFeeds();
       setPaso(2);
     } else if (paso === 2) {
       setPaso(3);
