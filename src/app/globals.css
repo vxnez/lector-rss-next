@@ -540,6 +540,16 @@ textarea:focus-visible {
   }
 }
 
+/* Scroll sin barra visible: se sigue desplazando con rueda, tacto y
+   teclado. Solo transform/opacity quedan intactos; no toca animaciones. */
+.scroll-oculto {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-oculto::-webkit-scrollbar {
+  display: none;
+}
+
 /* Skip-link accesible: oculto hasta foco de teclado. */
 .skip-link {
   position: fixed;

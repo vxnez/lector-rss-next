@@ -213,6 +213,16 @@ const HEADERS_BROWSER = {
   "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 };
 
+// Perfil alterno sin Referer y con UA Firefox: algunos WAFs (p. ej.
+// Hipertextual) bloquean la huella Chrome con 403 en ms, pero responden
+// 200 a este perfil. Verificado por prueba directa el 15/09/2026.
+const HEADERS_ALT = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
+  Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html, application/xhtml+xml, */*;q=0.8",
+  "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+};
+
 function limpiarUrlNoticia(rawUrl) {
   if (!rawUrl) return "";
   try {
@@ -292,20 +302,45 @@ const RSS_TIMEOUT_MS = 8000;
 const HTML_TIMEOUT_MS = 12000;
 const MAX_FEED_CANDIDATES = 80;
 
-async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validadores = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const headers = { ...HEADERS_BROWSER };
+// Fetch con fallback de huella: si el sitio bloquea el perfil Chrome
+// (401/403/429) o la red falla, reintenta una vez con el perfil alterno.
+async function fetchConFallback(url, { timeoutMs = RSS_TIMEOUT_MS, validadores = {} } = {}) {
+  const armar = (base) => {
+    const headers = { ...base };
     if (validadores.etag) headers["If-None-Match"] = validadores.etag;
     if (validadores.lastModified) headers["If-Modified-Since"] = validadores.lastModified;
-    const res = await fetch(url, {
-      headers,
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    return headers;
+  };
+  const pedir = async (base) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, {
+        headers: armar(base),
+        redirect: "follow",
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+  let res;
+  try {
+    res = await pedir(HEADERS_BROWSER);
+  } catch (err) {
+    if (err.name === "AbortError") throw err;
+    res = await pedir(HEADERS_ALT);
+  }
+  if (!res.ok && [401, 403, 429].includes(res.status)) {
+    await res.arrayBuffer().catch(() => {});
+    res = await pedir(HEADERS_ALT);
+  }
+  return res;
+}
+
+async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validadores = {}) {
+  try {
+    const res = await fetchConFallback(url, { timeoutMs, validadores });
 
     if (res.status === 304) {
       return { sinCambios: true, urlFinal: res.url || url };
@@ -331,7 +366,6 @@ async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validad
       lastModified: res.headers.get("last-modified"),
     };
   } catch (err) {
-    clearTimeout(timeoutId);
     if (err.name === "AbortError") {
       throw new Error("La solicitud excedió el tiempo límite de espera (timeout)");
     }
@@ -504,14 +538,7 @@ async function buscarFeedRSS(urlIngresada) {
   let urlPagina = urlLimpia;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HTML_TIMEOUT_MS);
-    const res = await fetch(urlLimpia, {
-      headers: HEADERS_BROWSER,
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    const res = await fetchConFallback(urlLimpia, { timeoutMs: HTML_TIMEOUT_MS });
     urlPagina = res.url || urlLimpia;
 
     const enlacesHeader = res.headers.get("link") || "";

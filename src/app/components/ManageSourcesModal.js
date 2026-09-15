@@ -336,16 +336,24 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col">
         
-        {/* Cabecera con Botón de Refrescar Todo */}
-        <div className="flex justify-between items-start gap-3 pb-4 border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <Rss size={20} className="text-sky-400" />
-              {t("fuentes.titulo")}
+        {/* Cabecera en dos filas: título + cerrar arriba, acciones debajo.
+            Así el título nunca se desfasa por falta de espacio. */}
+        <div className="pb-4 border-b border-gray-800 space-y-3">
+          <div className="flex justify-between items-center gap-3">
+            <h3 className="text-balance text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2 min-w-0">
+              <Rss size={20} className="shrink-0 text-sky-400" />
+              <span className="truncate">{t("fuentes.titulo")}</span>
             </h3>
+            <button
+              onClick={cerrar}
+              aria-label={t("fuentes.cerrar_aria")}
+              className="btn-press shrink-0 text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
               title={t("fuentes.agregar_titulo")}
@@ -387,20 +395,12 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
               <span className="hidden sm:inline">{refreshingAll ? t("fuentes.actualizando_todo") : t("fuentes.refrescar_todo")}</span>
             </button>
-
-            <button
-              onClick={cerrar}
-              aria-label={t("fuentes.cerrar_aria")}
-              className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800"
-            >
-              <X size={20} />
-            </button>
           </div>
         </div>
 
         {/* Sub-vista OPML: elegir archivo, seleccionar feeds e importar */}
         {vistaOpml ? (
-          <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+          <div className="scroll-oculto overflow-y-auto space-y-3 flex-1 pr-1">
             <button
               type="button"
               onClick={() => setVistaOpml(false)}
@@ -472,7 +472,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                     </button>
                   </div>
                 </div>
-                <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                <ul className="scroll-oculto max-h-64 space-y-1.5 overflow-y-auto pr-1">
                   {opmlItems.map((item) => (
                     <li key={item.url}>
                       <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
@@ -534,7 +534,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         ) : (
         <>
         {/* Lista de Fuentes */}
-        <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+        <div className="scroll-oculto overflow-y-auto space-y-3 flex-1 pr-1">
           {loading ? (
             <div className="flex justify-center items-center py-12 text-gray-400 gap-2">
               <RotateCw size={18} className="animate-spin text-sky-500" />

@@ -47,7 +47,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
 
   return (
     <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="anim-modal bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
+      <div className="anim-modal scroll-oculto bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
         {/* Botón cerrar X */}
         <button
           onClick={onClose}
