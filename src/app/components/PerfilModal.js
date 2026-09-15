@@ -188,12 +188,12 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
   const fechaMiembro = formatearFecha(perfil?.creado_en, t, locale, t("perfil.no_disponible"));
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
+    <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="anim-modal bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
         <button
           onClick={onClose}
           aria-label={t("perfil.cerrar_aria")}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition"
+          className="btn-press absolute top-4 right-4 text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800"
         >
           <X size={18} />
         </button>
@@ -206,7 +206,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-sm mb-4">
+          <div className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-4">
             {error}
           </div>
         )}
@@ -269,7 +269,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
                   placeholder={t("perfil.url_ph")}
                   value={urlImagen}
                   onChange={(event) => setUrlImagen(event.target.value)}
-                  className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
+                  className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm field-focus"
                 />
                 <button
                   type="button"
@@ -292,7 +292,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
                   maxLength={100}
                   value={nombre}
                   onChange={(event) => setNombre(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm field-focus"
                 />
               </div>
               <div>
@@ -304,7 +304,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
                   maxLength={100}
                   value={apellido}
                   onChange={(event) => setApellido(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm field-focus"
                 />
               </div>
             </div>
@@ -359,14 +359,14 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-300 transition"
+                className="btn-press px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium text-gray-300"
               >
                 {t("perfil.cancelar")}
               </button>
               <button
                 type="submit"
                 disabled={guardando}
-                className="px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50 flex items-center justify-center gap-2 min-w-0"
+                className="btn-press px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-xl text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2 min-w-0 shadow-lg shadow-sky-600/20"
               >
                 <Save size={16} />
                 <span>{guardando ? t("perfil.guardando") : t("perfil.guardar")}</span>

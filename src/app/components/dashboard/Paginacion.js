@@ -17,7 +17,7 @@ export default function Paginacion({ pagina, totalPaginas, totalNoticias, cargan
             onClick={() => onCambiar(pagina - 1)}
             disabled={pagina === 1 || cargando}
             aria-label={t("pag.aria_ant")}
-            className="rounded-lg border border-app-line bg-app-surface px-3 py-1.5 text-xs font-medium text-app-fg transition hover:border-app-muted hover:text-app-fg disabled:opacity-40"
+            className="btn-press rounded-lg border border-app-line bg-app-surface px-3 py-1.5 text-xs font-medium text-app-fg hover:border-app-muted hover:text-app-fg disabled:opacity-40"
           >
             {t("pag.anterior")}
           </button>
@@ -32,9 +32,9 @@ export default function Paginacion({ pagina, totalPaginas, totalNoticias, cargan
                 disabled={cargando}
                 aria-label={t("pag.ir_a", { n })}
                 aria-current={n === pagina ? "page" : undefined}
-                className={`min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${
+                className={`btn-press min-w-9 rounded-lg border px-3 py-1.5 text-xs font-medium tabular-nums disabled:opacity-40 ${
                   n === pagina
-                    ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent-ink)]"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent-ink)] shadow-[0_0_16px_-4px_var(--accent)]"
                     : "border-app-line bg-app-surface text-app-muted hover:border-app-muted hover:text-app-fg"
                 }`}
               >
@@ -47,7 +47,7 @@ export default function Paginacion({ pagina, totalPaginas, totalNoticias, cargan
             onClick={() => onCambiar(pagina + 1)}
             disabled={pagina === totalPaginas || cargando}
             aria-label={t("pag.aria_sig")}
-            className="rounded-lg border border-app-line bg-app-surface px-3 py-1.5 text-xs font-medium text-app-fg transition hover:border-app-muted hover:text-app-fg disabled:opacity-40"
+            className="btn-press rounded-lg border border-app-line bg-app-surface px-3 py-1.5 text-xs font-medium text-app-fg hover:border-app-muted hover:text-app-fg disabled:opacity-40"
           >
             {t("pag.siguiente")}
           </button>

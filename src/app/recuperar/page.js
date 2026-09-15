@@ -96,12 +96,13 @@ export default function RecuperarPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-        <div className="flex items-center justify-center gap-2 mb-2 text-sky-400">
-          <ShieldCheck size={22} />
-        </div>
-        <h2 className="text-2xl font-bold text-center tracking-tight text-white">Recuperar contraseña</h2>
+    <div className="auth-ambient min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
+      <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
+        <div className="bezel-inner p-8 shadow-2xl">
+          <div className="flex items-center justify-center gap-2 mb-2 text-sky-400">
+            <ShieldCheck size={22} />
+          </div>
+          <h2 className="text-2xl font-bold text-center tracking-tight text-white">Recuperar contraseña</h2>
         <p className="text-center text-xs text-gray-400 mt-1 mb-6">
           Paso {paso} de 3: {paso === 1 ? "Correo electrónico" : paso === 2 ? "Código de verificación" : "Nueva contraseña"}
         </p>
@@ -110,18 +111,22 @@ export default function RecuperarPage() {
           {[1, 2, 3].map((n) => (
             <div
               key={n}
-              className={`h-1.5 flex-1 rounded-full transition ${n <= paso ? "bg-sky-500" : "bg-gray-800"}`}
-            />
+              className="h-1.5 flex-1 rounded-full overflow-hidden bg-gray-800"
+            >
+              <div
+                className={`step-fill h-full w-full rounded-full ${n <= paso ? "bg-sky-500" : "bg-transparent scale-x-0"}`}
+              />
+            </div>
           ))}
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
+          <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
             {error}
           </div>
         )}
         {mensaje && (
-          <div className="bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 p-3 rounded-xl mb-4 text-sm">
+          <div className="anim-toast bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 p-3 rounded-xl mb-4 text-sm">
             {mensaje}
           </div>
         )}
@@ -142,7 +147,7 @@ export default function RecuperarPage() {
                   value={email}
                   autoComplete="email"
                   placeholder="Correo electrónico"
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                  className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
@@ -150,9 +155,14 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60"
+              className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? "Generando código..." : "Generar código de recuperación"}
+              {!loading && (
+                <span aria-hidden="true" className="cta-icon hidden sm:grid">
+                  →
+                </span>
+              )}
             </button>
           </form>
         )}
@@ -183,7 +193,7 @@ export default function RecuperarPage() {
                   value={codigo}
                   autoComplete="one-time-code"
                   placeholder="Código de 6 dígitos"
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm tracking-[0.3em] focus:outline-none focus:border-sky-500 transition"
+                  className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm tracking-[0.3em] focus:outline-none"
                   onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
                 />
               </div>
@@ -191,7 +201,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60"
+              className="btn-press w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60"
             >
               {loading ? "Verificando..." : "Verificar código"}
             </button>
@@ -222,7 +232,7 @@ export default function RecuperarPage() {
                   value={password}
                   autoComplete="new-password"
                   placeholder="Nueva contraseña"
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                  className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none"
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
@@ -230,7 +240,7 @@ export default function RecuperarPage() {
                   onClick={() => setVerPassword((v) => !v)}
                   title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100 transition"
+                  className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100"
                 >
                   {verPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -251,7 +261,7 @@ export default function RecuperarPage() {
                   value={confirmar}
                   autoComplete="new-password"
                   placeholder="Confirmar contraseña"
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                  className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
                   onChange={(e) => setConfirmar(e.target.value)}
                 />
               </div>
@@ -259,7 +269,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60"
+              className="btn-press w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm disabled:opacity-60"
             >
               {loading ? "Guardando..." : "Restablecer contraseña"}
             </button>
@@ -271,6 +281,7 @@ export default function RecuperarPage() {
             <ArrowLeft size={13} /> Volver al inicio de sesión
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

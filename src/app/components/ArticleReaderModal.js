@@ -332,7 +332,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         disabled={anteriorId == null}
         title={t("lector.anterior")}
         aria-label={t("lector.anterior")}
-        className="hidden sm:block fixed top-1/2 -translate-y-1/2 left-2 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+        className="btn-press hidden sm:block fixed top-1/2 -translate-y-1/2 left-2 sm:left-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
         <ChevronLeft size={22} />
       </button>
@@ -344,7 +344,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         disabled={siguienteId == null}
         title={t("lector.siguiente")}
         aria-label={t("lector.siguiente")}
-        className="hidden sm:block fixed top-1/2 -translate-y-1/2 right-2 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 transition disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
+        className="btn-press hidden sm:block fixed top-1/2 -translate-y-1/2 right-2 sm:right-[max(0.75rem,calc(50%-24rem-3.5rem))] z-10 rounded-full bg-gray-800/80 border border-gray-700 p-3 text-gray-300 hover:text-white hover:border-sky-600/60 hover:bg-gray-800 disabled:opacity-25 disabled:pointer-events-none shadow-xl backdrop-blur-sm"
       >
         <ChevronRight size={22} />
       </button>
@@ -452,7 +452,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 onClick={ciclarTamanoLectura}
                 title={t("lector.letra_t", { t: tamanoLectura })}
                 aria-label={t("lector.letra_aria", { t: tamanoLectura })}
-                className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+                className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
               >
                 <Type size={16} />
               </button>
@@ -462,7 +462,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   title={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
                   aria-label={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
                   aria-pressed={imagenOculta}
-                  className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+                  className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
                 >
                   {imagenOculta ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -470,7 +470,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               <button
                 onClick={onClose}
                 aria-label={t("lector.cerrar")}
-                className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition shrink-0"
+                className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
               >
                 <X size={20} />
               </button>
@@ -499,7 +499,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           <button
             onClick={handleMarcarLeido}
             disabled={Boolean(savingAction)}
-            className={`px-1.5 sm:px-3 py-2 sm:py-2 rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center transition min-w-0 ${
+            className={`btn-press px-1.5 sm:px-3 py-2 sm:py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.leido
                 ? "bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -512,7 +512,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           <button
             onClick={handleGuardar}
             disabled={Boolean(savingAction)}
-            className={`px-1.5 sm:px-3 py-2 rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center transition min-w-0 ${
+            className={`btn-press px-1.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.guardado
                 ? "bg-amber-950/60 border border-amber-800/60 text-amber-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -526,10 +526,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             href={article.url_original}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center transition shadow-lg shadow-sky-600/20 min-w-0"
+            className="btn-press group px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center shadow-lg shadow-sky-600/20 min-w-0"
           >
             <span className="leading-tight">{t("lector.sitio")}</span>
-            <ExternalLink size={14} className="shrink-0" />
+            <ExternalLink size={14} className="shrink-0 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
         </div>
       </div>

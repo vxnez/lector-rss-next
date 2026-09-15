@@ -46,13 +46,13 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
+    <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="anim-modal bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
         {/* Botón cerrar X */}
         <button
           onClick={onClose}
           aria-label={t("addfeed.cerrar")}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition"
+          className="btn-press absolute top-4 right-4 text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800"
         >
           <X size={18} />
         </button>
@@ -67,7 +67,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
 
         {/* Mensaje de error con icono */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+          <div className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
             <AlertCircle size={18} className="shrink-0" />
             <span>{error}</span>
           </div>
@@ -86,7 +86,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
+                className="field-focus w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 placeholder={t("addfeed.cat_ph")}
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sky-500 text-sm transition"
+                className="field-focus w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -111,14 +111,14 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
             <button
               type="button"
               onClick={onClose}
-              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium text-gray-300 transition"
+              className="btn-press px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium text-gray-300"
             >
               {t("addfeed.cancelar")}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50 flex items-center justify-center gap-2 min-w-0"
+              className="btn-press group px-3 sm:px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-xl text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2 min-w-0 shadow-lg shadow-sky-600/20"
             >
               {loading ? (
                 <>
@@ -129,6 +129,9 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 <>
                   <Plus size={16} />
                   <span>{t("addfeed.guardar")}</span>
+                  <span aria-hidden="true" className="cta-icon hidden sm:grid">
+                    →
+                  </span>
                 </>
               )}
             </button>

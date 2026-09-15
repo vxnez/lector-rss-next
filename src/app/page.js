@@ -900,9 +900,13 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="w-full px-3 py-4 sm:px-6 sm:py-6 flex-1">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label={t("vacio.cargando")}>
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-48 rounded-xl border border-app-line bg-app-surface/70" />
+              <div
+                key={index}
+                style={{ "--stagger-delay": `${Math.min(index * 60, 300)}ms` }}
+                className="stagger-in skeleton-shimmer h-48 rounded-2xl"
+              />
             ))}
           </div>
         ) : session?.user ? (
@@ -935,9 +939,9 @@ export default function HomePage() {
 
               <div className="order-4 lg:order-none">
                 {cargandoFeed && articulos.length === 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse" aria-label={t("vacio.cargando")}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-label={t("vacio.cargando")}>
                     {Array.from({ length: 6 }).map((_, index) => (
-                      <div key={index} className="h-48 rounded-xl border border-app-line bg-app-surface/70" />
+                      <div key={index} className="skeleton-shimmer h-48 rounded-2xl" />
                     ))}
                   </div>
                 ) : totalNoticias === 0 ? (
@@ -954,7 +958,7 @@ export default function HomePage() {
                       {activeTab === "todas" && (
                         <button
                           onClick={() => setIsAddModalOpen(true)}
-                          className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] transition hover:opacity-90"
+                          className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
                         >
                           <Plus size={16} /> {t("vacio.agregar")}
                           <span aria-hidden="true" className="cta-icon">
@@ -1001,7 +1005,7 @@ export default function HomePage() {
               title={t("controles.abrir")}
               aria-label={t("controles.abrir")}
               aria-expanded={panelMovilAbierto}
-              className="lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm transition hover:bg-sky-500"
+              className="btn-press lg:hidden fixed right-0 bottom-44 z-40 rounded-l-xl bg-sky-600/90 p-2.5 text-white shadow-xl backdrop-blur-sm hover:bg-sky-500"
             >
               <span className="relative block">
                 <Settings size={20} />
@@ -1022,7 +1026,7 @@ export default function HomePage() {
                     <Settings size={16} className="text-sky-400" />
                     <span className="truncate">{t("controles.titulo")}</span>
                   </span>
-                  <ChevronDown size={18} className={`text-gray-400 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown size={18} className={`text-gray-400 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] ${controlsOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {controlsOpen && (
@@ -1034,14 +1038,14 @@ export default function HomePage() {
                     onClick={handleRefresh}
                     disabled={refreshing}
                     title={t("controles.refrescar_titulo")}
-                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="btn-press min-w-0 rounded-xl border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     <RotateCw size={14} className={refreshing ? "animate-spin text-sky-400" : ""} />
                     <span className="truncate">{refreshing ? t("controles.actualizando") : t("controles.refrescar")}</span>
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="min-w-0 rounded-lg bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white transition hover:bg-sky-500 flex items-center justify-center gap-1.5"
+                    className="btn-press group min-w-0 rounded-xl bg-sky-600 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-white hover:bg-sky-500 flex items-center justify-center gap-1.5 shadow-lg shadow-sky-600/20"
                   >
                     <Plus size={14} />
                     <span className="truncate">{t("controles.agregar")}</span>
@@ -1055,14 +1059,14 @@ export default function HomePage() {
                   <button
                     onClick={handleEliminarTodas}
                     title={t("controles.eliminar_titulo")}
-                    className="min-w-0 rounded-lg border border-red-900/50 bg-red-950/40 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-red-300 transition hover:bg-red-900/50 flex items-center justify-center gap-1.5"
+                    className="btn-press min-w-0 rounded-xl border border-red-900/50 bg-red-950/40 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-red-300 hover:bg-red-900/50 flex items-center justify-center gap-1.5"
                   >
                     <Trash2 size={14} />
                     <span className="truncate">{t("controles.eliminar")}</span>
                   </button>
                   <button
                     onClick={() => setIsManageModalOpen(true)}
-                    className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 transition hover:bg-gray-800 flex items-center justify-center gap-1.5"
+                    className="btn-press min-w-0 rounded-xl border border-gray-800 bg-gray-900 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-gray-200 hover:bg-gray-800 flex items-center justify-center gap-1.5"
                   >
                     <Settings size={14} />
                     <span className="truncate">{t("controles.fuentes")}</span>
@@ -1085,7 +1089,7 @@ export default function HomePage() {
                     <Filter size={16} className="text-sky-400" />
                     <span className="truncate">{t("filtros.titulo")}</span>
                   </span>
-                  <ChevronDown size={18} className={`text-gray-400 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown size={18} className={`text-gray-400 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] ${filtersOpen ? "rotate-180" : ""}`} />
                 </button>
               </section>
 
@@ -1213,7 +1217,7 @@ export default function HomePage() {
                     {vistasGuardadas.map((vista) => (
                       <span
                         key={vista.id}
-                        className="inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 text-gray-300 transition hover:border-gray-500"
+                        className="btn-press inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 text-gray-300 hover:border-gray-500"
                       >
                         <button
                           type="button"
@@ -1260,7 +1264,7 @@ export default function HomePage() {
               {(searchQuery || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0) && (
                 <button
                   onClick={limpiarFiltros}
-                  className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 transition hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
+                  className="btn-press w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
                 >
                   <XCircle size={15} /> {t("filtros.limpiar")}
                 </button>

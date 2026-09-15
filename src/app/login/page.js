@@ -83,15 +83,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-        <h2 className="text-2xl font-bold text-center mb-6 tracking-tight text-white">Iniciar Sesión</h2>
+    <div className="auth-ambient min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
+      <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
+        <div className="bezel-inner p-8 shadow-2xl">
+          <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
+          <h2 className="text-2xl font-bold text-center mt-3 mb-6 tracking-tight text-white">Iniciar Sesión</h2>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
+              {error}
+            </div>
+          )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -106,7 +108,7 @@ export default function LoginPage() {
                 value={form.email}
                 autoComplete="email"
                 placeholder="Correo electrónico"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-sky-500 transition"
+                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
@@ -127,7 +129,7 @@ export default function LoginPage() {
                 value={form.password}
                 autoComplete="current-password"
                 placeholder="Contraseña"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-sky-500 transition"
+                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
               <button
@@ -136,7 +138,7 @@ export default function LoginPage() {
                 title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 aria-pressed={verPassword}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100 transition"
+                className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-100"
               >
                 {verPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -171,9 +173,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60"
+            className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Entrando..." : "Iniciar Sesión"}
+            {!loading && (
+              <span aria-hidden="true" className="cta-icon hidden sm:grid">
+                →
+              </span>
+            )}
           </button>
         </form>
 
@@ -185,7 +192,7 @@ export default function LoginPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
+            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -197,7 +204,7 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => signIn("github", { callbackUrl: "/" })}
-            className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
+            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
           >
             <svg className="w-4 h-4 fill-current text-gray-200" viewBox="0 0 24 24">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
@@ -208,7 +215,7 @@ export default function LoginPage() {
 
         <button
           onClick={() => setMostrarAvisoInvitado(true)}
-          className="w-full mt-3 bg-gray-950 hover:bg-gray-800 border border-dashed border-gray-700 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-300"
+          className="btn-press w-full mt-3 bg-gray-950 hover:bg-gray-800 border border-dashed border-gray-700 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-300"
         >
           <UserRound size={16} className="text-gray-400" />
           Continuar como invitado
@@ -220,18 +227,19 @@ export default function LoginPage() {
             Regístrate aquí
           </Link>
         </p>
+        </div>
       </div>
 
       {mostrarAvisoInvitado && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="aviso-invitado-titulo"
           onClick={() => setMostrarAvisoInvitado(false)}
         >
           <div
-            className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4"
+            className="anim-modal w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -244,7 +252,7 @@ export default function LoginPage() {
               <button
                 onClick={() => setMostrarAvisoInvitado(false)}
                 aria-label="Cerrar aviso"
-                className="text-gray-400 hover:text-white transition"
+                className="btn-press text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800"
               >
                 <X size={18} />
               </button>
@@ -255,7 +263,7 @@ export default function LoginPage() {
               nada de lo que modificaste se conserva.
             </p>
             {errorInvitado && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm">
+              <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm">
                 {errorInvitado}
               </div>
             )}
@@ -263,14 +271,14 @@ export default function LoginPage() {
               <button
                 onClick={() => setMostrarAvisoInvitado(false)}
                 disabled={loadingInvitado}
-                className="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 transition disabled:opacity-60"
+                className="btn-press rounded-xl border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700 disabled:opacity-60"
               >
                 Cancelar
               </button>
               <button
                 onClick={entrarComoInvitado}
                 disabled={loadingInvitado}
-                className="rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 transition disabled:opacity-60"
+                className="btn-press rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-60 shadow-lg shadow-sky-600/20"
               >
                 {loadingInvitado ? "Entrando..." : "Entendido, entrar"}
               </button>

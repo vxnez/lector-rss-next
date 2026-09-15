@@ -466,11 +466,144 @@ textarea:focus-visible {
   transform: translateY(-1px) scale(1.05);
 }
 
+/* ============ Lenguaje de movimiento global v2 (todas las interfaces) ============
+   Overlays, modales, toasts, skeletons y auth comparten curvas y duraciones:
+   overlay 180ms, modal 280ms ease-out fuerte, toast 400ms, shimmer 1.6s lineal.
+   Todo con transform/opacity (GPU) + blur leve (máx 6px). */
+
+/* Overlay: fundido rápido, sin desplazamiento. */
+@keyframes ui-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.anim-overlay {
+  animation: ui-overlay-in 180ms ease-out both;
+}
+/* Compat: ArticleReaderModal usaba `animate-fadeIn` inexistente. */
+.animate-fadeIn {
+  animation: ui-overlay-in 180ms ease-out both;
+}
+
+/* Modal: entra desde escala 0.95 + 10px abajo + blur (nunca desde 0). */
+@keyframes ui-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.anim-modal {
+  animation: ui-modal-in 280ms var(--ease-out) both;
+  will-change: transform, opacity, filter;
+}
+
+/* Toast: entra desde abajo-derecha, misma dirección de salida visual. */
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.anim-toast {
+  animation: ui-toast-in 400ms var(--ease-out) both;
+  will-change: transform, opacity, filter;
+}
+
+/* Skeleton shimmer: barrido lineal continuo, más vivo que animate-pulse. */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  border: 1px solid var(--border);
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 50%,
+    transparent 80%
+  );
+  animation: ui-shimmer 1.6s linear infinite;
+}
+@keyframes ui-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* Auth: tarjeta con entrada + fondo ambiental (orbes de acento). */
+.auth-ambient {
+  position: relative;
+  isolation: isolate;
+}
+.auth-ambient::before,
+.auth-ambient::after {
+  content: "";
+  position: fixed;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-ambient::before {
+  top: -10rem;
+  left: -8rem;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent);
+}
+.auth-ambient::after {
+  bottom: -12rem;
+  right: -8rem;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, #7e61ff 16%, transparent), transparent);
+}
+
+/* Campo con foco: anillo suave + elevación mínima, curva del sistema. */
+.field-focus {
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out),
+    background-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.field-focus:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Progreso por pasos (recuperar): relleno animado con curva drawer. */
+.step-fill {
+  transition: transform 450ms var(--ease-drawer), background-color 300ms var(--ease-out);
+  transform-origin: left center;
+}
+
+/* Interruptor: píldora y pomo solo con transform/opacity. */
+.switch-pill {
+  transition: background-color 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.switch-knob {
+  transition: transform 220ms var(--ease-drawer);
+  will-change: transform;
+}
+
 /* Movimiento reducido: conserva opacidad/color, elimina desplazamiento. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-in,
   .card-lift,
-  .btn-press {
+  .btn-press,
+  .anim-overlay,
+  .animate-fadeIn,
+  .anim-modal,
+  .anim-toast {
     animation: none;
     transition-duration: 0.01ms;
   }
@@ -479,10 +612,16 @@ textarea:focus-visible {
   .btn-press:active {
     transform: none;
   }
+  .skeleton-shimmer::after {
+    animation: none;
+  }
 }
 [data-motion="reduced"] .stagger-in,
 [data-motion="reduced"] .card-lift,
-[data-motion="reduced"] .btn-press {
+[data-motion="reduced"] .btn-press,
+[data-motion="reduced"] .anim-overlay,
+[data-motion="reduced"] .anim-modal,
+[data-motion="reduced"] .anim-toast {
   animation: none;
   transition-duration: 0.01ms;
 }
@@ -490,4 +629,7 @@ textarea:focus-visible {
 [data-motion="reduced"] .card-lift:active,
 [data-motion="reduced"] .btn-press:active {
   transform: none;
+}
+[data-motion="reduced"] .skeleton-shimmer::after {
+  animation: none;
 }

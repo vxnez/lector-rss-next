@@ -6,12 +6,12 @@ import { X, Sparkles, ExternalLink, ArrowRight } from "lucide-react";
 export default function WelcomeModal({ abierto, onCerrar, t }) {
   if (!abierto) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
+    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="anim-modal bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
         <button
           onClick={onCerrar}
           aria-label={t("comun.cerrar")}
-          className="absolute top-4 right-4 text-app-muted hover:text-app-fg p-1 rounded-lg bg-app-raised/50 hover:bg-app-raised transition"
+          className="btn-press absolute top-4 right-4 text-app-muted hover:text-app-fg p-1.5 rounded-lg bg-app-raised/50 hover:bg-app-raised"
         >
           <X size={20} />
         </button>
@@ -49,10 +49,13 @@ export default function WelcomeModal({ abierto, onCerrar, t }) {
         <div className="flex justify-end gap-3 pt-2">
           <button
             onClick={onCerrar}
-            className="w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+            className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-full transition flex items-center justify-center gap-2 text-sm"
           >
             <span>{t("guia.entendido")}</span>
             <ArrowRight size={16} />
+            <span aria-hidden="true" className="cta-icon hidden sm:grid">
+              →
+            </span>
           </button>
         </div>
       </div>

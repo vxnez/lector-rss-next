@@ -60,7 +60,7 @@ function TarjetaAjuste({ icono, fondoIcono, tintaIcono, titulo, descripcion, onA
     <button
       type="button"
       onClick={onAbrir}
-      className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left transition hover:border-gray-600"
+      className="btn-press card-lift group flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left hover:border-gray-500"
     >
       <span
         aria-hidden="true"
@@ -95,7 +95,7 @@ function Interruptor({ activado, onCambiar, etiqueta, descripcion }) {
       aria-checked={activado}
       aria-label={etiqueta}
       onClick={() => onCambiar(!activado)}
-      className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left transition hover:border-gray-600"
+      className="btn-press flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-left hover:border-gray-500"
     >
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-gray-200">{etiqueta}</span>
@@ -103,13 +103,13 @@ function Interruptor({ activado, onCambiar, etiqueta, descripcion }) {
       </span>
       <span
         aria-hidden="true"
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        className={`switch-pill relative h-6 w-11 shrink-0 rounded-full border border-transparent ${
           activado ? "bg-sky-600" : "bg-gray-700"
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-            activado ? "left-[1.375rem]" : "left-0.5"
+          className={`switch-knob absolute top-0.5 h-5 w-5 rounded-full bg-white shadow ${
+            activado ? "translate-x-[1.375rem]" : "translate-x-0.5"
           }`}
         />
       </span>
@@ -406,7 +406,7 @@ export default function AjustesPanel({
               <button
                 type="button"
                 onClick={() => abrirVista("cuenta")}
-                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left transition hover:border-gray-600"
+                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left btn-press card-lift hover:border-gray-500"
               >
                 {imagenUsuario && !esInvitado ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -652,7 +652,7 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onCerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                   >
                     <LogOut size={15} /> {t("ajustes.salir_datos")}
                   </button>
@@ -666,14 +666,14 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onEditarPerfil}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                   >
                     <User size={15} /> {t("ajustes.editar_perfil")}
                   </button>
                   <button
                     type="button"
                     onClick={cerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                   >
                     <LogOut size={15} /> {t("ajustes.cerrar_sesion")}
                   </button>
@@ -710,7 +710,7 @@ export default function AjustesPanel({
                     <button
                       type="button"
                       onClick={() => signIn("google", { callbackUrl: "/" })}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                     >
                       {t("ajustes.conectar_google")}
                     </button>
@@ -719,7 +719,7 @@ export default function AjustesPanel({
                     <button
                       type="button"
                       onClick={() => signIn("github", { callbackUrl: "/" })}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                     >
                       {t("ajustes.conectar_github")}
                     </button>
@@ -730,7 +730,7 @@ export default function AjustesPanel({
                   {metodosVinculados().some((m) => m.id === "correo") && (
                     <Link
                       href="/recuperar"
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                     >
                       {t("ajustes.cambiar_pass")}
                     </Link>
@@ -787,7 +787,7 @@ export default function AjustesPanel({
                     onClick={onGestionarPush}
                     disabled={pushCargando}
                     aria-pressed={pushActivado}
-                    className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white disabled:opacity-50"
+                    className="w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white disabled:opacity-50"
                   >
                     {pushCargando
                       ? t("ajustes.noti_config")
@@ -825,7 +825,7 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onCerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
                   >
                     <Trash2 size={15} /> {t("ajustes.borrar_salir")}
                   </button>
@@ -836,7 +836,7 @@ export default function AjustesPanel({
                     type="button"
                     onClick={exportarDatos}
                     disabled={exportando}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white disabled:opacity-50"
                   >
                     <Download size={15} /> {exportando ? t("ajustes.exportando") : t("ajustes.exportar")}
                   </button>
@@ -860,7 +860,7 @@ export default function AjustesPanel({
                 href={URL_REPOSITORIO}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left transition hover:border-gray-600"
+                className="flex w-full items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950 px-3.5 py-3 text-left btn-press card-lift hover:border-gray-500"
               >
                 <span
                   aria-hidden="true"
@@ -886,7 +886,7 @@ export default function AjustesPanel({
               <button
                 type="button"
                 onClick={compartirApp}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
               >
                 <Share2 size={15} /> {t("ajustes.compartir")}
               </button>
@@ -934,7 +934,7 @@ export default function AjustesPanel({
                 href={URL_APP}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
               >
                 {t("ajustes.abrir_app")}
               </a>
@@ -942,7 +942,7 @@ export default function AjustesPanel({
                 href={URL_REPOSITORIO}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
               >
                 <GitHubIcon size={15} /> {t("ajustes.repositorio")}
               </a>
@@ -989,7 +989,7 @@ export default function AjustesPanel({
                 type="button"
                 onClick={() => setPasoEliminar("idle")}
                 disabled={pasoEliminar === "eliminando"}
-                className="rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-200 btn-press hover:bg-gray-700 disabled:opacity-50"
               >
                 {t("ajustes.modal_cancelar")}
               </button>
@@ -997,7 +997,7 @@ export default function AjustesPanel({
                 type="button"
                 onClick={eliminarCuenta}
                 disabled={pasoEliminar === "eliminando"}
-                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white btn-press hover:bg-red-600 disabled:opacity-50 shadow-lg shadow-red-900/30"
               >
                 {pasoEliminar === "eliminando" ? t("ajustes.modal_eliminando") : t("ajustes.modal_confirmar")}
               </button>

@@ -36,15 +36,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-        <h2 className="text-2xl font-bold text-center mb-6 tracking-tight text-white">Crear Cuenta</h2>
+    <div className="auth-ambient min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 p-4">
+      <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
+        <div className="bezel-inner p-8 shadow-2xl">
+          <p className="eyebrow mx-auto w-fit">RSS Dashboard</p>
+          <h2 className="text-2xl font-bold text-center mt-3 mb-6 tracking-tight text-white">Crear Cuenta</h2>
         
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
+              {error}
+            </div>
+          )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -57,7 +59,7 @@ export default function RegisterPage() {
                 type="text"
                 required
                 placeholder="Tu Nombre"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
             </div>
@@ -73,7 +75,7 @@ export default function RegisterPage() {
                 type="email"
                 required
                 placeholder="correo@ejemplo.com"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
@@ -89,7 +91,7 @@ export default function RegisterPage() {
                 type="password"
                 required
                 placeholder="••••••••"
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 transition"
+                className="field-focus w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </div>
@@ -98,9 +100,14 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 text-sm mt-2"
+            className="btn-press group w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2.5 rounded-full transition-colors shadow-lg shadow-sky-600/20 text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? "Registrando..." : "Registrarse"}
+            {!loading && (
+              <span aria-hidden="true" className="cta-icon hidden sm:grid">
+                →
+              </span>
+            )}
           </button>
         </form>
 
@@ -112,7 +119,7 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={() => signIn("google", { callbackUrl: "/" })} 
-            className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
+            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -124,7 +131,7 @@ export default function RegisterPage() {
           </button>
           <button 
             onClick={() => signIn("github", { callbackUrl: "/" })} 
-            className="bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition text-gray-200"
+            className="btn-press card-lift bg-gray-950 hover:bg-gray-800 border border-gray-800 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-gray-200"
           >
             <svg className="w-4 h-4 fill-current text-gray-200" viewBox="0 0 24 24">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
@@ -139,6 +146,7 @@ export default function RegisterPage() {
             Inicia sesión
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

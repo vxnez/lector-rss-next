@@ -12,7 +12,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
       title={t("header.ajustes_titulo")}
       aria-label={t("header.ajustes_aria")}
       aria-expanded={panelAjustes}
-      className="btn-press rounded-xl p-2 text-app-muted transition hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="btn-press rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <Settings size={20} />
     </button>
@@ -63,14 +63,14 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
           <div className="flex gap-2 shrink-0">
             <Link
               href="/login"
-              className="btn-press text-sm bg-app-raised hover:opacity-90 text-app-fg px-4 py-2 rounded-full flex items-center gap-1.5 transition border border-app-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="btn-press text-sm bg-app-raised hover:opacity-90 text-app-fg px-4 py-2 rounded-full flex items-center gap-1.5 border border-app-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <LogIn size={16} />
               <span className="hidden sm:inline">{t("header.login")}</span>
             </Link>
             <Link
               href="/register"
-              className="btn-press group text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-full flex items-center gap-2 transition shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="btn-press group text-sm bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <UserPlus size={16} />
               <span className="hidden sm:inline">{t("header.registro")}</span>

@@ -216,8 +216,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const visibleSources = sources;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 max-h-[calc(100dvh-2rem)] flex flex-col">
+    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col">
         
         {/* Cabecera con Botón de Refrescar Todo */}
         <div className="flex justify-between items-start gap-3 pb-4 border-b border-gray-800">
@@ -233,7 +233,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
               title={t("fuentes.agregar_titulo")}
               aria-label={t("fuentes.agregar_aria")}
-              className="bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shadow-lg shadow-sky-600/20"
+              className="btn-press group bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 shadow-lg shadow-sky-600/20"
             >
               <Plus size={14} />
               <span className="hidden sm:inline">{t("fuentes.agregar")}</span>
@@ -242,7 +242,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
               aria-label={t("fuentes.refrescar_todo_aria")}
-              className="bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+              className="btn-press bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 disabled:opacity-50"
             >
               <RefreshCcw size={14} className={refreshingAll ? "animate-spin" : ""} />
               <span className="hidden sm:inline">{refreshingAll ? t("fuentes.actualizando_todo") : t("fuentes.refrescar_todo")}</span>
@@ -251,7 +251,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
             <button
               onClick={cerrar}
               aria-label={t("fuentes.cerrar_aria")}
-              className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition"
+              className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800"
             >
               <X size={20} />
             </button>
@@ -268,7 +268,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           ) : visibleSources.length === 0 ? (
             <p className="text-center text-gray-500 py-10 text-sm">{t("fuentes.vacio")}</p>
           ) : (
-            visibleSources.map((source) => {
+            visibleSources.map((source, indice) => {
               const sId = source.id;
               const sUrl = source.url_feed;
               const isRefreshingThis = refreshingSourceId === sId;
@@ -278,7 +278,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               return (
                 <div
                   key={sId}
-                  className="bg-gray-950/60 border border-gray-800/80 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 transition hover:border-gray-700"
+                  style={{ "--stagger-delay": `${Math.min(indice * 40, 320)}ms` }}
+                  className="stagger-in card-lift bg-gray-950/60 border border-gray-800/80 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 hover:border-gray-600"
                 >
                   {isEditing ? (
                     <div className="grid grid-cols-1 gap-2 w-full">
@@ -331,14 +332,14 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         <button
                           onClick={() => handleSaveEdit(sId)}
                           title={t("fuentes.guardar_titulo")}
-                          className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-lg transition border border-emerald-900/40 flex items-center gap-1.5"
+                          className="btn-press bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-xl border border-emerald-900/40 flex items-center gap-1.5"
                         >
                           <Save size={12} />
                           <span>{t("fuentes.guardar")}</span>
                         </button>
                         <button
                           onClick={() => setEditingSourceId(null)}
-                          className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700"
+                          className="btn-press bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-xl border border-gray-700"
                         >
                           {t("fuentes.cancelar")}
                         </button>
@@ -348,7 +349,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         <button
                           onClick={() => handleStartEdit(source)}
                           title={t("fuentes.editar_titulo")}
-                          className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5"
+                          className="btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5"
                         >
                           <Pencil size={12} />
                           <span>{t("fuentes.editar")}</span>
@@ -357,7 +358,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           onClick={() => handleRefreshSingle(source)}
                           disabled={isRefreshingThis}
                           title={t("fuentes.refrescar_titulo")}
-                          className="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-lg transition border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
+                          className="btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
                         >
                           <RotateCw size={12} className={isRefreshingThis ? "animate-spin" : ""} />
                           <span>{isRefreshingThis ? t("fuentes.actualizando") : t("fuentes.refrescar")}</span>
@@ -369,7 +370,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       onClick={() => handleDelete(sId)}
                       title={confirmarEliminarId === sId ? t("fuentes.eliminar_confirmar") : t("fuentes.eliminar_titulo")}
                       aria-live="polite"
-                      className={`text-xs px-3 py-1.5 rounded-lg transition border flex items-center gap-1.5 ${
+                      className={`btn-press text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
                         confirmarEliminarId === sId
                           ? "bg-red-700 hover:bg-red-600 text-white border-red-600"
                           : "bg-red-950/30 hover:bg-red-900/40 text-red-400 border-red-900/30"
@@ -389,7 +390,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         <div className="flex justify-end pt-2 border-t border-gray-800">
           <button
             onClick={cerrar}
-            className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition"
+            className="btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl"
           >
             {t("fuentes.cerrar")}
           </button>

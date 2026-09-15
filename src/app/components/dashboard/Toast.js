@@ -8,7 +8,7 @@ export default function Toast({ toast }) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${
+      className={`anim-toast fixed bottom-5 right-5 z-[70] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${
         esError ? "toast-app-error" : "toast-app"
       }`}
     >
