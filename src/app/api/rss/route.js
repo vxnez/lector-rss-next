@@ -1283,7 +1283,9 @@ function construirFiltros(searchParams, userId, { ignorarCategorias = false } = 
       ? "ORDER BY a.titulo ASC, a.id ASC"
       : orden === "za"
         ? "ORDER BY a.titulo DESC, a.id DESC"
-        : "ORDER BY a.fecha_publicacion DESC, a.id DESC";
+        : orden === "antiguas"
+          ? "ORDER BY a.fecha_publicacion ASC, a.id ASC"
+          : "ORDER BY a.fecha_publicacion DESC, a.id DESC";
 
   return { where: `WHERE ${condiciones.join(" AND ")}`, params, orderBy };
 }

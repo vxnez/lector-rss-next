@@ -111,6 +111,7 @@ export default function HomePage() {
   const [orden, setOrden] = useState("recientes");
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
+  const [fuentesExpandidas, setFuentesExpandidas] = useState(false);
   const [panelMovilAbierto, setPanelMovilAbierto] = useState(false);
   const [fuentesDisponibles, setSourcesList] = useState([]);
   const [fuentesSeleccionadas, setFuentesSeleccionadas] = useState([]);
@@ -201,12 +202,10 @@ export default function HomePage() {
 
   const filtroFuenteRef = useRef(null);
 
-  const irAFiltroFuentes = useCallback(() => {
-    setFiltersOpen(true);
-    window.setTimeout(() => {
-      filtroFuenteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      filtroFuenteRef.current?.focus({ preventScroll: true });
-    }, 60);
+  // La tarjeta "Fuentes activas" abre Gestionar Fuentes RSS para una
+  // gestión más rápida (editar, refrescar o eliminar en un solo lugar).
+  const irAGestionFuentes = useCallback(() => {
+    setIsManageModalOpen(true);
   }, []);
 
   const recargarSesion = useCallback(async () => {
@@ -786,6 +785,16 @@ export default function HomePage() {
     setPagina(1);
   };
 
+  const seleccionarTodasFuentes = (valor) => {
+    setFuentesSeleccionadas(valor ? fuentesDisponibles.map((fuente) => String(fuente.id)) : []);
+    setPagina(1);
+  };
+
+  const seleccionarTodasCategorias = (valor) => {
+    setCategoriasSeleccionadas(valor ? [...categoriasDisponibles] : []);
+    setPagina(1);
+  };
+
   const limpiarFiltros = () => {
     setSearchQuery("");
     setBusquedaAplicada("");
@@ -798,6 +807,9 @@ export default function HomePage() {
   const hayFiltrosActivos = Boolean(
     searchQuery.trim() || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0
   );
+
+  const numFiltrosActivos =
+    (searchQuery.trim() ? 1 : 0) + categoriasSeleccionadas.length + fuentesSeleccionadas.length;
 
   const abrirPanelMovil = useCallback(() => {
     setControlsOpen(true);
@@ -900,7 +912,7 @@ export default function HomePage() {
                 tarjetas={tarjetasStats}
                 activeTab={activeTab}
                 onSeleccionarTab={seleccionarTab}
-                onIrFuentes={irAFiltroFuentes}
+                onIrFuentes={irAGestionFuentes}
               />
 
               <div className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -1059,6 +1071,80 @@ export default function HomePage() {
                       </div>
                       {/* Los avisos push se gestionan en Ajustes → Notificaciones */}
                     </section>
+
+                    <section className="space-y-3 border-t border-app-line/70 pt-4">
+                      <h2 className="text-[clamp(0.62rem,0.7vw,0.75rem)] font-semibold uppercase tracking-[0.12em] text-app-muted">{t("controles.vista")}</h2>
+                      <div>
+                        <span className="mb-1.5 block text-xs font-medium text-gray-400">
+                          {t("controles.pestana")}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("controles.pestana")}>
+                          {[
+                            { valor: "todas", etiqueta: t("stats.pendientes") },
+                            { valor: "leidas", etiqueta: t("stats.leidas") },
+                            { valor: "guardadas", etiqueta: t("stats.guardadas") },
+                          ].map((opcion) => {
+                            const activa = activeTab === opcion.valor;
+                            return (
+                              <button
+                                key={opcion.valor}
+                                type="button"
+                                role="radio"
+                                aria-checked={activa}
+                                onClick={() => seleccionarTab(opcion.valor)}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
+                                  activa
+                                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                                }`}
+                              >
+                                <MorphIcon
+                                  icon={activa ? CheckData : CircleData}
+                                  size={13}
+                                  strokeWidth={2.5}
+                                  className="shrink-0"
+                                />
+                                {opcion.etiqueta}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="mb-1.5 block text-xs font-medium text-gray-400">
+                          {t("controles.pagina")}
+                        </span>
+                        <div className="flex gap-1.5" role="radiogroup" aria-label={t("controles.pagina")}>
+                          {[15, 30, 60].map((n) => {
+                            const activo = tamanoPagina === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                role="radio"
+                                aria-checked={activo}
+                                onClick={() => cambiarTamanoPagina(n)}
+                                className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                  activo
+                                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                                    : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowOnboardingSurvey(true)}
+                        className="btn-press flex w-full items-center justify-center gap-1.5 rounded-xl border border-app-line bg-app-raised/70 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-app-fg hover:border-[var(--accent)]/50 hover:bg-app-raised"
+                      >
+                        <Sparkles size={14} />
+                        <span className="truncate">{t("controles.guia")}</span>
+                      </button>
+                    </section>
                   </div>
                 )}
               </section>
@@ -1075,6 +1161,11 @@ export default function HomePage() {
                       <Filter size={15} />
                     </span>
                     <span className="truncate">{t("filtros.titulo")}</span>
+                    {numFiltrosActivos > 0 && (
+                      <span aria-hidden="true" className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-gray-950">
+                        {numFiltrosActivos}
+                      </span>
+                    )}
                   </span>
                   <MorphIcon icon={filtersOpen ? ChevronUpData : ChevronDownData} size={18} className="text-app-muted" />
                 </button>
@@ -1083,11 +1174,25 @@ export default function HomePage() {
               {filtersOpen && (
                 <div className="space-y-5 sm:space-y-6">
 
+              {/* Limpiar filtros siempre a la vista (fijo arriba): con muchas
+                  fuentes ya no hay que bajar hasta el final para alcanzarlo. */}
+              {hayFiltrosActivos && (
+                <div className="sticky top-0 z-10 rounded-xl bg-app-surface/95 py-1 backdrop-blur-sm">
+                  <button
+                    onClick={limpiarFiltros}
+                    className="btn-press w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20 flex items-center justify-center gap-2"
+                  >
+                    <XCircle size={15} /> {t("filtros.limpiar")} · {numFiltrosActivos}
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <span className="text-xs font-medium text-gray-400">{t("filtros.ordenar")}</span>
                 <div className="flex flex-wrap gap-1.5 rounded-xl border border-app-line/50 bg-app-surface/40 p-2" role="radiogroup" aria-label={t("filtros.ordenar")}>
                   {[
                     { valor: "recientes", etiqueta: t("filtros.recientes") },
+                    { valor: "antiguas", etiqueta: t("filtros.antiguas") },
                     { valor: "az", etiqueta: t("filtros.az") },
                     { valor: "za", etiqueta: t("filtros.za") },
                   ].map((opcion) => {
@@ -1121,15 +1226,26 @@ export default function HomePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-gray-400">{t("filtros.fuente")}</span>
-                  {fuentesSeleccionadas.length > 0 && (
-                    <span className="text-[11px] text-sky-400">
-                      {fuentesSeleccionadas.length === 1
-                        ? t("filtros.sel_una", { n: 1 })
-                        : t("filtros.sel_varias", { n: fuentesSeleccionadas.length })}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {fuentesSeleccionadas.length > 0 && (
+                      <span className="text-[11px] text-sky-400">
+                        {fuentesSeleccionadas.length === 1
+                          ? t("filtros.sel_una", { n: 1 })
+                          : t("filtros.sel_varias", { n: fuentesSeleccionadas.length })}
+                      </span>
+                    )}
+                    {fuentesDisponibles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => seleccionarTodasFuentes(fuentesSeleccionadas.length === 0)}
+                        className="text-[11px] font-medium text-sky-400 hover:text-sky-300"
+                      >
+                        {fuentesSeleccionadas.length === 0 ? t("filtros.todas") : t("filtros.ninguna")}
+                      </button>
+                    )}
+                  </span>
                 </div>
-                <div ref={filtroFuenteRef} tabIndex={-1} className="flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60">
+                <div ref={filtroFuenteRef} tabIndex={-1} className={`flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${fuentesExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
                   {fuentesDisponibles.map((fuente) => {
                     const activa = fuentesSeleccionadas.includes(String(fuente.id));
                     return (
@@ -1157,18 +1273,38 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+                {fuentesDisponibles.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setFuentesExpandidas((expandida) => !expandida)}
+                    className="lg:hidden text-xs text-sky-400 hover:text-sky-300 font-medium px-1 py-1 text-left"
+                  >
+                    {fuentesExpandidas ? t("filtros.ver_menos") : t("filtros.ver_todas", { n: fuentesDisponibles.length })}
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-xs font-medium text-gray-400">{t("filtros.categorias")}</label>
-                  {categoriasSeleccionadas.length > 0 && (
-                    <span className="text-[11px] text-sky-400">
-                      {categoriasSeleccionadas.length === 1
-                        ? t("filtros.sel_una", { n: 1 })
-                        : t("filtros.sel_varias", { n: categoriasSeleccionadas.length })}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {categoriasSeleccionadas.length > 0 && (
+                      <span className="text-[11px] text-sky-400">
+                        {categoriasSeleccionadas.length === 1
+                          ? t("filtros.sel_una", { n: 1 })
+                          : t("filtros.sel_varias", { n: categoriasSeleccionadas.length })}
+                      </span>
+                    )}
+                    {categoriasDisponibles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => seleccionarTodasCategorias(categoriasSeleccionadas.length === 0)}
+                        className="text-[11px] font-medium text-sky-400 hover:text-sky-300"
+                      >
+                        {categoriasSeleccionadas.length === 0 ? t("filtros.todas") : t("filtros.ninguna")}
+                      </button>
+                    )}
+                  </span>
                 </div>
                 <div className={`flex flex-wrap gap-1.5 ${categoriasExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
                   {categoriasDisponibles.map((categoria) => {
@@ -1211,15 +1347,6 @@ export default function HomePage() {
                   <p className="px-1 py-2 text-xs text-gray-500">{t("filtros.sin_categorias")}</p>
                 )}
               </div>
-
-              {(searchQuery || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0) && (
-                <button
-                  onClick={limpiarFiltros}
-                  className="btn-press w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs font-medium text-gray-300 hover:border-gray-600 hover:text-white flex items-center justify-center gap-2"
-                >
-                  <XCircle size={15} /> {t("filtros.limpiar")}
-                </button>
-              )}
                 </div>
               )}
             </aside>
@@ -1253,11 +1380,11 @@ export default function HomePage() {
           <p className="text-pretty">
             <strong className="font-semibold text-app-fg">RSS Dashboard</strong>
             {" — "}
-            {locale === "en" ? "Your feeds, classified and ready to read." : "Tus fuentes, clasificadas y listas para leer."}
+            Tus fuentes, clasificadas y listas para leer.
           </p>
           <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/" className=" transition hover:text-app-fg">
-              {locale === "en" ? "Home" : "Inicio"}
+              Inicio
             </Link>
             <span aria-hidden="true" className="text-app-line">/</span>
             <button
@@ -1265,7 +1392,7 @@ export default function HomePage() {
               onClick={() => window.scrollTo({ top: 0, behavior: movimientoReducido ? "auto" : "smooth" })}
               className="btn-press transition hover:text-app-fg"
             >
-              {locale === "en" ? "Back to top" : "Volver arriba"}
+              Volver arriba
             </button>
             <span aria-hidden="true" className="text-app-line">/</span>
             <span>{new Date().getFullYear()} RSS Dashboard</span>

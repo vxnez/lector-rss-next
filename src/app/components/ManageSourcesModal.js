@@ -9,6 +9,10 @@ import {
   RotateCw as RotateCwData,
   Upload as UploadData,
   X as XData,
+  Check as CheckData,
+  Circle as CircleData,
+  CheckCheck as CheckCheckData,
+  Trash2 as Trash2Data,
 } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { useIdioma } from "@/lib/i18n";
@@ -22,6 +26,10 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const [refreshingSourceId, setRefreshingSourceId] = useState(null);
   const [editingSourceId, setEditingSourceId] = useState(null);
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null);
+  // Selección múltiple para borrado en lote (eco del sistema de filtros).
+  const [seleccionadas, setSeleccionadas] = useState([]);
+  const [confirmarLote, setConfirmarLote] = useState(false);
+  const [eliminandoLote, setEliminandoLote] = useState(false);
   const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General" });
   // Sub-vista OPML: importar (archivo → selección → alta) y exportar.
   const [vistaOpml, setVistaOpml] = useState(false);
@@ -55,6 +63,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       fetchSources(controller.signal).then((sourcesArr) => {
         if (!controller.signal.aborted) {
           setSources(sourcesArr);
+          setSeleccionadas([]);
+          setConfirmarLote(false);
           setLoading(false);
         }
       });
@@ -67,6 +77,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   const cerrar = () => {
     setConfirmarEliminarId(null);
+    setConfirmarLote(false);
+    setSeleccionadas([]);
     setVistaOpml(false);
     setOpmlItems([]);
     setOpmlError("");
@@ -293,6 +305,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       const res = await fetch(`/api/sources?id=${sourceId}`, { method: "DELETE" });
       if (res.ok) {
         setSources((prev) => prev.filter((s) => s.id !== sourceId));
+        setSeleccionadas((prev) => prev.filter((id) => id !== sourceId));
         onNotify?.(t("fuentes.eliminada_ok"), "success");
         if (onChange) onChange();
       } else {
@@ -301,6 +314,43 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     } catch (err) {
       console.error("Error al eliminar fuente:", err);
       onNotify?.(t("fuentes.err_eliminar_conexion"), "error");
+    }
+  };
+
+  // Selección múltiple: alternar una, todas (reversible) y borrado en lote.
+  const alternarSeleccionFuente = (sourceId) => {
+    setSeleccionadas((prev) => (
+      prev.includes(sourceId) ? prev.filter((id) => id !== sourceId) : [...prev, sourceId]
+    ));
+  };
+
+  const todasSeleccionadas = sources.length > 0 && seleccionadas.length === sources.length;
+
+  const alternarTodas = () => {
+    setSeleccionadas((prev) => (
+      prev.length === sources.length && sources.length > 0 ? [] : sources.map((s) => s.id)
+    ));
+  };
+
+  const confirmarEliminacionLote = async () => {
+    if (seleccionadas.length === 0 || eliminandoLote) return;
+    setConfirmarLote(false);
+    setEliminandoLote(true);
+    try {
+      const res = await fetch(`/api/sources?ids=${seleccionadas.join(",")}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t("fuentes.err_eliminar_lote"));
+      const total = Number(data.eliminadas) || seleccionadas.length;
+      const borradas = new Set(seleccionadas);
+      setSources((prev) => prev.filter((s) => !borradas.has(s.id)));
+      setSeleccionadas([]);
+      onNotify?.(t("fuentes.eliminadas_ok", { n: total }), "success");
+      if (onChange) onChange();
+    } catch (err) {
+      console.error("Error al eliminar fuentes:", err);
+      onNotify?.(err.message || t("fuentes.err_eliminar_lote"), "error");
+    } finally {
+      setEliminandoLote(false);
     }
   };
 
@@ -409,6 +459,53 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
             </button>
           </div>
         </div>
+
+        {/* Barra de selección múltiple: seleccionar todo (reversible),
+            conteo y borrado en lote para una eliminación más rápida. */}
+        {!vistaOpml && !loading && visibleSources.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-gray-950/60 px-3 py-2">
+            <button
+              type="button"
+              onClick={alternarTodas}
+              aria-pressed={todasSeleccionadas}
+              title={todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
+              className={`btn-press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                todasSeleccionadas
+                  ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                  : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+              }`}
+            >
+              <MorphIcon
+                icon={todasSeleccionadas ? CheckCheckData : CircleData}
+                size={13}
+                strokeWidth={2.5}
+                className="shrink-0"
+              />
+              {todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
+            </button>
+            {seleccionadas.length > 0 && (
+              <span className="text-[11px] text-sky-400">
+                {seleccionadas.length === 1
+                  ? t("fuentes.sel_una", { n: 1 })
+                  : t("fuentes.sel_varias", { n: seleccionadas.length })}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setConfirmarLote(true)}
+              disabled={seleccionadas.length === 0 || eliminandoLote}
+              title={t("fuentes.eliminar_titulo")}
+              className="btn-press ml-auto flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 disabled:opacity-40"
+            >
+              <MorphIcon
+                icon={eliminandoLote ? LoaderCircleData : Trash2Data}
+                size={12}
+                className={eliminandoLote ? "animate-spin" : ""}
+              />
+              {t("fuentes.eliminar_sel", { n: seleccionadas.length })}
+            </button>
+          </div>
+        )}
 
         {/* Sub-vista OPML: elegir archivo, seleccionar feeds e importar */}
         {vistaOpml ? (
@@ -561,15 +658,37 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               const isRefreshingThis = refreshingSourceId === sId;
               const nombreFuente = source.titulo || source.nombre || t("fuentes.sin_nombre");
               const isEditing = editingSourceId === sId;
+              const marcada = seleccionadas.includes(sId);
 
               return (
                 <div
                   key={sId}
                   style={{ "--stagger-delay": `${Math.min(indice * 40, 320)}ms` }}
-                  className="stagger-in card-lift bg-gray-950/60 border border-gray-800/80 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 hover:border-gray-600"
+                  className={`stagger-in card-lift bg-gray-950/60 border rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 transition ${
+                    marcada
+                      ? "border-sky-500/50 bg-sky-500/5 hover:border-sky-500/70"
+                      : "border-gray-800/80 hover:border-gray-600"
+                  }`}
                 >
-                  {isEditing ? (
-                    <div className="grid grid-cols-1 gap-2 w-full">
+                  <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={marcada}
+                      aria-label={`${t("fuentes.seleccionar_aria")}: ${nombreFuente}`}
+                      title={`${t("fuentes.seleccionar_aria")}: ${nombreFuente}`}
+                      onClick={() => alternarSeleccionFuente(sId)}
+                      className="btn-press mt-0.5 shrink-0 rounded-lg p-1 hover:bg-gray-800"
+                    >
+                      <MorphIcon
+                        icon={marcada ? CheckData : CircleData}
+                        size={18}
+                        strokeWidth={2.5}
+                        className={marcada ? "text-sky-400" : "text-gray-600"}
+                      />
+                    </button>
+                    {isEditing ? (
+                    <div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
                       <input
                         value={editForm.titulo}
                         onChange={(event) => setEditForm((form) => ({ ...form, titulo: event.target.value }))}
@@ -593,7 +712,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       />
                     </div>
                   ) : (
-                    <div className="space-y-1 overflow-hidden w-full min-w-0">
+                    <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
                       <h4 className="text-sm font-semibold text-white truncate">{nombreFuente}</h4>
                       <p className="text-xs text-gray-400 truncate max-w-md">{sUrl}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px]">
@@ -612,6 +731,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       )}
                     </div>
                   )}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-center flex-shrink-0 sm:justify-end">
                     {isEditing ? (
@@ -710,6 +830,45 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                   className="btn-press rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600 hover:shadow-lg hover:shadow-red-900/30"
                 >
                   {t("fuentes.eliminar")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmarLote && (
+          <div
+            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            role="presentation"
+            onClick={() => setConfirmarLote(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="titulo-eliminar-fuentes"
+              onClick={(event) => event.stopPropagation()}
+              className="anim-modal w-full max-w-sm space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
+            >
+              <h3 id="titulo-eliminar-fuentes" className="text-lg font-bold text-app-fg">
+                {t("fuentes.eliminar_lote_titulo", { n: seleccionadas.length })}
+              </h3>
+              <p className="text-sm leading-relaxed text-app-muted">
+                {t("fuentes.eliminar_lote_texto", { n: seleccionadas.length })}
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmarLote(false)}
+                  className="btn-press rounded-xl bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:opacity-90"
+                >
+                  {t("comun.cancelar")}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarEliminacionLote}
+                  className="btn-press rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600 hover:shadow-lg hover:shadow-red-900/30"
+                >
+                  {t("fuentes.eliminar_sel", { n: seleccionadas.length })}
                 </button>
               </div>
             </div>

@@ -3,9 +3,10 @@ import { IdiomaProvider } from "@/lib/i18n";
 import "./globals.css";
 import "./themes.css";
 
-// Aplica tema, densidad, movimiento e idioma guardados antes del primer
-// pintado (evita parpadeo). Debe coincidir con lib/temas.js e lib/i18n.js.
-const SCRIPT_TEMA_INICIAL = `(function(){try{var t=localStorage.getItem("lector_tema")||"medianoche";var claros={"celeste":1,"menta":1,"celadon":1};document.documentElement.dataset.theme=t;if(claros[t]){document.documentElement.dataset.temaClaro="1";}if(localStorage.getItem("lector_movimiento")==="reducido"){document.documentElement.dataset.motion="reduced";}var d=localStorage.getItem("lector_densidad");if(d==="compacta"){document.documentElement.dataset.densidad="compacta";}var i=localStorage.getItem("lector_idioma");if(i==="en"||i==="es"){document.documentElement.lang=i;}}catch(e){}})();`;
+// Aplica tema, densidad y movimiento guardados antes del primer
+// pintado (evita parpadeo). Debe coincidir con lib/temas.js. El idioma es
+// fijo español (lang="es"); el lector_idioma antiguo se ignora.
+const SCRIPT_TEMA_INICIAL = `(function(){try{var t=localStorage.getItem("lector_tema")||"medianoche";var claros={"celeste":1,"menta":1,"celadon":1};document.documentElement.dataset.theme=t;if(claros[t]){document.documentElement.dataset.temaClaro="1";}if(localStorage.getItem("lector_movimiento")==="reducido"){document.documentElement.dataset.motion="reduced";}var d=localStorage.getItem("lector_densidad");if(d==="compacta"){document.documentElement.dataset.densidad="compacta";}document.documentElement.lang="es";}catch(e){}})();`;
 
 
 

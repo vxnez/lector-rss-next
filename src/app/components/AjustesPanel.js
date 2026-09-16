@@ -150,7 +150,7 @@ export default function AjustesPanel({
   const [exportando, setExportando] = useState(false);
   const [pasoEliminar, setPasoEliminar] = useState("idle");
   const cerrarRef = useRef(null);
-  const { idioma, setIdioma, t } = useIdioma();
+  const { t } = useIdioma();
 
   const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
 
@@ -313,7 +313,7 @@ export default function AjustesPanel({
     await signOut({ callbackUrl: "/login" });
   };
 
-  const locale = idioma === "en" ? "en-US" : "es-ES";
+  const locale = "es-ES";
 
   // Métodos vinculados a la cuenta (insignias traducidas).
   const metodosVinculados = () => {
@@ -518,39 +518,6 @@ export default function AjustesPanel({
 
           {vista === "lectura" && (
             <section className="stagger-in space-y-4">
-              <div className="space-y-2.5">
-                <span id="ajustes-idioma" className="mb-1.5 block text-xs font-medium text-gray-400">
-                  {t("ajustes.idioma")}
-                </span>
-                <p className="mb-1.5 text-xs leading-relaxed text-gray-500">
-                  {t("ajustes.idioma_d")}
-                </p>
-                <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-idioma">
-                  {[
-                    { id: "es", etiqueta: "Español" },
-                    { id: "en", etiqueta: "English" },
-                  ].map((op) => {
-                    const activo = idioma === op.id;
-                    return (
-                      <button
-                        key={op.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={activo}
-                        onClick={() => setIdioma(op.id)}
-                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                          activo
-                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                            : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-                        }`}
-                      >
-                        {op.etiqueta}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="space-y-2.5 border-t border-gray-800 pt-4">
                 <p className="text-xs font-medium text-gray-400">{t("ajustes.lectura_sub")}</p>
                 <div>

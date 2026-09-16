@@ -116,8 +116,13 @@ export async function DELETE(req) {
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    // Borrado en lote: ?ids=1,2,3 (el ?id= simple se conserva por compatibilidad).
+    const idsParam = searchParams.get("ids");
+    const ids = (idsParam ? idsParam.split(",") : id ? [id] : [])
+      .map((valor) => Number(String(valor).trim()))
+      .filter((numero) => Number.isInteger(numero) && numero > 0);
 
-    if (!id) {
+    if (ids.length === 0) {
       return NextResponse.json({ error: "ID de fuente requerido" }, { status: 400 });
     }
 
@@ -127,13 +132,13 @@ export async function DELETE(req) {
     await connection.query(
       `DELETE a FROM articulos_publicados a
        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-       WHERE a.fuente_id = ? AND f.usuario_id = ?`,
-      [id, userId]
+       WHERE a.fuente_id IN (${ids.map(() => "?").join(",")}) AND f.usuario_id = ?`,
+      [...ids, userId]
     );
 
     const [result] = await connection.query(
-      "DELETE FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
-      [id, userId]
+      `DELETE FROM fuentes_rss WHERE id IN (${ids.map(() => "?").join(",")}) AND usuario_id = ?`,
+      [...ids, userId]
     );
 
     if (result.affectedRows === 0) {
@@ -142,7 +147,7 @@ export async function DELETE(req) {
     }
 
     await connection.commit();
-    return NextResponse.json({ message: "Fuente y artículos eliminados correctamente" });
+    return NextResponse.json({ message: "Fuente y artículos eliminados correctamente", eliminadas: result.affectedRows });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Error en DELETE /api/sources:", error);
