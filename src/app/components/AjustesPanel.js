@@ -268,6 +268,17 @@ export default function AjustesPanel({
     try {
       const res = await fetch("/api/datos", { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar la cuenta.");
+      // Sin rastro en este navegador: marcas de bienvenida de la cuenta.
+      try {
+        const claves = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const clave = window.localStorage.key(i);
+          if (clave && clave.startsWith("welcome_seen_")) claves.push(clave);
+        }
+        claves.forEach((clave) => window.localStorage.removeItem(clave));
+      } catch {
+        // Sin almacenamiento disponible: nada que limpiar.
+      }
       onNotify(t("avisos.cuenta_eliminada"), "success");
       await signOut({ callbackUrl: "/login" });
     } catch (err) {
@@ -718,6 +729,15 @@ export default function AjustesPanel({
                       {t("ajustes.noticias_en")}
                     </p>
                   </div>
+                  <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPasoEliminar("modal")}
+                      className="btn-press flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 hover:opacity-80"
+                    >
+                      <Trash2 size={15} /> {t("ajustes.eliminar_cuenta")}
+                    </button>
+                  </div>
                 </>
               )}
             </section>
@@ -800,15 +820,6 @@ export default function AjustesPanel({
                   >
                     <Download size={15} /> {exportando ? t("ajustes.exportando") : t("ajustes.exportar")}
                   </button>
-                  <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setPasoEliminar("modal")}
-                      className="btn-press flex w-full items-center justify-center gap-1.5 text-sm font-medium text-red-300 hover:opacity-80"
-                    >
-                      <Trash2 size={15} /> {t("ajustes.eliminar_cuenta")}
-                    </button>
-                  </div>
                 </>
               )}
             </section>

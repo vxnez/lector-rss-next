@@ -53,6 +53,14 @@ export async function DELETE() {
     }
 
     // Cascada por FK: fuentes, artículos, suscripciones push y perfil.
+    // Los códigos de recuperación apuntan por email (sin FK): se borran
+    // aparte para no dejar ningún rastro de la cuenta.
+    const [[cuenta]] = await db.query("SELECT email FROM usuarios WHERE id = ?", [userId]);
+    if (cuenta?.email) {
+      await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [cuenta.email]).catch(() => {
+        // Tabla inexistente en BDs antiguas: no bloquea el borrado.
+      });
+    }
     await db.query("DELETE FROM usuarios WHERE id = ?", [userId]);
     return NextResponse.json({ message: "Cuenta y datos eliminados" });
   } catch (error) {
