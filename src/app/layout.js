@@ -25,6 +25,8 @@ export const metadata = {
   description: "Organiza, clasifica y lee tus fuentes RSS en un solo dashboard.",
   manifest: "/manifest.webmanifest",
   icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {

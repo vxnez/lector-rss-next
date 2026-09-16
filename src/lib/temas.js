@@ -1,4 +1,5 @@
 // src/lib/temas.js — Catálogo de temas y persistencia (cliente).
+import { actualizarFavicon } from "./favicon";
 export const TEMAS = [
   { id: "medianoche", nombre: "Medianoche", claro: false, bg: "#070b12", accent: "#27a9e8" },
   { id: "duna", nombre: "Duna", claro: false, bg: "#211f1f", accent: "#c47d50" },
@@ -48,6 +49,7 @@ export function aplicarTema(id) {
     window.localStorage.setItem(CLAVE_TEMA, tema.id);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", THEME_COLORS[tema.id] || tema.bg);
+    actualizarFavicon(tema.accent);
   } catch {
     // Sin DOM/almacenamiento: no se puede aplicar ni persistir.
   }
