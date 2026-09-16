@@ -4,7 +4,7 @@ import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import { db, ensureBienvenidaSchema } from "@/lib/db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -58,6 +58,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // proveedor a la misma cuenta en vez de crear un duplicado.
       if (account?.provider === "google" || account?.provider === "github") {
         try {
+          try {
+            await ensureBienvenidaSchema();
+          } catch {
+            // Si la columna no se pudo crear, se sigue con el flujo anterior.
+          }
           const [existingUsers] = await db.query("SELECT * FROM usuarios WHERE email = ?", [user.email]);
 
           if (existingUsers.length === 0) {
@@ -65,16 +70,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               "INSERT INTO usuarios (nombre, email, imagen_url, proveedor) VALUES (?, ?, ?, ?)",
               [user.name, user.email, user.image, account.provider]
             );
+            // Cuenta nueva por OAuth: la bienvenida queda pendiente (DEFAULT 0).
           } else {
             const actuales = String(existingUsers[0].proveedor || "")
               .split(",")
               .map((p) => p.trim())
               .filter(Boolean);
             if (!actuales.includes(account.provider)) {
-              await db.query("UPDATE usuarios SET proveedor = ? WHERE id = ?", [
-                [...actuales, account.provider].join(","),
-                existingUsers[0].id,
-              ]);
+              // Primera vez que esta cuenta usa este proveedor OAuth: se
+              // vincula y se reactiva la bienvenida aunque el correo ya
+              // existiera (el localStorage por email la ocultaría si no).
+              try {
+                await db.query("UPDATE usuarios SET proveedor = ?, bienvenida_vista = 0 WHERE id = ?", [
+                  [...actuales, account.provider].join(","),
+                  existingUsers[0].id,
+                ]);
+              } catch (error) {
+                if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
+                await db.query("UPDATE usuarios SET proveedor = ? WHERE id = ?", [
+                  [...actuales, account.provider].join(","),
+                  existingUsers[0].id,
+                ]);
+              }
             }
           }
         } catch (error) {
@@ -87,10 +104,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session }) {
       if (session?.user?.email) {
         try {
+          try {
+            await ensureBienvenidaSchema();
+          } catch {
+            // Sin la columna se usa el comportamiento anterior (solo localStorage).
+          }
           let rows;
           try {
             [rows] = await db.query(
-              "SELECT id, nombre, imagen_url, genero FROM usuarios WHERE email = ?",
+              "SELECT id, nombre, imagen_url, genero, bienvenida_vista FROM usuarios WHERE email = ?",
               [session.user.email]
             );
           } catch (error) {
@@ -105,6 +127,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (rows[0].nombre) session.user.name = rows[0].nombre;
             session.user.image = rows[0].imagen_url || session.user.image || null;
             session.user.genero = rows[0].genero || null;
+            // 0 = mostrar bienvenida (primer login OAuth o cuenta nueva);
+            // 1 o ausente = respetar solo el localStorage.
+            session.user.bienvenidaVista = rows[0].bienvenida_vista ?? 1;
           }
         } catch (error) {
           console.error("Error al resolver la sesión:", error.message);

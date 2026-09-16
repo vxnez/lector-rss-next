@@ -13,5 +13,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
   imagen_url    TEXT NULL,
   proveedor     VARCHAR(50) NOT NULL DEFAULT 'credentials' COMMENT 'CSV de metodos vinculados: credentials | google | github | invitado (p. ej. credentials,google)',
   genero        VARCHAR(20) NULL,
+  bienvenida_vista TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0 = mostrar bienvenida (cuenta nueva o proveedor OAuth recién vinculado), 1 = ya vista',
   creado_en     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

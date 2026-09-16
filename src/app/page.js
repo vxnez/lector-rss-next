@@ -415,9 +415,19 @@ export default function HomePage() {
           // Simplificación de la clave: usamos solo el email o el id para evitar inconsistencias
           const userId = sessionData.user.email || sessionData.user.id;
           const welcomeKey = `welcome_seen_${userId}`;
-          const hasSeenWelcome = localStorage.getItem(welcomeKey);
-          
-          if (!hasSeenWelcome) {
+          let hasSeenWelcome = false;
+          try {
+            hasSeenWelcome = Boolean(localStorage.getItem(welcomeKey));
+          } catch {
+            // Sin almacenamiento disponible: se muestra como a los invitados.
+            hasSeenWelcome = false;
+          }
+          // bienvenidaVista = 0 lo pone el servidor en el primer login con
+          // Google/GitHub (cuenta nueva o proveedor recién vinculado): la
+          // bienvenida salta aunque el localStorage por email ya existiera.
+          const bienvenidaPendiente = Number(sessionData.user?.bienvenidaVista ?? 1) === 0;
+
+          if (!hasSeenWelcome || bienvenidaPendiente) {
             setShowOnboardingSurvey(true);
           }
         } else {
@@ -543,6 +553,16 @@ export default function HomePage() {
         } catch {
           // Sin almacenamiento disponible
         }
+      }
+      // Cuentas reales: persistir en el servidor para que no vuelva a saltar
+      // en otros navegadores/dispositivos. Los invitados son efímeros.
+      if (!esInvitado) {
+        setSession((previa) =>
+          previa?.user ? { ...previa, user: { ...previa.user, bienvenidaVista: 1 } } : previa
+        );
+        fetch("/api/bienvenida", { method: "POST" }).catch(() => {
+          // Si falla, el localStorage ya evita que se repita en este navegador.
+        });
       }
     }
     setShowOnboardingSurvey(false);
