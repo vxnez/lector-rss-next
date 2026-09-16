@@ -322,7 +322,7 @@ const DICCIONARIO = {
       ok: "Perfil actualizado correctamente.",
     },
     login: {
-      titulo: "Entrar",
+      titulo: "Iniciar Sesión",
       correo: "Correo Electrónico",
       correo_ph: "Correo electrónico",
       password: "Contraseña",
@@ -353,7 +353,7 @@ const DICCIONARIO = {
       nombre: "Nombre",
       nombre_ph: "Tu Nombre",
       correo: "Correo Electrónico",
-      correo_ph: "correo@ejemplo.com",
+      correo_ph: "correo@dominio.com",
       password: "Contraseña",
       registrando: "Registrando...",
       registrarse: "Crear",

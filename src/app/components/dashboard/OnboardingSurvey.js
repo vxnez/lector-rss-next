@@ -6,30 +6,31 @@ import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
 import RecommendedFeedsList from "./RecommendedFeedsList";
 
-const CATEGORIES = [
-  { id: "Tecnología", icon: "💻", color: "bg-sky-500" },
-  { id: "Ciencia y Espacio", icon: "🚀", color: "bg-purple-500" },
-  { id: "Videojuegos", icon: "🎮", color: "bg-pink-500" },
-  { id: "Cine y Series", icon: "🎬", color: "bg-red-500" },
-  { id: "Música", icon: "🎵", color: "bg-green-500" },
-  { id: "Deportes", icon: "⚽", color: "bg-amber-500" },
-  { id: "Economía y Finanzas", icon: "💰", color: "bg-emerald-500" },
-  { id: "Salud y Medicina", icon: "🏥", color: "bg-rose-500" },
-  { id: "Política", icon: "🏛️", color: "bg-blue-500" },
-  { id: "Medio Ambiente", icon: "🌱", color: "bg-lime-500" },
-  { id: "Gastronomía", icon: "🍽️", color: "bg-orange-500" },
-  { id: "Viajes y Turismo", icon: "✈️", color: "bg-cyan-500" },
-  { id: "Motor", icon: "🏎️", color: "bg-red-600" },
-  { id: "Educación", icon: "📚", color: "bg-indigo-500" },
-  { id: "Cultura y Arte", icon: "🎨", color: "bg-fuchsia-500" },
-  { id: "Moda y Belleza", icon: "💄", color: "bg-pink-600" },
-  { id: "Fitness y Nutrición", icon: "💪", color: "bg-emerald-600" },
-  { id: "Hogar y Vida Diaria", icon: "🏠", color: "bg-amber-600" },
-  { id: "Celulares", icon: "📱", color: "bg-sky-600" },
-  { id: "Computadoras", icon: "🖥️", color: "bg-violet-500" },
-  { id: "Seguridad y Justicia", icon: "⚖️", color: "bg-gray-600" },
-  { id: "Clima y Meteorología", icon: "🌤️", color: "bg-blue-400" },
-];
+// Fallback de iconos/colores por si la API no los proporciona
+const CATEGORY_META = {
+  "Tecnología": { icon: "💻", color: "bg-sky-500" },
+  "Ciencia y Espacio": { icon: "🚀", color: "bg-purple-500" },
+  "Videojuegos": { icon: "🎮", color: "bg-pink-500" },
+  "Cine y Series": { icon: "🎬", color: "bg-red-500" },
+  "Música": { icon: "🎵", color: "bg-green-500" },
+  "Deportes": { icon: "⚽", color: "bg-amber-500" },
+  "Economía y Finanzas": { icon: "💰", color: "bg-emerald-500" },
+  "Salud y Medicina": { icon: "🏥", color: "bg-rose-500" },
+  "Política": { icon: "🏛️", color: "bg-blue-500" },
+  "Medio Ambiente": { icon: "🌱", color: "bg-lime-500" },
+  "Gastronomía": { icon: "🍽️", color: "bg-orange-500" },
+  "Viajes y Turismo": { icon: "✈️", color: "bg-cyan-500" },
+  "Motor": { icon: "🏎️", color: "bg-red-600" },
+  "Educación": { icon: "📚", color: "bg-indigo-500" },
+  "Cultura y Arte": { icon: "🎨", color: "bg-fuchsia-500" },
+  "Moda y Belleza": { icon: "💄", color: "bg-pink-600" },
+  "Fitness y Nutrición": { icon: "💪", color: "bg-emerald-600" },
+  "Hogar y Vida Diaria": { icon: "🏠", color: "bg-amber-600" },
+  "Celulares": { icon: "📱", color: "bg-sky-600" },
+  "Computadoras": { icon: "🖥️", color: "bg-violet-500" },
+  "Seguridad y Justicia": { icon: "⚖️", color: "bg-gray-600" },
+  "Clima y Meteorología": { icon: "🌤️", color: "bg-blue-400" },
+};
 
 function CategoryPill({ category, selected, onClick, t }) {
   return (
@@ -56,14 +57,49 @@ function CategoryPill({ category, selected, onClick, t }) {
 
 export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente }) {
   const [paso, setPaso] = useState(1); // 1: categorías, 2: feeds, 3: completado
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [feedsRecomendados, setFeedsRecomendados] = useState({});
   const [cargandoFeeds, setCargandoFeeds] = useState(false);
+  const [cargandoCategorias, setCargandoCategorias] = useState(true);
   const [feedsAgregando, setFeedsAgregando] = useState(new Set());
   const [feedsAgregados, setFeedsAgregados] = useState(new Set());
   const [totalAgregados, setTotalAgregados] = useState(0);
   const [completando, setCompletando] = useState(false);
   const cargandoRef = useRef(false);
+
+  // Cargar categorías disponibles (solo las que tienen feeds verificados)
+  useEffect(() => {
+    let cancelado = false;
+    const cargarCategorias = async () => {
+      try {
+        const res = await fetch(`/api/recommended-feeds`, { cache: "no-store" });
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          // Solo categorías que tienen al menos 1 feed
+          const catsConFeeds = Object.entries(data.categorias || {})
+            .filter(([, feeds]) => Array.isArray(feeds) && feeds.length > 0)
+            .map(([nombre, feeds]) => ({
+              id: nombre,
+              icon: CATEGORY_META[nombre]?.icon || "📰",
+              color: CATEGORY_META[nombre]?.color || "bg-gray-500",
+              count: feeds.length,
+            }))
+            .sort((a, b) => b.count - a.count); // Ordenar por más feeds primero
+          setCategoriasDisponibles(catsConFeeds);
+        }
+      } catch (err) {
+        if (!cancelado) {
+          console.error("Error cargando categorías:", err);
+          setCategoriasDisponibles([]);
+        }
+      } finally {
+        if (!cancelado) setCargandoCategorias(false);
+      }
+    };
+    cargarCategorias();
+    return () => { cancelado = true; };
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -236,17 +272,29 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
             <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
               <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.categorias_titulo")}</h4>
               <p className="text-xs text-app-muted mb-4">{t("onboarding.categorias_subtitulo")}</p>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => (
-                  <CategoryPill
-                    key={cat.id}
-                    category={cat}
-                    selected={categoriasSeleccionadas.includes(cat.id)}
-                    onClick={() => alternarCategoria(cat.id)}
-                    t={t}
-                  />
-                ))}
-              </div>
+              {cargandoCategorias ? (
+                <div className="flex justify-center items-center py-8 text-app-muted gap-2">
+                  <Loader2 size={20} className="animate-spin text-sky-500" />
+                  <span>{t("fuentes.cargando")}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {categoriasDisponibles.map((cat) => (
+                      <CategoryPill
+                        key={cat.id}
+                        category={cat}
+                        selected={categoriasSeleccionadas.includes(cat.id)}
+                        onClick={() => alternarCategoria(cat.id)}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                  {categoriasDisponibles.length === 0 && (
+                    <p className="text-center text-app-muted py-8">{t("onboarding.sin_categorias")}</p>
+                  )}
+                </>
+              )}
               {categoriasSeleccionadas.length > 0 && (
                 <p className="text-xs text-sky-400 mt-3 flex items-center gap-1">
                   <Heart size={12} className="text-sky-500" />

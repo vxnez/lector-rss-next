@@ -51,6 +51,7 @@ export default function RootLayout({ children }) {
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         {/* Script plano y bloqueante (primera etiqueta del body): aplica tema y

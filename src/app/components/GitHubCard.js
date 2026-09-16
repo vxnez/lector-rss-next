@@ -1,7 +1,7 @@
 // src/app/components/GitHubCard.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Minus } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
 
@@ -25,13 +25,20 @@ function GitHubIcon({ size = 18, className = "" }) {
 
 export default function GitHubCard() {
   const { t } = useIdioma();
-  const [minimizada, setMinimizada] = useState(() => {
+  const [minimizada, setMinimizada] = useState(false);
+  const [hidratado, setHidratado] = useState(false);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
     try {
-      return typeof window !== "undefined" && window.localStorage.getItem(CLAVE_MINIMIZADA) === "1";
+      const valor = window.localStorage.getItem(CLAVE_MINIMIZADA) === "1";
+      setMinimizada(valor);
     } catch {
-      return false;
+      // Sin almacenamiento disponible
     }
-  });
+    setHidratado(true);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const guardar = (valor) => {
     setMinimizada(valor);
@@ -41,6 +48,10 @@ export default function GitHubCard() {
       // Sin almacenamiento disponible: solo cambia en esta vista.
     }
   };
+
+  if (!hidratado) {
+    return null;
+  }
 
   if (minimizada) {
     return (

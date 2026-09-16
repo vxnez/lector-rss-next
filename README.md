@@ -88,10 +88,19 @@ Consultas parametrizadas (anti SQL injection), contrasenas con bcrypt, aislamien
 ## 5. Comandos y entorno
 
 ```bash
-npm run dev | npm run build | npm start | npm run lint
+npm run dev | npm run build | npm start | npm run lint | npm run verify:feeds
 ```
 
 Variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_ID/SECRET`, `GEMINI_API_KEY`.
+
+### 5.1 Verificación de feeds recomendados
+
+El proyecto incluye un sistema de verificación automática de feeds RSS para la guía de bienvenida (onboarding):
+
+- **Script**: `scripts/verify-feeds.js` — Verifica cada URL en `src/data/recommended-feeds.json`
+- **Comando**: `npm run verify:feeds` — Ejecuta la verificación y actualiza el JSON con solo feeds válidos
+- **Criterios**: HTTP 200 + XML válido con al menos un `<item>` o `<entry>`
+- **GitHub Action**: `.github/workflows/verify-feeds.yml` — Se ejecuta semanalmente (lunes 03:00 UTC) y commitea cambios automáticamente
 
 ## 6. Validacion y limitaciones
 

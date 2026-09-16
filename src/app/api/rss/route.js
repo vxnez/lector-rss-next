@@ -52,7 +52,7 @@ async function extraerImagenDePagina(url) {
 
 async function extraerImagenDirecta(url) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(url, {
       headers: HEADERS_BROWSER,
@@ -64,14 +64,41 @@ async function extraerImagenDirecta(url) {
     if (!/html/i.test(res.headers.get("content-type") || "")) return null;
     const html = await res.text();
     const $ = cheerio.load(html);
-    const candidatas = [
+
+    // Helper: obtener la mejor URL de srcset (la de mayor ancho)
+    function mejorDeSrcset(srcset) {
+      if (!srcset) return null;
+      const partes = srcset.split(",").map(s => s.trim());
+      let mejor = null;
+      let maxW = 0;
+      for (const parte of partes) {
+        const match = parte.match(/^(.+?)\s+(\d+)w$/);
+        if (match) {
+          const w = parseInt(match[2], 10);
+          if (w > maxW) {
+            maxW = w;
+            mejor = match[1].trim();
+          }
+        } else if (!mejor && parte) {
+          // fallback: primera URL si no hay descriptores w
+          mejor = parte.split(" ")[0].trim();
+        }
+      }
+      return mejor;
+    }
+
+    // 1. Meta tags estándar (OG, Twitter, etc.)
+    const metaCandidatas = [
       $('meta[property="og:image"]').attr("content"),
       $('meta[property="og:image:secure_url"]').attr("content"),
       $('meta[name="twitter:image"]').attr("content"),
       $('meta[name="twitter:image:src"]').attr("content"),
       $('link[rel="image_src"]').attr("href"),
+      $('meta[property="og:image:url"]').attr("content"),
+      $('meta[name="image"]').attr("content"),
+      $('meta[itemprop="image"]').attr("content"),
     ];
-    for (const candidata of candidatas) {
+    for (const candidata of metaCandidatas) {
       if (typeof candidata === "string" && candidata.trim()) {
         try {
           const absoluta = new URL(candidata.trim(), res.url || url).href;
@@ -81,6 +108,127 @@ async function extraerImagenDirecta(url) {
         }
       }
     }
+
+    // 2. JSON-LD structured data (Schema.org)
+    const jsonLdScripts = $('script[type="application/ld+json"]');
+    for (const el of jsonLdScripts.toArray()) {
+      try {
+        const data = JSON.parse($(el).html() || "");
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item["@type"] === "ImageObject" && item.contentUrl) {
+            return new URL(item.contentUrl, res.url || url).href;
+          }
+          if (item.image) {
+            const img = typeof item.image === "string" ? item.image : item.image.contentUrl || item.image.url;
+            if (img) return new URL(img, res.url || url).href;
+          }
+        }
+      } catch {
+        // Ignorar JSON inválido
+      }
+    }
+
+    // 3. Buscar la primera imagen grande en el contenido principal
+    // Selectores ampliados para WordPress, sitios modernos, etc.
+    const selectoresContenido = [
+      'article img',
+      '[role="main"] img',
+      '.article-body img',
+      '.post-content img',
+      '.entry-content img',
+      '.content img',
+      'main img',
+      '#content img',
+      // WordPress / Gutenberg / WP Engine
+      '.wp-block-image img',
+      '.wp-block-cover img',
+      '.post-thumbnail img',
+      '.entry-header img',
+      '.featured-image img',
+      '.post-image img',
+      '.article-image img',
+      '.hero-image img',
+      // Clases comunes de temas
+      '.td-post-content img',
+      '.post-body img',
+      '.article-content img',
+      '.story-body img',
+      '.entry img',
+      // Contenedores de imagen principal
+      '[class*="featured"] img',
+      '[class*="hero"] img',
+      '[class*="lead"] img',
+      '[class*="main-image"] img',
+      '[class*="primary-image"] img',
+      // Figure / Picture (común en WordPress)
+      'figure img',
+      'picture img',
+      'figure picture img',
+      // Android Authority / sitios con CSS-in-JS
+      '[class^="e_"] img',
+      '[class*=" e_"] img',
+      '[class*="wp-image-"]',
+      // Selectores genéricos de contenedores de imagen
+      '.image-wrapper img',
+      '.img-wrapper img',
+      '.thumbnail img',
+      '.post-media img',
+      '.entry-media img',
+    ];
+    for (const selector of selectoresContenido) {
+      const img = $(selector).first();
+      if (img.length) {
+        // Prioridad: srcset (mejor resolución) > src > data-src > data-lazy-src > data-original
+        const srcset = img.attr("srcset");
+        const srcDeSrcset = mejorDeSrcset(srcset);
+        const src = srcDeSrcset || img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || img.attr("data-original") || img.attr("data-srcset") && mejorDeSrcset(img.attr("data-srcset"));
+        if (src && /^https?:\/\//i.test(src)) {
+          try {
+            return new URL(src, res.url || url).href;
+          } catch {
+            // continuar
+          }
+        }
+      }
+    }
+
+    // 3b. Buscar en <picture><source> (responsive images)
+    const pictureSources = $('picture source');
+    for (const source of pictureSources.toArray()) {
+      const srcset = $(source).attr("srcset");
+      const srcDeSrcset = mejorDeSrcset(srcset);
+      if (srcDeSrcset) {
+        try {
+          return new URL(srcDeSrcset, res.url || url).href;
+        } catch {
+          // continuar
+        }
+      }
+    }
+
+    // 4. Fallback: primera imagen válida en todo el HTML (excluyendo iconos, avatares, etc.)
+    const todasLasImagenes = $('img');
+    for (let i = 0; i < todasLasImagenes.length; i++) {
+      const img = $(todasLasImagenes[i]);
+      const srcset = img.attr("srcset");
+      const srcDeSrcset = mejorDeSrcset(srcset);
+      const src = srcDeSrcset || img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || img.attr("data-original") || img.attr("data-srcset") && mejorDeSrcset(img.attr("data-srcset"));
+      if (!src) continue;
+      // Filtrar imágenes pequeñas/iconos/avatares
+      const width = parseInt(img.attr("width") || "0", 10);
+      const height = parseInt(img.attr("height") || "0", 10);
+      if ((width && width < 100) || (height && height < 100)) continue;
+      const alt = (img.attr("alt") || "").toLowerCase();
+      if (alt.includes("logo") || alt.includes("icon") || alt.includes("avatar") || alt.includes("badge")) continue;
+      try {
+        const abs = new URL(src, res.url || url).href;
+        if (/^https?:\/\//i.test(abs) && /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(abs)) return abs;
+      } catch {
+        // continuar
+      }
+    }
+
     return null;
   } catch {
     clearTimeout(timeoutId);

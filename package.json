@@ -2,11 +2,14 @@
   "name": "lector-rss-next",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:feeds": "node scripts/verify-feeds.js",
+    "verify:feeds:ci": "node scripts/verify-feeds.js || true"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
