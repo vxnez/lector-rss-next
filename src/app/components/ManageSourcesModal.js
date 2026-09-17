@@ -228,8 +228,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   }, [onChange]);
 
   // Interruptor por fuente "Convertir la página completa": toggle optimista
-  // con reversión si el PUT falla. El refresco posterior lee este flag en BD
-  // y usa el crawler multipágina completo en vez de la extracción estándar.
+  // con reversión si el PUT falla. Al activar, dispara el refresco completo
+  // de inmediato para que el usuario vea el listado ampliado sin un clic extra.
   const handleToggleFullPage = async (source) => {
     const sourceId = source.id;
     const siguiente = !(Number(source.convert_full_page) === 1 || source.convertFullPage === true);
@@ -248,8 +248,13 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || t("fuentes.convert_full_err"));
       }
-      onNotify?.(t(siguiente ? "fuentes.convert_full_on" : "fuentes.convert_full_off"), "success");
       if (onChange) onChange();
+      if (siguiente) {
+        // Activado: refrescar con el crawler completo sin pedir otro clic.
+        await handleRefreshSingle({ ...source, convertFullPage: true, convert_full_page: 1 });
+      } else {
+        onNotify?.(t("fuentes.convert_full_off"), "success");
+      }
     } catch (err) {
       console.error("Error al guardar página completa:", err);
       setSources(previo);
