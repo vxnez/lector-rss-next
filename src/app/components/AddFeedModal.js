@@ -89,6 +89,9 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 className="field-focus w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
               />
             </div>
+            <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+              {t("addfeed.web_hint")}
+            </p>
           </div>
 
           <div>

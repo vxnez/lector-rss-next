@@ -1481,6 +1481,9 @@ export default function HomePage() {
           setNonceRecarga((n) => n + 1);
           fetchSources();
           fetchConteos();
+          if (data?.convertida) {
+            notify(t("avisos.fuente_convertida"), "success");
+          }
           if (Number(data?.pendientes) > 0) {
             notify(t("avisos.cola_agregada"), "success");
             procesarColaClasificacion();

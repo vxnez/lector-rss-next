@@ -13,6 +13,7 @@ import {
   CATEGORIAS_DISPONIBLES,
 } from "@/lib/categoryClassifier";
 import { fetchPublico, leerBufferLimitado, leerTextoLimitado } from "@/lib/ssrf";
+import { convertirPaginaAFeed } from "@/lib/webToRss";
 
 const parser = new Parser({
   headers: {
@@ -557,6 +558,70 @@ async function actualizarValidadoresFuente(fuenteId, etag, lastModified) {
   );
 }
 
+// Origen de la fuente: 'rss' (feed nativo) o 'web' (página convertida con el
+// motor web→RSS). Las convertidas se refrescan re-scrapeando la página en vez
+// de parsear un feed, y comparten el mismo caché condicional (etag /
+// last_modified / ultima_revision). Patrón ensure* del proyecto: la columna
+// se crea bajo demanda y la promesa se cachea por vida del servidor.
+let fuentesOrigenSchemaPromise;
+
+async function ensureFuentesOrigenSchema() {
+  if (!fuentesOrigenSchemaPromise) {
+    fuentesOrigenSchemaPromise = (async () => {
+      const [columns] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'fuentes_rss'
+           AND COLUMN_NAME = 'origen'`
+      );
+      if (columns.length === 0) {
+        await db.query(
+          "ALTER TABLE fuentes_rss ADD COLUMN origen VARCHAR(16) NOT NULL DEFAULT 'rss'"
+        );
+      }
+    })().catch((error) => {
+      fuentesOrigenSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return fuentesOrigenSchemaPromise;
+}
+
+// Mapa id → origen tolerante a BDs sin la columna (todo 'rss').
+// Evita que un SELECT con columna inexistente rompa refrescos/cron.
+async function mapaOrigenFuentes(ids = []) {
+  const mapa = new Map();
+  if (!ids.length) return mapa;
+  try {
+    const [filas] = await db.query(
+      `SELECT id, origen FROM fuentes_rss WHERE id IN (${ids.map(() => "?").join(",")})`,
+      ids
+    );
+    for (const fila of filas) mapa.set(fila.id, fila.origen === "web" ? "web" : "rss");
+  } catch (error) {
+    if (error?.code !== "ER_BAD_FIELD_ERROR" && error?.code !== "ER_NO_SUCH_TABLE") throw error;
+    for (const id of ids) mapa.set(id, "rss");
+  }
+  return mapa;
+}
+
+// Obtiene el feed de una fuente según su origen: parseo nativo o
+// re-scrapeo de la página convertida (con validadores condicionales en
+// ambos casos para no descargar sin cambios).
+async function obtenerFeedFuente(fuente, { omitirOrigenDb = false } = {}) {
+  const validadores = { etag: fuente.etag, lastModified: fuente.last_modified };
+  let origen = fuente.origen;
+  if (!origen && !omitirOrigenDb) {
+    origen = (await mapaOrigenFuentes([fuente.id])).get(fuente.id) || "rss";
+  }
+  if (origen === "web") {
+    const conversion = await convertirPaginaAFeed(fuente.url_feed, { validadores });
+    if (conversion?.sinCambios) return { sinCambios: true, urlFinal: conversion.urlFinal };
+    return { feed: conversion.feed, etag: conversion.etag, lastModified: conversion.lastModified };
+  }
+  return intentarParsearFeed(fuente.url_feed, validadores);
+}
+
 // Refuerzo de medios: guarda imagen/video descubiertos bajo demanda en el
 // artículo (solo vacíos y del llamante) para no re-extraer en cada apertura.
 async function persistirMediaArticulo(idArticulo, userId, { imagen, video } = {}) {
@@ -940,7 +1005,20 @@ async function buscarFeedRSS(urlIngresada) {
   const feedDescubierto = await buscarPrimerFeed(candidatos);
   if (feedDescubierto) return feedDescubierto;
 
-  throw new Error("No se pudo detectar un feed RSS válido en esta URL.");
+  // Sin feed nativo: último recurso estilo RSS.app — convertir la propia
+  // página en feed (scraping con guarda SSRF). Lanza un error limpio para
+  // el usuario si la página no es convertible.
+  const conversion = await convertirPaginaAFeed(urlLimpia);
+  if (conversion?.sinCambios || !conversion?.feed) {
+    throw new Error("No se pudo detectar un feed RSS válido en esta URL.");
+  }
+  return {
+    feed: conversion.feed,
+    urlFinal: conversion.urlFinal,
+    etag: conversion.etag,
+    lastModified: conversion.lastModified,
+    convertida: true,
+  };
 }
 
 export async function POST(req) {
@@ -955,6 +1033,7 @@ export async function POST(req) {
     await ensureClassificationSchema();
     await ensureVideoSchema();
     await ensureFuentesCacheSchema();
+    await ensureFuentesOrigenSchema();
     await ensureArticulosUnicidad(userId);
 
     const limiteFecha = new Date();
@@ -1024,9 +1103,11 @@ export async function POST(req) {
         if (!propias[0]) {
           return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
         }
-        const resultado = await intentarParsearFeed(url, {
+        const resultado = await obtenerFeedFuente({
+          id: source_id,
+          url_feed: url,
           etag: propias[0]?.etag,
-          lastModified: propias[0]?.last_modified,
+          last_modified: propias[0]?.last_modified,
         });
         if (resultado?.sinCambios) {
           await actualizarValidadoresFuente(source_id, null, null);
@@ -1098,7 +1179,7 @@ export async function POST(req) {
       );
     }
 
-    const { feed, urlFinal, etag, lastModified } = await buscarFeedRSS(url_feed);
+    const { feed, urlFinal, etag, lastModified, convertida } = await buscarFeedRSS(url_feed);
 
     if (!feed.items || feed.items.length === 0) {
       throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");
@@ -1113,8 +1194,8 @@ export async function POST(req) {
     }
 
     const [resFuente] = await db.query(
-      "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision) VALUES (?, ?, ?, ?, ?, ?, NOW())",
-      [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null]
+      "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision, origen) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)",
+      [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null, convertida ? "web" : "rss"]
     );
 
     const fuenteId = resFuente.insertId;
@@ -1130,6 +1211,12 @@ export async function POST(req) {
 
     const pendientes = extraerPendientes(clasificaciones).length;
 
+    if (convertida) {
+      return NextResponse.json(
+        { message: "Página convertida a RSS y agregada con éxito", nuevos: totalNuevas, pendientes, convertida: true },
+        { status: 201 }
+      );
+    }
     return NextResponse.json({ message: "Fuente agregada con éxito", nuevos: totalNuevas, pendientes }, { status: 201 });
   } catch (error) {
     console.error("Error crítico en POST /api/rss:", error);
@@ -1653,16 +1740,27 @@ export async function refrescarFuentesDeUsuario(userId, { restoreToday = false }
     return { vacia: true, nuevos: 0, pendientes: 0, omitidas: 0, restaurados: 0, purgados: 0 };
   }
 
+  // Origen por fuente (tolerante a BDs sin la columna): las 'web' se
+  // refrescan re-scrapeando la página convertida, no parseando un feed.
+  // El ensure nunca rompe el refresco/cron: si falla, todo se trata como rss.
+  let mapaOrigen = new Map();
+  try {
+    await ensureFuentesOrigenSchema();
+    mapaOrigen = await mapaOrigenFuentes(fuentes.map((fuente) => fuente.id));
+  } catch {
+    // Sin columna de origen: refresco nativo para todas.
+  }
+
   let nuevos = 0;
   let pendientes = 0;
   let omitidas = 0;
   const existentes = await obtenerClasificacionesExistentes(fuentes.map((fuente) => fuente.id));
   await mapWithConcurrency(fuentes, 4, async (fuente) => {
     try {
-      const resultado = await intentarParsearFeed(fuente.url_feed, {
-        etag: fuente.etag,
-        lastModified: fuente.last_modified,
-      });
+      const resultado = await obtenerFeedFuente(
+        { ...fuente, origen: mapaOrigen.get(fuente.id) || "rss" },
+        { omitirOrigenDb: true }
+      );
       if (resultado?.sinCambios) {
         await actualizarValidadoresFuente(fuente.id, null, null);
         omitidas++;
