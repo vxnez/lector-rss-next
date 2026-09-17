@@ -1,6 +1,6 @@
 # Lector RSS — Dashboard de feeds con IA
 
-Aplicación web full-stack para centralizar, organizar y leer noticias de fuentes RSS por usuario. Permite registrar feeds, consultar un dashboard de artículos, clasificarlos automáticamente con IA, marcarlos como leídos, guardarlos, descartarlos y administrar las fuentes. Despliegue en Vercel con MySQL en Aiven.
+Aplicación web full-stack para centralizar, organizar y leer noticias de fuentes RSS por usuario. Permite registrar feeds, consultar un dashboard de artículos, clasificarlos automáticamente con IA, marcarlos como leídos, guardarlos, descartarlos y administrar las fuentes. Despliegue en Vercel con MySQL en servidor local (Ubuntu Server).
 
 ## Stack tecnológico
 
@@ -12,7 +12,7 @@ Aplicación web full-stack para centralizar, organizar y leer noticias de fuente
 | Tipografía | Geist / Geist Mono (`next/font`) |
 | Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `mysql2/promise`, `bcryptjs`) |
 | Autenticación | NextAuth 5 beta: credenciales, Google OAuth, GitHub OAuth |
-| Base de datos | MySQL en Aiven (pool 10, SSL, `utf8mb4`) |
+| Base de datos | MySQL 8.4 en servidor local Ubuntu Server (pool 10, SSL, `utf8mb4`) |
 | IA | Gemini REST (`gemini-3.5-flash-lite` principal, `gemini-2.5-flash` alterno) |
 | Notificaciones | Web Push API (VAPID) + Service Worker |
 | CI | GitHub Actions (build + lint en Node 20.x y 22.x) |
@@ -111,7 +111,7 @@ src/
 │   │   ├── compartir/           # Web Share Target
 │   │   └── repo/                # Info del repositorio
 ├── lib/
-│   ├── db.js                    # Pool MySQL (Aiven, SSL)
+│   ├── db.js                    # Pool MySQL (servidor local Ubuntu, SSL)
 │   ├── categoryClassifier.js    # Catálogo cerrado 23 categorías + prompt
 │   ├── categoryStyles.js        # Colores deterministas por hash del nombre
 │   ├── feed-utils.js            # Utilidades puras (params, VAPID, paginación)
@@ -173,7 +173,9 @@ VAPID_PRIVATE_KEY
 
 ## Despliegue
 
-1. Base de datos MySQL en Aiven (SSL, `utf8mb4_unicode_ci`)
+> **Infraestructura actual:** se migró de Aiven a un servidor MySQL local en Ubuntu Server (equipo dedicado como servidor completo, `servxn-mysql.duckdns.org`). Aiven era una limitante para la página (cuota, latencia y control), por lo que ya no se utiliza.
+
+1. Base de datos MySQL 8.4 en servidor local Ubuntu Server (`servxn-mysql.duckdns.org:3306`, SSL con `TLS_AES_128_GCM_SHA256`, `utf8mb4_unicode_ci`, `innodb_buffer_pool_size = 2G`)
 2. Ejecutar scripts SQL en orden (`00_` a `09_`) o usar `06_ensure_schema.sql` para migraciones idempotentes
 3. Configurar variables de entorno en Vercel
 4. Deploy automático en push a `main`
