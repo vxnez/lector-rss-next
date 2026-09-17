@@ -84,14 +84,43 @@ function esUrlVideoDirecta(valor) {
 }
 
 // Descarga el HTML de una página (con guard SSRF) o null si no es HTML.
-async function obtenerHtmlPagina(url) {
+// Con reintento en perfil alterno: varios medios (WAFs) bloquean la huella
+// Chrome con 403 pero responden al perfil Firefox (patrón ya verificado en
+// feeds). Registra cada desenlace para trazabilidad en logs del servidor.
+async function obtenerHtmlPagina(url, etiqueta = "media") {
+  const inicio = Date.now();
+  let host = url;
   try {
-    const { res, urlFinal } = await fetchPublico(url, { headers: HEADERS_BROWSER, timeoutMs: 8000 });
-    if (!res.ok) return null;
-    if (!/html/i.test(res.headers.get("content-type") || "")) return null;
-    const html = await leerTextoLimitado(res);
-    return { html, baseFinal: urlFinal || url };
+    host = new URL(url).hostname;
   } catch {
+    // Se registra la URL cruda.
+  }
+  const registrar = (estado, detalle = "") => {
+    console.log(`[media:${etiqueta}] host=${host} ${estado} ms=${Date.now() - inicio}${detalle ? ` ${detalle}` : ""}`);
+  };
+  try {
+    let res;
+    let urlFinal = url;
+    try {
+      ({ res, urlFinal } = await fetchPublico(url, { headers: HEADERS_BROWSER, timeoutMs: 8000 }));
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      ({ res, urlFinal } = await fetchPublico(url, { headers: HEADERS_ALT, timeoutMs: 8000 }));
+    }
+    if (!res.ok && [401, 403, 429].includes(res.status)) {
+      await res.arrayBuffer().catch(() => {});
+      ({ res, urlFinal } = await fetchPublico(url, { headers: HEADERS_ALT, timeoutMs: 8000 }));
+    }
+    const contentType = res.headers.get("content-type") || "";
+    if (!res.ok || !/html/i.test(contentType)) {
+      registrar("NO_HTML", `status=${res.status} ct=${contentType.slice(0, 60)}`);
+      return null;
+    }
+    const html = await leerTextoLimitado(res);
+    registrar("OK", `bytes=${html.length}`);
+    return { html, baseFinal: urlFinal || url };
+  } catch (err) {
+    registrar(err.name === "AbortError" ? "TIMEOUT" : "ERROR", `motivo=${err.message || err}`);
     return null;
   }
 }
@@ -201,14 +230,11 @@ function extraerVideoUrl(item = {}) {
 }
 
 async function extraerImagenDirecta(url) {
+  // Reutiliza el fetcher con fallback de perfil + logs (obtenerHtmlPagina).
+  const pagina = await obtenerHtmlPagina(url, "imagen");
+  if (!pagina) return null;
+  const { html, baseFinal } = pagina;
   try {
-    // fetchPublico aplica el mismo guard SSRF (IP pública + redirects
-    // revalidados) que el resto de fetchers server-side.
-    const { res, urlFinal } = await fetchPublico(url, { headers: HEADERS_BROWSER, timeoutMs: 8000 });
-    const baseFinal = urlFinal || url;
-    if (!res.ok) return null;
-    if (!/html/i.test(res.headers.get("content-type") || "")) return null;
-    const html = await leerTextoLimitado(res);
     const $ = cheerio.load(html);
 
     // Helper: obtener la mejor URL de srcset (la de mayor ancho)
@@ -1147,15 +1173,27 @@ export async function GET(req) {
       // Orden de medios: imagen directa → video/poster embebido →
       // screenshot. El poster (<video poster>, thumbnail YouTube/Vimeo)
       // cuenta como imagen y evita el screenshot lento.
+      const tMedia = Date.now();
       let medios;
+      let etapa = "directa";
       if (encontrada) {
         medios = { imagen: encontrada, video: null };
       } else {
         const embebido = await extraerVideoDePagina(verificada);
-        medios =
-          embebido.video || embebido.poster
-            ? { imagen: embebido.poster || null, video: embebido.video || null }
-            : { imagen: await extraerImagenScreenshot(verificada), video: null };
+        if (embebido.video || embebido.poster) {
+          etapa = embebido.video ? "video" : "poster";
+          medios = { imagen: embebido.poster || null, video: embebido.video || null };
+        } else {
+          etapa = "screenshot";
+          medios = { imagen: await extraerImagenScreenshot(verificada), video: null };
+          if (!medios.imagen) etapa = "nada";
+        }
+      }
+      // Trazabilidad: qué etapa ganó, para qué host y en cuánto tiempo.
+      try {
+        console.log(`[media:decision] host=${new URL(verificada).hostname} etapa=${etapa} ms=${Date.now() - tMedia}`);
+      } catch {
+        // El log nunca bloquea la respuesta.
       }
       imagenPaginaCache.set(verificada, medios);
       if (imagenPaginaCache.size > 500) {
