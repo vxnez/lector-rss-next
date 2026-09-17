@@ -636,6 +636,67 @@ function detectarSiguientePagina($, base, baseHost, paginaActual) {
   return "";
 }
 
+// Sondeo de patrones clásicos de paginación (/page/2/, ?paged=2, ?page=2)
+// para listados cuya paginación es 100% JS (bloques Query de Gutenberg,
+// "Load More" sin href) y no exponen ninguna señal seguible. Solo desde la
+// página 1: el bucle valida cada candidato y conserva únicamente el que
+// aporta noticias nuevas (los demás se descartan sin romper el listado).
+function candidatosSondeoPagina(base, baseHost) {
+  const urls = [];
+  try {
+    const referencia = new URL(base);
+    if (referencia.hostname.toLowerCase() !== baseHost) return urls;
+    if (numeroDePagina(base) !== 1) return urls;
+    // Nunca sondear sobre URLs de feed/sindicación.
+    if (/\/(feed|rss|atom)(\/|$)/i.test(referencia.pathname)) return urls;
+    // 1) Estilo WordPress: /page/2/ (verificado con github.blog el 17/09/2026:
+    // su home no expone siguiente pero /page/2/ trae artículos distintos).
+    const conRuta = new URL(base);
+    conRuta.pathname = `${conRuta.pathname.replace(/\/+$/, "")}/page/2/`;
+    conRuta.hash = "";
+    urls.push(normalizarUrlPagina(conRuta.href));
+    // 2) ?paged=2 (WordPress) y 3) ?page=2 (genérico).
+    for (const param of ["paged", "page"]) {
+      const conQuery = new URL(base);
+      conQuery.searchParams.set(param, "2");
+      conQuery.hash = "";
+      urls.push(normalizarUrlPagina(conQuery.href));
+    }
+  } catch {
+    // Base inválida: sin sondeo.
+  }
+  return [...new Set(urls)];
+}
+
+// Continuación en el mismo estilo del sondeo que funcionó (?page=2 →
+// ?page=3, /page/2/ → /page/3/): permite recorrer paginadores 100% JS más
+// allá de la segunda página. Solo aplica a URLs ya numeradas (N ≥ 2).
+function siguienteUrlMismoEstilo(urlActual) {
+  try {
+    const n = numeroDePagina(urlActual);
+    if (!Number.isInteger(n) || n < 2) return "";
+    const url = new URL(urlActual);
+    if (/\/(page|paged?|pagina|pg)\/\d+\/?$/i.test(url.pathname)) {
+      url.pathname = url.pathname.replace(
+        /\/(page|paged?|pagina|pg)\/\d+(\/?)$/i,
+        `/$1/${n + 1}$2`
+      );
+      url.hash = "";
+      return normalizarUrlPagina(url.href);
+    }
+    for (const nombre of ["paged", "page", "p", "pagina", "pg"]) {
+      if (url.searchParams.has(nombre)) {
+        url.searchParams.set(nombre, String(n + 1));
+        url.hash = "";
+        return normalizarUrlPagina(url.href);
+      }
+    }
+  } catch {
+    // URL inválida: sin continuación.
+  }
+  return "";
+}
+
 // ---- Extracción de una página HTML a { tituloSitio, items, esArticuloUnico } ----
 
 export function extraerFeedDeHtml(html, baseFinal) {
@@ -719,22 +780,37 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
 
   // Multipage crawling: recorre páginas siguientes hasta agotar el listado o
   // alcanzar los topes (páginas, noticias, tiempo). Los artículos únicos no
-  // paginan. Corte por página sin novedades = fin del listado.
+  // paginan. Corte por página sin novedades = fin del listado. La cola
+  // mezcla URLs detectadas en el HTML con sondeos de patrones clásicos; cada
+  // sondeo fallido se descarta y se prueba el siguiente sin cortar el crawl.
   let todos = [...primera.items];
   let paginas = 1;
   const visitadas = new Set([primera.base, normalizarUrlPagina(urlLimpia)]);
-  let siguiente = primera.siguiente;
+  let baseHostSondeo = "";
+  try {
+    baseHostSondeo = new URL(primera.base).hostname.toLowerCase();
+  } catch {
+    // Base inválida: el crawl queda solo con la detección del HTML.
+  }
+  const cola = [];
+  if (primera.siguiente) {
+    cola.push({ url: primera.siguiente, sondeo: false });
+  } else if (!primera.esArticuloUnico && baseHostSondeo) {
+    for (const url of candidatosSondeoPagina(primera.base, baseHostSondeo)) {
+      cola.push({ url, sondeo: true });
+    }
+  }
   const arranque = Date.now();
   while (
-    siguiente &&
+    cola.length > 0 &&
     !primera.esArticuloUnico &&
     paginas < MAX_PAGINAS_CRAWL &&
     todos.length < MAX_ITEMS_TOTAL &&
     Date.now() - arranque < TIEMPO_MAX_CRAWL_MS
   ) {
-    const urlPagina = normalizarUrlPagina(siguiente);
-    siguiente = "";
-    if (!urlPagina || visitadas.has(urlPagina)) break;
+    const { url: urlSiguiente, sondeo } = cola.shift();
+    const urlPagina = normalizarUrlPagina(urlSiguiente);
+    if (!urlPagina || visitadas.has(urlPagina)) continue;
     visitadas.add(urlPagina);
     await esperar(CORTESIA_ENTRE_PAGINAS_MS);
     if (Date.now() - arranque >= TIEMPO_MAX_CRAWL_MS) break;
@@ -742,14 +818,18 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
     try {
       pagina = await descargarPagina(urlPagina);
     } catch {
+      if (sondeo) continue; // Sondeo fallido: probar el siguiente patrón.
       break; // Página caída/bloqueada: se conserva lo ya recolectado.
     }
-    if (pagina?.sinCambios) break;
-    if (!pagina?.html) break;
+    if (pagina?.sinCambios || !pagina?.html) {
+      if (sondeo) continue;
+      break;
+    }
     let extraidos;
     try {
       extraidos = extraerFeedDeHtml(pagina.html, pagina.baseFinal);
     } catch {
+      if (sondeo) continue;
       break;
     }
     visitadas.add(extraidos.base);
@@ -762,9 +842,21 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
       todos.push(item);
       nuevos++;
     }
+    if (nuevos === 0) {
+      if (sondeo) continue; // Patrón que no aplica: probar el siguiente.
+      paginas++; // Se cuenta la página terminal detectada (semántica previa).
+      break; // Listado agotado (o página repetida).
+    }
     paginas++;
-    if (nuevos === 0) break; // Listado agotado (o página repetida).
-    siguiente = extraidos.siguiente;
+    // Página con novedades: se sigue la detección normal del HTML; si la
+    // página no expone siguiente pero llegamos por sondeo (o la URL ya está
+    // numerada), se continúa con el mismo patrón N+1 para paginadores JS.
+    if (extraidos.siguiente) {
+      cola.push({ url: extraidos.siguiente, sondeo: false });
+    } else {
+      const mas = siguienteUrlMismoEstilo(urlPagina);
+      if (mas) cola.push({ url: mas, sondeo: true });
+    }
   }
 
   // Consolidación: desduplicar por URL y ordenar cronológicamente inverso

@@ -200,6 +200,33 @@ export async function PUT(req) {
       }
     }
 
+    // Con el flag activo y una URL editada que apunta a una página (no a un
+    // feed), se guarda como pagina_origen para el crawler: permite rescatar
+    // fuentes antiguas pegando la URL de sección (p. ej. /developer-skills/)
+    // en Editar y refrescar con página completa.
+    if (flag === 1 && !/\/(feed|rss|atom)(\/|$)|\.xml(\?|#|$)/i.test(sanitizedUrl)) {
+      try {
+        await db.query(
+          "UPDATE fuentes_rss SET pagina_origen = ? WHERE id = ? AND usuario_id = ?",
+          [sanitizedUrl, id, userId]
+        );
+      } catch (error) {
+        if (error?.code === "ER_BAD_FIELD_ERROR") {
+          try {
+            await db.query("ALTER TABLE fuentes_rss ADD COLUMN pagina_origen VARCHAR(1000) NULL");
+            await db.query(
+              "UPDATE fuentes_rss SET pagina_origen = ? WHERE id = ? AND usuario_id = ?",
+              [sanitizedUrl, id, userId]
+            );
+          } catch {
+            // Sin columna: no bloquea la edición principal.
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+
     return NextResponse.json({ message: "Fuente actualizada", convertFullPage: flag === undefined ? undefined : flag === 1 });
   } catch (error) {
     console.error("Error en PUT /api/sources:", error);
