@@ -543,8 +543,11 @@ export default function HomePage() {
     return () => controller.abort();
   }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, nonceRecarga]);
 
-  const closeOnboardingSurvey = (completado = false) => {
-    if (completado && session?.user) {
+  const closeOnboardingSurvey = () => {
+    // La guía se marca como vista al cerrarla por cualquier vía (completar,
+    // omitir o X): reabrirla queda disponible en Ajustes → Guía. Antes solo
+    // persistía al completar, por eso reaparecía en cada inicio de sesión.
+    if (session?.user) {
       const clave = esInvitado ? "invitado" : (session.user.email || session.user.id);
       if (clave) {
         try {
@@ -567,25 +570,35 @@ export default function HomePage() {
     setShowOnboardingSurvey(false);
   };
 
-  // Función para agregar fuentes desde la encuesta de onboarding (un clic)
+  // Función para agregar fuentes desde la encuesta de onboarding (un clic).
+  // Usa el pipeline completo de /api/rss (descubrimiento + descarga +
+  // clasificación), igual que el alta manual: antes insertaba directo en
+  // /api/sources y las URLs sin feed válido quedaban en 0 noticias.
   const handleAgregarFuenteOnboarding = useCallback(async (titulo, url_feed, categoria) => {
     try {
-      const res = await fetch("/api/sources", {
+      const res = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: titulo.trim(), url_feed: url_feed.trim(), categoria: (categoria || "General").trim() }),
+        body: JSON.stringify({ url_feed: url_feed.trim(), categoria: (categoria || "General").trim() }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || t("fuentes.err_conexion"));
-      // Recargar fuentes y conteos
+      // 409 = ya registrada en la cuenta: se considera agregada.
+      if (!res.ok && res.status !== 409) throw new Error(data.error || t("fuentes.err_conexion"));
+      // Recargar fuentes, conteos y feed con las noticias recién descargadas.
+      setPagina(1);
+      setNonceRecarga((n) => n + 1);
       fetchSources();
       fetchConteos();
+      if (Number(data?.pendientes) > 0) {
+        notify(t("avisos.cola_agregada"), "success");
+        procesarColaClasificacion();
+      }
       return data;
     } catch (err) {
       console.error("Error agregando fuente desde onboarding:", err);
       throw err;
     }
-  }, [fetchSources, fetchConteos, t]);
+  }, [fetchSources, fetchConteos, notify, procesarColaClasificacion, t]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

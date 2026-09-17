@@ -234,7 +234,9 @@ async function extraerImagenDirecta(url) {
 
 async function extraerImagenScreenshot(url) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  // Tope reducido (antes 20 s): el screenshot es último recurso y no debe
+  // bloquear el lector; si tarda, se devuelve null y listo.
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const res = await fetch(
       `https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=true&meta=false`,
@@ -347,6 +349,21 @@ async function actualizarValidadoresFuente(fuenteId, etag, lastModified) {
      SET etag = COALESCE(?, etag), last_modified = COALESCE(?, last_modified), ultima_revision = NOW()
      WHERE id = ?`,
     [etag || null, lastModified || null, fuenteId]
+  );
+}
+
+// Refuerzo de imágenes: guarda la imagen descubierta bajo demanda en el
+// artículo (solo si aún no tiene y pertenece al llamante) para que las
+// siguientes aperturas la traigan directo de la BD sin re-extraer.
+async function persistirImagenArticulo(idArticulo, userId, imagenUrl) {
+  if (!Number.isInteger(idArticulo) || idArticulo <= 0) return;
+  if (typeof imagenUrl !== "string" || !/^https?:\/\//i.test(imagenUrl.trim())) return;
+  await db.query(
+    `UPDATE articulos_publicados a
+     INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+     SET a.imagen_url = ?
+     WHERE a.id = ? AND f.usuario_id = ? AND (a.imagen_url IS NULL OR a.imagen_url = "")`,
+    [imagenUrl.trim().slice(0, 500), idArticulo, userId]
   );
 }
 
@@ -941,13 +958,23 @@ export async function GET(req) {
       } catch {
         return NextResponse.json({ imagen: null });
       }
+      const idArticulo = Number(searchParams.get("id") || "0") || null;
       if (imagenPaginaCache.has(verificada)) {
-        return NextResponse.json({ imagen: imagenPaginaCache.get(verificada) });
+        const cacheada = imagenPaginaCache.get(verificada);
+        // Refuerzo: si ya se conoce la imagen, guardarla en el artículo
+        // para no re-extraerla en futuras aperturas.
+        if (cacheada && idArticulo) {
+          await persistirImagenArticulo(idArticulo, userId, cacheada).catch(() => {});
+        }
+        return NextResponse.json({ imagen: cacheada });
       }
       const encontrada = await extraerImagenDePagina(verificada);
       imagenPaginaCache.set(verificada, encontrada);
       if (imagenPaginaCache.size > 500) {
         imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);
+      }
+      if (encontrada && idArticulo) {
+        await persistirImagenArticulo(idArticulo, userId, encontrada).catch(() => {});
       }
       return NextResponse.json({ imagen: encontrada });
     }

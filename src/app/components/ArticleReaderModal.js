@@ -241,7 +241,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   useEffect(() => {
     if (!article || article.imagen_url || !article.url_original) return undefined;
     let vivo = true;
-    fetch(`/api/rss?tipo=imagen&url=${encodeURIComponent(article.url_original)}`, { cache: "no-store" })
+    // Se envía el id para que el servidor persista la imagen hallada en el
+    // artículo y no haya que re-extraerla en futuras aperturas.
+    const idNumerico = Number(article.id);
+    const parametroId = Number.isInteger(idNumerico) && idNumerico > 0 ? `&id=${idNumerico}` : "";
+    fetch(`/api/rss?tipo=imagen&url=${encodeURIComponent(article.url_original)}${parametroId}`, { cache: "no-store" })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!vivo) return;
