@@ -1037,6 +1037,7 @@ export default function HomePage() {
                   <>
                     <NewsFeed
                       articles={articulos}
+                      tab={activeTab}
                       onToggleRead={toggleLeido}
                       onToggleSave={toggleGuardado}
                       onUpdateCategory={actualizarCategoria}

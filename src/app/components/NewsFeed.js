@@ -30,9 +30,12 @@ const pillDominioStyle = {
 const getCategoryColor = (categoria) => getCategoryStyle(categoria);
 
 // Tarjeta memorizada: evita re-render de toda la grilla al marcar una sola.
-const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, onToggleRead, onToggleSave, onDelete, t, locale }) {
+// `plena` (pestaña Guardadas): la tarjeta se muestra sin tachar ni atenuar;
+// el estado lo comunican solo las palomitas de leído/guardado.
+const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, plena = false, onAbrir, onToggleRead, onToggleSave, onDelete, t, locale }) {
   const isLeido = Boolean(art.leido);
   const isGuardado = Boolean(art.guardado);
+  const atenuada = isLeido && !plena;
   const nombreFuente = nombreFuenteDeArticulo(art, t("tarjeta.fuente_generica"));
   const fechaFormateada = formatFecha(art.fecha_publicacion, t("tarjeta.reciente"), locale);
   const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
@@ -47,14 +50,14 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
       style={{ "--stagger-delay": `${Math.min(indice * 40, 320)}ms` }}
       onMouseMove={fijarSpot}
       className={`tarjeta-noticia stagger-in card-lift spotlight-card group bezel-outer p-[3px] focus-within:border-[var(--accent)]/60 ${
-        isLeido
+        atenuada
           ? "opacity-50 saturate-[75%]"
           : "opacity-100 hover:shadow-[0_20px_48px_-20px_color-mix(in_srgb,var(--accent)_50%,transparent)]"
       }`}
     >
     <div
       className={`bezel-inner flex h-full flex-col justify-between p-5 ${
-        isLeido ? "bg-app-surface/70" : "bg-app-surface"
+        atenuada ? "bg-app-surface/70" : "bg-app-surface"
       }`}
     >
       <div>
@@ -65,7 +68,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
             <span
               style={pillDominioStyle}
               className={`text-[11px] font-bold border px-2 py-0.5 rounded flex items-center gap-1.5 tracking-wide transition-opacity ${
-                isLeido ? "opacity-60" : "opacity-100"
+                atenuada ? "opacity-60" : "opacity-100"
               }`}
             >
               <Globe size={11} className="shrink-0" />
@@ -94,7 +97,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
         <h3
           onClick={() => onAbrir(art)}
           className={`text-balance text-[17px] font-bold leading-snug tracking-tight mb-2 cursor-pointer transition line-clamp-2 ${
-            isLeido ? "text-app-muted line-through decoration-app-muted" : "text-app-fg hover:text-[var(--accent)]"
+            atenuada ? "text-app-muted line-through decoration-app-muted" : "text-app-fg hover:text-[var(--accent)]"
           }`}
         >
           {art.titulo}
@@ -102,7 +105,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
         <p
           onClick={() => onAbrir(art)}
           className={`resumen-noticia text-pretty text-[13px] leading-relaxed line-clamp-3 mb-4 cursor-pointer transition ${
-            isLeido ? "text-app-muted" : "text-app-muted hover:text-app-fg"
+            atenuada ? "text-app-muted" : "text-app-muted hover:text-app-fg"
           }`}
         >
           {art.resumen}
@@ -156,7 +159,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
   );
 });
 
-export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete, autoMarcarLeida = false }) {
+export default function NewsFeed({ articles, tab = "todas", onToggleRead, onToggleSave, onUpdateCategory, onDelete, autoMarcarLeida = false }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const { t, locale } = useIdioma();
   const rejillaRef = useRef(null);
@@ -249,6 +252,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
             key={art.id}
             art={art}
             indice={indice}
+            plena={tab === "guardadas"}
             onAbrir={abrirArticuloCb}
             onToggleRead={onToggleRead}
             onToggleSave={onToggleSave}
