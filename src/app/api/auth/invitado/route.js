@@ -18,6 +18,13 @@ async function eliminarInvitado(id) {
   );
   const usuario = filas[0];
   if (!usuario) return false;
+  // Limpieza explícita previa a la cascada FK: push (los invitados también
+  // pueden suscribirse) + artículos + fuentes + códigos por email.
+  try {
+    await db.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [id]);
+  } catch {
+    // La tabla de push puede no existir aún: no bloquea la limpieza.
+  }
   const [fuentes] = await db.query("SELECT id FROM fuentes_rss WHERE usuario_id = ?", [id]);
   const ids = fuentes.map((f) => f.id);
   if (ids.length > 0) {

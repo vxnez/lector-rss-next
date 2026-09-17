@@ -31,6 +31,7 @@ import {
 import { BellRing as BellRingData, BellOff as BellOffData, Circle as CircleData, CheckCircle2 as CheckCircleData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { TEMAS } from "@/lib/temas";
+import { limpiarRastrosCuenta } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
 const URL_APP = "https://lector-rss-next.vercel.app";
@@ -268,22 +269,10 @@ export default function AjustesPanel({
     try {
       const res = await fetch("/api/datos", { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar la cuenta.");
-      // Sin rastro en este navegador: marcas de bienvenida de la cuenta.
-      try {
-        const claves = [];
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const clave = window.localStorage.key(i);
-          if (
-            clave &&
-            (clave.startsWith("welcome_seen_") || clave === "guest_has_seen_onboarding")
-          ) {
-            claves.push(clave);
-          }
-        }
-        claves.forEach((clave) => window.localStorage.removeItem(clave));
-      } catch {
-        // Sin almacenamiento disponible: nada que limpiar.
-      }
+      // Sin rastro en este navegador: ajustes de lectura/apariencia a
+      // valores por defecto + marcas de bienvenida de la cuenta. Un
+      // re-registro con el mismo correo arranca con perfil limpio.
+      limpiarRastrosCuenta();
       onNotify(t("avisos.cuenta_eliminada"), "success");
       await signOut({ callbackUrl: "/login" });
     } catch (err) {

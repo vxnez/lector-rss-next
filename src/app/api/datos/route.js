@@ -45,6 +45,7 @@ export async function GET() {
 }
 
 export async function DELETE() {
+  let conexion;
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -52,19 +53,62 @@ export async function DELETE() {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    // Cascada por FK: fuentes, artículos, suscripciones push y perfil.
-    // Los códigos de recuperación apuntan por email (sin FK): se borran
-    // aparte para no dejar ningún rastro de la cuenta.
-    const [[cuenta]] = await db.query("SELECT email FROM usuarios WHERE id = ?", [userId]);
-    if (cuenta?.email) {
-      await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [cuenta.email]).catch(() => {
-        // Tabla inexistente en BDs antiguas: no bloquea el borrado.
-      });
+    // Borrado permanente ATÓMICO: una sola transacción que elimina la cuenta
+    // y todos sus registros asociados. El borrado es explícito (no depende
+    // solo del ON DELETE CASCADE) para que ni en BDs antiguas sin FK ni en
+    // tablas sin FK (recuperacion_codigos, keyed por email) queden huérfanos
+    // que un re-registro con el mismo correo pudiera heredar.
+    conexion = await db.getConnection();
+    await conexion.beginTransaction();
+
+    const [[cuenta]] = await conexion.query(
+      "SELECT id, email FROM usuarios WHERE id = ? FOR UPDATE",
+      [userId]
+    );
+    if (!cuenta) {
+      await conexion.rollback();
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
-    await db.query("DELETE FROM usuarios WHERE id = ?", [userId]);
+
+    // 1) Notificaciones push del usuario (UNIQUE global por endpoint: una
+    //    fila huérfana revincularía el endpoint al re-registro vía upsert).
+    await conexion.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [userId]);
+    // 2) Artículos de sus fuentes (vía JOIN, sin depender de la cascada).
+    await conexion.query(
+      `DELETE a FROM articulos_publicados a
+        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+        WHERE f.usuario_id = ?`,
+      [userId]
+    );
+    // 3) Fuentes RSS de la cuenta.
+    await conexion.query("DELETE FROM fuentes_rss WHERE usuario_id = ?", [userId]);
+    // 4) Códigos de recuperación (keyed por email, sin FK): se borran aquí
+    //    para que un re-registro no herede códigos válidos de la cuenta vieja.
+    if (cuenta.email) {
+      try {
+        await conexion.query("DELETE FROM recuperacion_codigos WHERE email = ?", [cuenta.email]);
+      } catch {
+        // Tabla inexistente en BDs antiguas: no bloquea el borrado.
+      }
+    }
+    // 5) La cuenta. La cascada FK (fuentes/push) queda como red de seguridad.
+    await conexion.query("DELETE FROM usuarios WHERE id = ?", [userId]);
+
+    await conexion.commit();
     return NextResponse.json({ message: "Cuenta y datos eliminados" });
   } catch (error) {
+    try {
+      await conexion?.rollback();
+    } catch {
+      // El rollback no debe ocultar el error original.
+    }
     console.error("Error al eliminar datos:", error);
     return NextResponse.json({ error: "Error al eliminar datos" }, { status: 500 });
+  } finally {
+    try {
+      conexion?.release();
+    } catch {
+      // Conexión ya liberada o inválida.
+    }
   }
 }

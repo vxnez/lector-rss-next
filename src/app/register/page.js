@@ -7,6 +7,7 @@ import { Mail, Lock, User } from "lucide-react";
 import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
 import MorphIcon from "../components/MorphIcon";
 import { signIn } from "next-auth/react";
+import { restablecerAjustesLocales } from "@/lib/ajustesPorDefecto";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ nombre: "", email: "", password: "" });
@@ -30,6 +31,10 @@ export default function RegisterPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al registrarse");
 
+      // Cuenta nueva = perfil limpio: si el navegador guardaba ajustes
+      // huérfanos de una cuenta eliminada antes (mismo dispositivo),
+      // se restablecen a los valores por defecto del sistema.
+      restablecerAjustesLocales();
       router.push("/login?registered=true");
     } catch (err) {
       setError(err.message);
