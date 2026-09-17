@@ -8,6 +8,9 @@ export async function GET(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
     const [rows] = await db.query(
       `SELECT
@@ -40,6 +43,9 @@ export async function POST(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
     const { titulo, url_feed, categoria } = await req.json();
 
@@ -74,6 +80,9 @@ export async function PUT(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
     const { id, titulo, url_feed, categoria } = await req.json();
 
@@ -113,6 +122,9 @@ export async function DELETE(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

@@ -37,6 +37,20 @@ async function obtenerCodigoVigente(email) {
   return rows[0] || null;
 }
 
+// Contabilidad compartida de intentos: verificar y restablecer usan el
+// mismo gate para que ningún paso omita el cap ni el conteo.
+async function exigirIntentosDisponibles(registro, email) {
+  if (Number(registro.intentos) >= MAX_INTENTOS) {
+    await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [email]);
+    return { error: "Demasiados intentos. Solicita un código nuevo.", status: 429 };
+  }
+  return { ok: true };
+}
+
+async function registrarIntentoFallido(registro) {
+  await db.query("UPDATE recuperacion_codigos SET intentos = intentos + 1 WHERE id = ?", [registro.id]);
+}
+
 export async function POST(req) {
   try {
     const { action, email, codigo, password } = await req.json();
@@ -63,15 +77,25 @@ export async function POST(req) {
         "INSERT INTO recuperacion_codigos (email, codigo_hash, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))",
         [correo, codigoHash, EXPIRACION_MINUTOS]
       );
-      // Sin SMTP configurado: modo demostración (se devuelve el código).
+      // Sin SMTP configurado: fallar cerrado. El código solo se devuelve
+      // en demostración local explícita (nunca en producción) para no
+      // filtrar el secreto de recuperación en la respuesta.
       if (!smtpConfigurado()) {
-        console.warn("SMTP sin configurar: el código de recuperación se devuelve en modo demostración.");
-        return NextResponse.json({
-          ok: true,
-          codigo: codigoPlano,
-          expiraMinutos: EXPIRACION_MINUTOS,
-          mensaje: "Código de recuperación generado.",
-        });
+        await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [correo]);
+        if (process.env.ALLOW_RECOVERY_DEMO === "true" && process.env.NODE_ENV !== "production") {
+          console.warn("SMTP sin configurar: código de recuperación en modo demostración (solo desarrollo).");
+          return NextResponse.json({
+            ok: true,
+            codigo: codigoPlano,
+            expiraMinutos: EXPIRACION_MINUTOS,
+            mensaje: "Código de recuperación generado.",
+          });
+        }
+        console.error("SMTP sin configurar: no se pudo enviar el código de recuperación.");
+        return NextResponse.json(
+          { error: "Servicio de correo no configurado. Inténtalo más tarde." },
+          { status: 500 }
+        );
       }
       try {
         await enviarCodigoRecuperacion(correo, codigoPlano, EXPIRACION_MINUTOS);
@@ -124,7 +148,7 @@ export async function POST(req) {
       }
       const coincide = await bcrypt.compare(codigoPlano, registro.codigo_hash);
       if (!coincide) {
-        await db.query("UPDATE recuperacion_codigos SET intentos = intentos + 1 WHERE id = ?", [registro.id]);
+        await registrarIntentoFallido(registro);
         return NextResponse.json({ error: "El código ingresado no es correcto." }, { status: 400 });
       }
       return NextResponse.json({ ok: true, mensaje: "Código verificado correctamente." });
@@ -150,8 +174,13 @@ export async function POST(req) {
           { status: 400 }
         );
       }
+      const limite = await exigirIntentosDisponibles(registro, correo);
+      if (limite.error) {
+        return NextResponse.json({ error: limite.error }, { status: limite.status });
+      }
       const coincide = await bcrypt.compare(codigoPlano, registro.codigo_hash);
       if (!coincide) {
+        await registrarIntentoFallido(registro);
         return NextResponse.json({ error: "El código ingresado no es correcto." }, { status: 400 });
       }
       const hash = await bcrypt.hash(nueva, 10);

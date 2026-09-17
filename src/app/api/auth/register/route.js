@@ -11,13 +11,20 @@ export async function POST(req) {
       return NextResponse.json({ error: "Todos los campos son obligatorios" }, { status: 400 });
     }
 
+    if (String(password).length < 6) {
+      return NextResponse.json(
+        { error: "La contraseña debe tener al menos 6 caracteres" },
+        { status: 400 }
+      );
+    }
+
     // Verificar si el usuario ya existe
     const [existingUsers] = await db.query("SELECT id FROM usuarios WHERE email = ?", [email]);
     if (existingUsers.length > 0) {
       return NextResponse.json({ error: "El correo ya está registrado" }, { status: 400 });
     }
 
-    // Encriptar contraseña e insertar en MySQL Aiven
+    // Encriptar contraseña e insertar en MySQL
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.query(
       "INSERT INTO usuarios (nombre, email, password_hash, proveedor) VALUES (?, ?, ?, 'credentials')",

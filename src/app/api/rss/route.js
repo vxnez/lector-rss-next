@@ -12,6 +12,7 @@ import {
   CATALOGO_PROMPT,
   CATEGORIAS_DISPONIBLES,
 } from "@/lib/categoryClassifier";
+import { fetchPublico, leerBufferLimitado, leerTextoLimitado } from "@/lib/ssrf";
 
 const parser = new Parser({
   headers: {
@@ -51,18 +52,14 @@ async function extraerImagenDePagina(url) {
 }
 
 async function extraerImagenDirecta(url) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
-    const res = await fetch(url, {
-      headers: HEADERS_BROWSER,
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    // fetchPublico aplica el mismo guard SSRF (IP pública + redirects
+    // revalidados) que el resto de fetchers server-side.
+    const { res, urlFinal } = await fetchPublico(url, { headers: HEADERS_BROWSER, timeoutMs: 8000 });
+    const baseFinal = urlFinal || url;
     if (!res.ok) return null;
     if (!/html/i.test(res.headers.get("content-type") || "")) return null;
-    const html = await res.text();
+    const html = await leerTextoLimitado(res);
     const $ = cheerio.load(html);
 
     // Helper: obtener la mejor URL de srcset (la de mayor ancho)
@@ -101,7 +98,7 @@ async function extraerImagenDirecta(url) {
     for (const candidata of metaCandidatas) {
       if (typeof candidata === "string" && candidata.trim()) {
         try {
-          const absoluta = new URL(candidata.trim(), res.url || url).href;
+          const absoluta = new URL(candidata.trim(), baseFinal).href;
           if (/^https?:\/\//i.test(absoluta)) return absoluta;
         } catch {
           // Probar con la siguiente candidata.
@@ -117,11 +114,11 @@ async function extraerImagenDirecta(url) {
         const items = Array.isArray(data) ? data : [data];
         for (const item of items) {
           if (item["@type"] === "ImageObject" && item.contentUrl) {
-            return new URL(item.contentUrl, res.url || url).href;
+            return new URL(item.contentUrl, baseFinal).href;
           }
           if (item.image) {
             const img = typeof item.image === "string" ? item.image : item.image.contentUrl || item.image.url;
-            if (img) return new URL(img, res.url || url).href;
+            if (img) return new URL(img, baseFinal).href;
           }
         }
       } catch {
@@ -185,7 +182,7 @@ async function extraerImagenDirecta(url) {
         const src = srcDeSrcset || img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || img.attr("data-original") || img.attr("data-srcset") && mejorDeSrcset(img.attr("data-srcset"));
         if (src && /^https?:\/\//i.test(src)) {
           try {
-            return new URL(src, res.url || url).href;
+            return new URL(src, baseFinal).href;
           } catch {
             // continuar
           }
@@ -200,7 +197,7 @@ async function extraerImagenDirecta(url) {
       const srcDeSrcset = mejorDeSrcset(srcset);
       if (srcDeSrcset) {
         try {
-          return new URL(srcDeSrcset, res.url || url).href;
+          return new URL(srcDeSrcset, baseFinal).href;
         } catch {
           // continuar
         }
@@ -222,7 +219,7 @@ async function extraerImagenDirecta(url) {
       const alt = (img.attr("alt") || "").toLowerCase();
       if (alt.includes("logo") || alt.includes("icon") || alt.includes("avatar") || alt.includes("badge")) continue;
       try {
-        const abs = new URL(src, res.url || url).href;
+        const abs = new URL(src, baseFinal).href;
         if (/^https?:\/\//i.test(abs) && /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(abs)) return abs;
       } catch {
         // continuar
@@ -231,7 +228,6 @@ async function extraerImagenDirecta(url) {
 
     return null;
   } catch {
-    clearTimeout(timeoutId);
     return null;
   }
 }
@@ -376,6 +372,10 @@ function limpiarUrlNoticia(rawUrl) {
   if (!rawUrl) return "";
   try {
     const urlObj = new URL(rawUrl.trim());
+    // Allowlist de esquemas: los enlaces de artículos solo pueden ser
+    // http/https. Otros esquemas (javascript:, data:, ...) se descartan
+    // para que nunca lleguen al href del lector.
+    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") return "";
     const parametrosSeguimiento = /^(utm_|fbclid$|gclid$|dclid$|mc_cid$|mc_eid$|_ga$|ref$)/i;
     for (const nombre of [...urlObj.searchParams.keys()]) {
       if (parametrosSeguimiento.test(nombre)) urlObj.searchParams.delete(nombre);
@@ -389,7 +389,7 @@ function limpiarUrlNoticia(rawUrl) {
     urlObj.pathname = urlObj.pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "") || "/";
     return urlObj.toString();
   } catch (e) {
-    return rawUrl.trim();
+    return "";
   }
 }
 
@@ -467,42 +467,34 @@ async function fetchConFallback(url, { timeoutMs = RSS_TIMEOUT_MS, validadores =
     return headers;
   };
   const pedir = async (base) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(url, {
-        headers: armar(base),
-        redirect: "follow",
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    // fetchPublico valida scheme + IP pública en cada salto de redirect
+    // y devuelve la URL final validada junto a la respuesta.
+    return fetchPublico(url, { headers: armar(base), timeoutMs });
   };
-  let res;
+  let actual;
   try {
-    res = await pedir(HEADERS_BROWSER);
+    actual = await pedir(HEADERS_BROWSER);
   } catch (err) {
     if (err.name === "AbortError") throw err;
-    res = await pedir(HEADERS_ALT);
+    actual = await pedir(HEADERS_ALT);
   }
-  if (!res.ok && [401, 403, 429].includes(res.status)) {
-    await res.arrayBuffer().catch(() => {});
-    res = await pedir(HEADERS_ALT);
+  if (!actual.res.ok && [401, 403, 429].includes(actual.res.status)) {
+    await actual.res.arrayBuffer().catch(() => {});
+    actual = await pedir(HEADERS_ALT);
   }
-  return res;
+  return actual;
 }
 
 async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validadores = {}) {
   try {
-    const res = await fetchConFallback(url, { timeoutMs, validadores });
+    const { res, urlFinal } = await fetchConFallback(url, { timeoutMs, validadores });
 
     if (res.status === 304) {
-      return { sinCambios: true, urlFinal: res.url || url };
+      return { sinCambios: true, urlFinal };
     }
     if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
 
-    const buffer = await res.arrayBuffer();
+    const buffer = await leerBufferLimitado(res);
     const bytes = new Uint8Array(buffer);
     const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
     const contentType = res.headers.get("content-type") || "";
@@ -515,7 +507,7 @@ async function obtenerTextoDecodificado(url, timeoutMs = RSS_TIMEOUT_MS, validad
 
     return {
       text: repararTextoMalDecodificado(text),
-      urlFinal: res.url || url,
+      urlFinal,
       contentType,
       etag: res.headers.get("etag"),
       lastModified: res.headers.get("last-modified"),
@@ -693,8 +685,8 @@ async function buscarFeedRSS(urlIngresada) {
   let urlPagina = urlLimpia;
 
   try {
-    const res = await fetchConFallback(urlLimpia, { timeoutMs: HTML_TIMEOUT_MS });
-    urlPagina = res.url || urlLimpia;
+    const { res, urlFinal } = await fetchConFallback(urlLimpia, { timeoutMs: HTML_TIMEOUT_MS });
+    urlPagina = urlFinal || urlLimpia;
 
     const enlacesHeader = res.headers.get("link") || "";
     for (const coincidencia of enlacesHeader.matchAll(/<([^>]+)>\s*;[^,]*rel\s*=\s*["']?([^,;"']+)["']?[^,]*/gi)) {
@@ -705,7 +697,7 @@ async function buscarFeedRSS(urlIngresada) {
     }
 
     if (res.ok && /html|xhtml|text\//i.test(res.headers.get("content-type") || "text/html")) {
-      const html = await res.text();
+      const html = await leerTextoLimitado(res);
       extraerCandidatosDesdeHtml(html, urlPagina).forEach((candidato) => candidatos.push(candidato));
     }
   } catch (err) {
@@ -723,6 +715,9 @@ export async function POST(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
@@ -787,10 +782,18 @@ export async function POST(req) {
       }
 
       try {
-        const [filasFuente] = await db.query("SELECT etag, last_modified FROM fuentes_rss WHERE id = ?", [source_id]);
+        // Ownership: la fuente debe pertenecer al llamante antes de
+        // leer, persistir, restaurar o purgar bajo su id.
+        const [propias] = await db.query(
+          "SELECT id, etag, last_modified FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
+          [source_id, userId]
+        );
+        if (!propias[0]) {
+          return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+        }
         const resultado = await intentarParsearFeed(url, {
-          etag: filasFuente[0]?.etag,
-          lastModified: filasFuente[0]?.last_modified,
+          etag: propias[0]?.etag,
+          lastModified: propias[0]?.last_modified,
         });
         if (resultado?.sinCambios) {
           await actualizarValidadoresFuente(source_id, null, null);
@@ -908,6 +911,9 @@ export async function GET(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     await ensureClassificationSchema();
     await ensureArticulosUnicidad(userId);
     const { searchParams } = new URL(req.url);
@@ -1077,6 +1083,9 @@ export async function PUT(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     const body = await req.json();
     const { id, leido, guardado, titulo, categoria, tipo } = body;
 
@@ -1136,6 +1145,9 @@ export async function DELETE(req) {
   try {
     const session = await auth();
     const userId = Number(await resolverUsuarioId(req, session));
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const tipo = searchParams.get("tipo");

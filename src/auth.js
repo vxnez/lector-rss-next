@@ -6,6 +6,10 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db, ensureBienvenidaSchema } from "@/lib/db";
 
+// Comparación dummy para igualar tiempos entre correo existente y no
+// existente (mitiga oráculo de enumeración por timing en el login).
+const DUMMY_HASH = bcrypt.hashSync("lector-rss-dummy-compare", 10);
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Google({
@@ -37,11 +41,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Buscar usuario en Aiven MySQL
+        // Buscar usuario en MySQL
         const [rows] = await db.query("SELECT * FROM usuarios WHERE email = ?", [credentials.email]);
         const user = rows[0];
 
-        if (!user || !user.password_hash) return null;
+        if (!user || !user.password_hash) {
+          // Camino dummy: mismo costo que un login real para no distinguir
+          // correos registrados por tiempo de respuesta.
+          await bcrypt.compare(String(credentials.password || ""), DUMMY_HASH);
+          return null;
+        }
 
         // Validar contraseña encriptada
         const passwordMatch = await bcrypt.compare(credentials.password, user.password_hash);

@@ -7,8 +7,24 @@ import crypto from "crypto";
 export const INVITADO_COOKIE = "lector_invitado";
 export const INVITADO_PROVEEDOR = "invitado";
 
+let secretoAvisado = false;
+
 function secreto() {
-  return process.env.AUTH_SECRET || "dev-invitado-secret";
+  const valor = process.env.AUTH_SECRET;
+  if (!valor) {
+    // Fail-closed en producción: sin secreto único la cookie sería
+    // falsificable con la constante pública. En desarrollo se permite
+    // con aviso explícito.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_SECRET no configurado.");
+    }
+    if (!secretoAvisado) {
+      console.warn("AUTH_SECRET ausente: usando secreto de desarrollo solo para entorno local.");
+      secretoAvisado = true;
+    }
+    return "dev-invitado-secret";
+  }
+  return valor;
 }
 
 export function firmarInvitado(id) {
@@ -38,7 +54,10 @@ export function invitadoIdDesdeRequest(req) {
   }
 }
 
-// Resuelve el usuario efectivo: cuenta real, invitado válido o el valor por defecto.
+// Resuelve el usuario efectivo: cuenta real, invitado válido o null.
+// Fail-closed: sin sesión ni invitado verificable NO se resuelve a
+// ningún usuario (antes se devolvía el id literal 1). Los handlers
+// responden 401 cuando esto es null.
 export async function resolverUsuarioId(req, session) {
   if (session?.user?.id) return session.user.id;
   const invitadoId = invitadoIdDesdeRequest(req);
@@ -51,8 +70,9 @@ export async function resolverUsuarioId(req, session) {
       ]);
       if (filas[0]) return invitadoId;
     } catch {
-      // Si no se puede verificar, se cae al valor por defecto.
+      // Error al verificar: se niega en vez de caer al valor por defecto.
+      return null;
     }
   }
-  return 1;
+  return null;
 }

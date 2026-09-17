@@ -12,6 +12,9 @@ export async function GET(req) {
     try {
       const session = await auth();
       const userId = await resolverUsuarioId(req, session);
+      if (!userId) {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      }
       const [rows] = await db.query(
         "SELECT id, creado_en FROM push_subscriptions WHERE usuario_id = ? ORDER BY id DESC",
         [userId]
@@ -29,6 +32,9 @@ export async function POST(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     const { endpoint, keys } = await req.json().catch(() => ({}));
 
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
@@ -52,6 +58,9 @@ export async function DELETE(req) {
   try {
     const session = await auth();
     const userId = await resolverUsuarioId(req, session);
+    if (!userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
 
     // ?all=true revoca todos los dispositivos del usuario.

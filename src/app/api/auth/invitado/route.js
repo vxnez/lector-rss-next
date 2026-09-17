@@ -103,8 +103,10 @@ export async function POST(req) {
     );
     const res = NextResponse.json({ ok: true });
     // Cookie de sesión (sin maxAge): se pierde al cerrar el navegador.
+    // Secure en producción para que nunca viaje por HTTP.
     res.cookies.set(INVITADO_COOKIE, firmarInvitado(resultado.insertId), {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
     });
