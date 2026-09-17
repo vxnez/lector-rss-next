@@ -44,6 +44,21 @@ export async function GET() {
   }
 }
 
+// Borrado auxiliar tolerante dentro de la transacción: en BDs antiguas la
+// tabla puede no existir (el repo crea push/recuperación después). Solo se
+// omite ER_NO_SUCH_TABLE; cualquier otro error sí aborta el borrado.
+async function borradoTolerante(conexion, sql, params, tabla) {
+  try {
+    await conexion.query(sql, params);
+  } catch (error) {
+    if (error?.code === "ER_NO_SUCH_TABLE") {
+      console.warn(`DELETE /api/datos: tabla ausente (${tabla}), se continúa con el borrado.`);
+      return;
+    }
+    throw error;
+  }
+}
+
 export async function DELETE() {
   let conexion;
   try {
@@ -72,24 +87,37 @@ export async function DELETE() {
 
     // 1) Notificaciones push del usuario (UNIQUE global por endpoint: una
     //    fila huérfana revincularía el endpoint al re-registro vía upsert).
-    await conexion.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [userId]);
+    await borradoTolerante(
+      conexion,
+      "DELETE FROM push_subscriptions WHERE usuario_id = ?",
+      [userId],
+      "push_subscriptions"
+    );
     // 2) Artículos de sus fuentes (vía JOIN, sin depender de la cascada).
-    await conexion.query(
+    await borradoTolerante(
+      conexion,
       `DELETE a FROM articulos_publicados a
         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
         WHERE f.usuario_id = ?`,
-      [userId]
+      [userId],
+      "articulos_publicados"
     );
     // 3) Fuentes RSS de la cuenta.
-    await conexion.query("DELETE FROM fuentes_rss WHERE usuario_id = ?", [userId]);
+    await borradoTolerante(
+      conexion,
+      "DELETE FROM fuentes_rss WHERE usuario_id = ?",
+      [userId],
+      "fuentes_rss"
+    );
     // 4) Códigos de recuperación (keyed por email, sin FK): se borran aquí
     //    para que un re-registro no herede códigos válidos de la cuenta vieja.
     if (cuenta.email) {
-      try {
-        await conexion.query("DELETE FROM recuperacion_codigos WHERE email = ?", [cuenta.email]);
-      } catch {
-        // Tabla inexistente en BDs antiguas: no bloquea el borrado.
-      }
+      await borradoTolerante(
+        conexion,
+        "DELETE FROM recuperacion_codigos WHERE email = ?",
+        [cuenta.email],
+        "recuperacion_codigos"
+      );
     }
     // 5) La cuenta. La cascada FK (fuentes/push) queda como red de seguridad.
     await conexion.query("DELETE FROM usuarios WHERE id = ?", [userId]);
