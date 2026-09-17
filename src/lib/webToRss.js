@@ -184,6 +184,45 @@ function fechaAISO(valor) {
   return fecha.toISOString();
 }
 
+// Meses en español: Date.parse no los entiende ("17 de septiembre de 2026").
+const MESES_ES = {
+  enero: "01", febrero: "02", marzo: "03", abril: "04", mayo: "05", junio: "06",
+  julio: "07", agosto: "08", septiembre: "09", setiembre: "09", octubre: "10",
+  noviembre: "11", diciembre: "12", ene: "01", feb: "02", mar: "03", abr: "04",
+  may: "05", jun: "06", jul: "07", ago: "08", sep: "09", sept: "09",
+  oct: "10", nov: "11", dic: "12",
+};
+
+function fechaEspanolaAISO(texto) {
+  const m = String(texto || "")
+    .toLowerCase()
+    .match(/(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|sept|oct|nov|dic)\.?\,?(?:\s+de\s+|\s+)(\d{4})/);
+  if (!m) return "";
+  const mes = MESES_ES[m[2]];
+  if (!mes) return "";
+  return `${m[3]}-${mes}-${String(Number(m[1])).padStart(2, "0")}T00:00:00`;
+}
+
+// Extrae la primera fecha válida de textos libres ("March 24, 2026",
+// "17 de septiembre de 2026", "2026-03-24"). Devuelve ISO o "".
+function extraerFechaDeTexto(...textos) {
+  const patronEn = /(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+\d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}/i;
+  for (const candidato of textos) {
+    const texto = String(candidato || "").replace(/\s+/g, " ").trim();
+    if (!texto) continue;
+    const fragmento = texto.length > 400 ? texto.slice(0, 400) : texto;
+    const mEn = fragmento.match(patronEn);
+    if (mEn) {
+      // V8 no traga "Sept": se normaliza a "Sep" antes de parsear.
+      const iso = fechaAISO(mEn[0].replace(/\bsept\b\.?/i, "Sep"));
+      if (iso) return iso;
+    }
+    const isoEs = fechaAISO(fechaEspanolaAISO(fragmento));
+    if (isoEs) return isoEs;
+  }
+  return "";
+}
+
 function esImagenTracker(src) {
   const v = String(src || "").toLowerCase();
   if (/pixel|beacon|spacer|transparent|blank|1x1|tracking|clear\.gif|dot\.gif/i.test(v)) return true;
@@ -314,7 +353,8 @@ function extraerArticuloUnico($, base, baseHost, jsonLd) {
   if (!url) return null;
   const fecha =
     fechaAISO(meta($, "article:published_time", "article:modified_time", "date", "publish_date")) ||
-    fechaAISO($("article time[datetime]").first().attr("datetime") || $("time[datetime]").first().attr("datetime"));
+    fechaAISO($("article time[datetime]").first().attr("datetime") || $("time[datetime]").first().attr("datetime")) ||
+    extraerFechaDeTexto($("article").first().text().slice(0, 1500));
   const primeroJsonLd = (jsonLd || []).find((n) => esTipoArticulo(n?.["@type"]));
   return {
     titulo,
@@ -364,7 +404,15 @@ function itemsDesdeLista($, base, baseHost) {
     if (esEnlaceDescartable(limpio, baseHost)) return;
 
     const contenedor = a.closest("article, li, div, section, td").first();
-    const ambito = contenedor.length ? contenedor : a.parent();
+    // La tarjeta completa (article/li) incluye footer con fecha y autor;
+    // el div más cercano suele quedarse corto (p. ej. <time> en el footer).
+    const tarjeta = a.closest("article, li").first();
+    const ambito = (tarjeta.length ? tarjeta : contenedor.length ? contenedor : a.parent());
+    const autorTarjeta = (() => {
+      const el = ambito.find('[rel="author"]').first();
+      const nombre = el.length ? textoLimpio($, el) : "";
+      return nombre && nombre.length <= 80 ? nombre : "";
+    })();
     const resumen = ["p", ".resumen,.excerpt,.summary,.entradilla,dd"].reduce((mejor, sel) => {
       if (mejor) return mejor;
       const texto = textoLimpio($, ambito.find(sel).first());
@@ -375,7 +423,18 @@ function itemsDesdeLista($, base, baseHost) {
     }, "");
     const fecha =
       fechaAISO(ambito.find("time[datetime]").first().attr("datetime")) ||
-      fechaAISO(ambito.find("[class*='date'],[class*='fecha'],[class*='publish'],[class*='time']").first().text().slice(0, 60));
+      extraerFechaDeTexto(
+        ambito.find("time").first().text(),
+        (() => {
+          const textos = [];
+          ambito
+            .find("[class*='date'],[class*='fecha'],[class*='publish'],[class*='time'],[class*='meta'],[class*='byline'],[class*='autor'],[class*='author']")
+            .each((_, el) => textos.push($(el).text()));
+          return textos.join(" | ");
+        })(),
+        a.parent().text(),
+        ambito.text().slice(-300)
+      );
 
     let puntuacion = Math.min(titulo.length, 120);
     if (a.closest("article").length) puntuacion += 40;
@@ -392,7 +451,7 @@ function itemsDesdeLista($, base, baseHost) {
     }
 
     vistos.add(limpio);
-    candidatos.push({ titulo, url: limpio, resumen, fecha, autor: "", imagen, video: "", puntuacion });
+    candidatos.push({ titulo, url: limpio, resumen, fecha, autor: autorTarjeta, imagen, video: "", puntuacion });
   });
   return candidatos
     .sort((a, b) => b.puntuacion - a.puntuacion)
@@ -517,7 +576,7 @@ function detectarSiguientePagina($, base, baseHost, paginaActual) {
 
 // ---- Extracción de una página HTML a { tituloSitio, items, esArticuloUnico } ----
 
-function extraerFeedDeHtml(html, baseFinal) {
+export function extraerFeedDeHtml(html, baseFinal) {
   const $ = cheerio.load(html, { decodeEntities: true });
   $("script:not([type='application/ld+json']), style, noscript").remove();
 
@@ -544,14 +603,28 @@ function extraerFeedDeHtml(html, baseFinal) {
   let items = itemsDesdeJsonLd(nodosJsonLd, base, baseHost);
   let esArticuloUnico = false;
   if (items.length === 0) {
-    const unico = extraerArticuloUnico($, base, baseHost, nodosJsonLd);
-    if (unico) {
-      items = [unico];
-      esArticuloUnico = true;
+    // Desempate listado vs. artículo único: algunas plantillas (WordPress)
+    // declaran og:type=article hasta en páginas de archivo. Si hay varios
+    // <article> (uno por tarjeta) y la heurística de lista encuentra 2+,
+    // es un listado aunque haya señales de artículo único.
+    const numArticulos = $("article").length;
+    let lista = [];
+    if (numArticulos >= 2) {
+      lista = itemsDesdeLista($, base, baseHost);
     }
-  }
-  if (items.length === 0) {
-    items = itemsDesdeLista($, base, baseHost);
+    if (lista.length >= 2) {
+      items = lista;
+    } else {
+      const unico = extraerArticuloUnico($, base, baseHost, nodosJsonLd);
+      if (unico) {
+        items = [unico];
+        esArticuloUnico = true;
+      } else if (lista.length === 0) {
+        items = itemsDesdeLista($, base, baseHost);
+      } else {
+        items = lista;
+      }
+    }
   }
   const paginaActual = numeroDePagina(base);
   const siguiente = esArticuloUnico ? "" : detectarSiguientePagina($, base, baseHost, paginaActual);
