@@ -616,7 +616,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   loading="lazy"
                   referrerPolicy="no-referrer"
                   onError={() => setImagenRota(true)}
-                  className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                  className="h-full w-full object-cover opacity-50 sm:opacity-60 blur-[2px] scale-105 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
                 />
               ) : (
                 <Image
@@ -628,7 +628,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   quality={75}
                   loading="lazy"
                   onError={() => setSinOptimizar(true)}
-                  className="object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                  className="object-cover opacity-50 sm:opacity-60 blur-[2px] scale-105 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
                 />
               )}
               <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900 sm:bg-linear-to-r sm:from-gray-900 sm:via-gray-900/70 sm:to-transparent" />
