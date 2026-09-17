@@ -258,6 +258,74 @@ function imagenDeImg($, img, base) {
   return absolver(cruda, base);
 }
 
+// CTAs que nunca son resumen ("Learn more", "Leer más"...).
+const TEXTO_CTA = /^(learn more|leer m[aá]s|ver m[aá]s|read more|continue reading|seguir leyendo|descubrir m[aá]s)[\s›»→.]*$/i;
+
+function parrafoValido(texto, titulo) {
+  const t = String(texto || "").replace(/\s+/g, " ").trim();
+  if (!t || t.length < 30) return "";
+  if (TEXTO_CTA.test(t)) return "";
+  if (t === titulo) return "";
+  // Párrafo que repite el titular (la descripción suele empezar distinto).
+  if (titulo && titulo.length > 30 && t.startsWith(titulo.slice(0, 30))) return "";
+  return t;
+}
+
+// Resumen de una tarjeta: recorre TODOS los <p> del ámbito (no solo first:
+// con <p> anidados el parser auto-cierra el externo y el primero sale
+// vacío), luego hermanos/padre/tarjeta; como respaldo une hasta 3 párrafos
+// del bloque (extractivo ligero, sin dependencias NLP).
+function extraerResumenDeTarjeta($, a, ambito, bloque, titulo) {
+  const vistos = new Set();
+  const candidatos = [];
+  const recolectar = (raiz) => {
+    if (!raiz || !raiz.length) return;
+    raiz.find("p").each((_, el) => {
+      const t = parrafoValido($(el).text(), titulo);
+      if (t && !vistos.has(t)) {
+        vistos.add(t);
+        candidatos.push(t);
+      }
+    });
+  };
+  recolectar(ambito);
+  if (bloque && (!ambito.length || bloque[0] !== ambito[0])) recolectar(bloque);
+  // Hermanos cercanos del enlace y del ámbito (la descripción a veces es
+  // hermana del titular, no descendiente).
+  [a, ambito].forEach((origen) => {
+    if (!origen || !origen.length) return;
+    origen.siblings("p").each((_, el) => {
+      const t = parrafoValido($(el).text(), titulo);
+      if (t && !vistos.has(t)) {
+        vistos.add(t);
+        candidatos.push(t);
+      }
+    });
+  });
+  const padre = a.parent();
+  if (padre && padre.length) recolectar(padre.parent());
+  if (candidatos.length > 0) return candidatos[0].slice(0, 300);
+  // Respaldo extractivo: une hasta 3 párrafos cortos del bloque (cada uno
+  // ≥15 caracteres) hasta ~300; exige un mínimo total para no guardar ruido.
+  const cortos = [];
+  const recolectarCortos = (raiz) => {
+    if (!raiz || !raiz.length || cortos.join(" ").length >= 300) return;
+    raiz.find("p").each((_, el) => {
+      if (cortos.join(" ").length >= 300) return;
+      const t = String($(el).text() || "").replace(/\s+/g, " ").trim();
+      if (t.length >= 15 && !TEXTO_CTA.test(t) && t !== titulo && !vistos.has(t)) {
+        vistos.add(t);
+        cortos.push(t);
+        if (cortos.length >= 3) return;
+      }
+    });
+  };
+  recolectarCortos(ambito);
+  if (bloque && (!ambito.length || bloque[0] !== ambito[0])) recolectarCortos(bloque);
+  const unido = cortos.join(" ").slice(0, 300);
+  return unido.length >= 60 ? unido : "";
+}
+
 // ---- Extracción por capas ----
 
 function extraerJsonLd($) {
@@ -408,19 +476,13 @@ function itemsDesdeLista($, base, baseHost) {
     // el div más cercano suele quedarse corto (p. ej. <time> en el footer).
     const tarjeta = a.closest("article, li").first();
     const ambito = (tarjeta.length ? tarjeta : contenedor.length ? contenedor : a.parent());
+    const bloque = tarjeta.length ? tarjeta : ambito;
+    const resumen = extraerResumenDeTarjeta($, a, ambito, bloque, titulo);
     const autorTarjeta = (() => {
       const el = ambito.find('[rel="author"]').first();
       const nombre = el.length ? textoLimpio($, el) : "";
       return nombre && nombre.length <= 80 ? nombre : "";
     })();
-    const resumen = ["p", ".resumen,.excerpt,.summary,.entradilla,dd"].reduce((mejor, sel) => {
-      if (mejor) return mejor;
-      const texto = textoLimpio($, ambito.find(sel).first());
-      if (texto && texto.length > 30 && !texto.startsWith(titulo.slice(0, 20))) {
-        return texto.slice(0, 300);
-      }
-      return mejor;
-    }, "");
     const fecha =
       fechaAISO(ambito.find("time[datetime]").first().attr("datetime")) ||
       extraerFechaDeTexto(
