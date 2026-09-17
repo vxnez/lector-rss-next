@@ -172,6 +172,19 @@ async function extraerVideoDePagina(url) {
     }
     if (poster) return { video: "", poster };
   }
+  // 2b. JW Player: el <video> usa blob: (inservible fuera del navegador),
+  // pero .jw-preview trae el poster en el style (CDN estable, sin firmar).
+  // Nota: no se usa la API de playlist de JW (mp4 con token temporal que
+  // caduca y pudriría el dato persistido); el poster sí es permanente.
+  const vistas = $(".jw-preview, [class*='jw-preview']");
+  for (const el of vistas.toArray()) {
+    const estilo = $(el).attr("style") || "";
+    const coincidencia = estilo.match(/url\(\s*["']?(https?:[^"')]+)["']?\s*\)/i);
+    if (coincidencia) {
+      const abs = absolverUrlMultimedia(coincidencia[1], pagina.baseFinal);
+      if (abs) return { video: "", poster: abs };
+    }
+  }
   // 3) iframes embebidos: YouTube → thumbnail determinista (sin red);
   // Vimeo → oEmbed público (una sola llamada con guard SSRF).
   const frames = $("iframe");
