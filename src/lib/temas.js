@@ -31,12 +31,35 @@ export function esTemaValido(id) {
 }
 
 export function temaGuardado() {
+  return temaInicial();
+}
+
+// Tema del primer arranque (sin elección guardada): respeta
+// prefers-color-scheme del SO (claro → menta, oscuro → medianoche).
+// La elección manual posterior siempre gana y se persiste.
+export function temaPreferidoSistema() {
+  try {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+    ) {
+      return "menta";
+    }
+  } catch {
+    // Sin matchMedia: oscuro por defecto.
+  }
+  return TEMA_POR_DEFECTO;
+}
+
+export function temaInicial() {
   try {
     const guardado = window.localStorage.getItem(CLAVE_TEMA);
-    return esTemaValido(guardado) ? guardado : TEMA_POR_DEFECTO;
+    if (esTemaValido(guardado)) return guardado;
   } catch {
-    return TEMA_POR_DEFECTO;
+    // Sin almacenamiento: se cae a la preferencia del sistema.
   }
+  return temaPreferidoSistema();
 }
 
 // Aplica el tema al <html>: dataset para el CSS + persistencia + theme-color.

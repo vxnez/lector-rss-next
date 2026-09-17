@@ -427,6 +427,13 @@
 [data-theme="celadon"] .text-sky-100 {
   color: #0c4a6e;
 }
+/* La variante con opacidad es otra clase (Tailwind la genera aparte):
+   mismo tinta con su 70% para subtítulos e iconos secundarios. */
+[data-theme="celeste"] .text-sky-100\/70,
+[data-theme="menta"] .text-sky-100\/70,
+[data-theme="celadon"] .text-sky-100\/70 {
+  color: rgb(12 74 110 / 0.72);
+}
 [data-theme="celeste"] .text-rose-300,
 [data-theme="menta"] .text-rose-300,
 [data-theme="celadon"] .text-rose-300 {

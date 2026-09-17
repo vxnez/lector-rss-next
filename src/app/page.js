@@ -36,7 +36,7 @@ import {
   ChevronUp as ChevronUpData,
 } from "lucide";
 import MorphIcon from "./components/MorphIcon";
-import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
+import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
 import { useIdioma } from "@/lib/i18n";
 import { dominioDeUrl } from "@/lib/formato";
 import { paramsFeed, urlBase64ToUint8Array } from "@/lib/feed-utils";
@@ -132,8 +132,7 @@ export default function HomePage() {
   const [panelAjustes, setPanelAjustes] = useState(false);
   const [tema, setTema] = useState(() => {
     try {
-      const guardado = window.localStorage.getItem("lector_tema");
-      return esTemaValido(guardado) ? guardado : TEMA_POR_DEFECTO;
+      return temaInicial();
     } catch {
       return TEMA_POR_DEFECTO;
     }
