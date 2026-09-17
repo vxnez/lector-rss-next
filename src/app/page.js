@@ -1319,7 +1319,7 @@ export default function HomePage() {
                     )}
                   </span>
                 </div>
-                <div ref={filtroFuenteRef} tabIndex={-1} className={`flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${fuentesExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
+                <div ref={filtroFuenteRef} tabIndex={-1} translate="no" className={`notranslate flex flex-wrap gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${fuentesExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
                   {fuentesDisponibles.map((fuente) => {
                     const activa = fuentesSeleccionadas.includes(String(fuente.id));
                     return (
@@ -1380,7 +1380,7 @@ export default function HomePage() {
                     )}
                   </span>
                 </div>
-                <div className={`flex flex-wrap gap-1.5 ${categoriasExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
+                <div translate="no" className={`notranslate flex flex-wrap gap-1.5 ${categoriasExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"}`}>
                   {categoriasDisponibles.map((categoria) => {
                     const activa = categoriasSeleccionadas.includes(categoria);
                     return (
