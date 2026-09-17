@@ -46,6 +46,7 @@ import Paginacion from "./components/dashboard/Paginacion";
 import Toast from "./components/dashboard/Toast";
 import OnboardingSurvey from "./components/dashboard/OnboardingSurvey";
 import ConfirmDeleteModal from "./components/dashboard/ConfirmDeleteModal";
+import { inicializarMicrointeracciones } from "@/lib/animaciones";
 
 function dominioDeFuente(urlFeed = "") {
   return dominioDeUrl(urlFeed);
@@ -287,6 +288,12 @@ export default function HomePage() {
   }, []);
 
   // Service worker de push + estado de suscripción (solo navegadores compatibles).
+  // Microinteracciones Anime.js en `.btn-press` (solo transform, GPU):
+  // respuesta táctil con rebote ligero; el CSS :active queda de fallback.
+  useEffect(() => {
+    const limpiar = inicializarMicrointeracciones(document);
+    return limpiar;
+  }, []);
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
       return;

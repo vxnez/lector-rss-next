@@ -1,15 +1,41 @@
 // src/app/components/dashboard/WelcomeModal.js — Guía de bienvenida.
 "use client";
 
+import { useCallback, useEffect, useRef } from "react";
 import { X, Sparkles, ExternalLink } from "lucide-react";
+import { animarAperturaModal, animarCierreModal } from "@/lib/animaciones";
 
 export default function WelcomeModal({ abierto, onCerrar, t }) {
+  const overlayRef = useRef(null);
+  const modalRef = useRef(null);
+  const cerrandoRef = useRef(false);
+
+  // Apertura suavizada (Anime.js, escala + opacidad, solo GPU).
+  // El CSS `anim-overlay`/`anim-modal` queda como fallback.
+  useEffect(() => {
+    if (!abierto) return;
+    cerrandoRef.current = false;
+    const marco = requestAnimationFrame(() => {
+      animarAperturaModal(overlayRef.current, modalRef.current);
+    });
+    return () => cancelAnimationFrame(marco);
+  }, [abierto]);
+
+  const cerrarConAnimacion = useCallback(() => {
+    if (cerrandoRef.current) return;
+    cerrandoRef.current = true;
+    animarCierreModal(overlayRef.current, modalRef.current).then(() => {
+      cerrandoRef.current = false;
+      onCerrar();
+    });
+  }, [onCerrar]);
+
   if (!abierto) return null;
   return (
-    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="anim-modal scroll-oculto bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
+    <div ref={overlayRef} className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div ref={modalRef} className="anim-modal scroll-oculto bg-app-surface border border-app-line rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain">
         <button
-          onClick={onCerrar}
+          onClick={cerrarConAnimacion}
           aria-label={t("comun.cerrar")}
           className="btn-press absolute top-4 right-4 text-app-muted hover:text-app-fg p-1.5 rounded-lg bg-app-raised/50 hover:bg-app-raised"
         >
@@ -48,7 +74,7 @@ export default function WelcomeModal({ abierto, onCerrar, t }) {
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button
-            onClick={onCerrar}
+            onClick={cerrarConAnimacion}
             className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 px-4 rounded-full transition flex items-center justify-center gap-2 text-sm"
           >
             {t("guia.entendido")}

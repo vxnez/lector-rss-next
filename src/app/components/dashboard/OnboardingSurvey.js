@@ -1,9 +1,10 @@
 // src/app/components/dashboard/OnboardingSurvey.js — Encuesta de bienvenida con selección de categorías y feeds recomendados.
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
+import { animarAperturaModal, animarCierreModal } from "@/lib/animaciones";
 import RecommendedFeedsList from "./RecommendedFeedsList";
 
 // Fallback de iconos/colores por si la API no los proporciona
@@ -67,6 +68,9 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [totalAgregados, setTotalAgregados] = useState(0);
   const [completando, setCompletando] = useState(false);
   const cargandoRef = useRef(false);
+  const overlayRef = useRef(null);
+  const modalRef = useRef(null);
+  const cerrandoRef = useRef(false);
   // Nota: el reinicio al Punto 1 en cada apertura manual lo garantiza el
   // padre con `key` (remontaje): el estado inicial ya es paso 1 vacío.
 
@@ -196,19 +200,38 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     }
   };
 
+  const cerrarConAnimacion = useCallback((resultado) => {
+    if (cerrandoRef.current) return;
+    cerrandoRef.current = true;
+    animarCierreModal(overlayRef.current, modalRef.current).then(() => {
+      cerrandoRef.current = false;
+      onCerrar(resultado);
+    });
+  }, [onCerrar]);
+
   const handleCompletar = async () => {
     setCompletando(true);
     try {
       if (onCompletado) await onCompletado();
-      onCerrar(true);
+      cerrarConAnimacion(true);
     } finally {
       setCompletando(false);
     }
   };
 
   const handleOmitir = () => {
-    onCerrar(false);
+    cerrarConAnimacion(false);
   };
+
+  // Apertura suavizada del modal de onboarding (escala + opacidad, GPU).
+  useEffect(() => {
+    if (!abierto) return;
+    cerrandoRef.current = false;
+    const marco = requestAnimationFrame(() => {
+      animarAperturaModal(overlayRef.current, modalRef.current);
+    });
+    return () => cancelAnimationFrame(marco);
+  }, [abierto]);
 
   const totalFeeds = (feedsRecomendados && typeof feedsRecomendados === 'object')
     ? Object.values(feedsRecomendados).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0) 
@@ -219,8 +242,9 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
 
 
   return (
-    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div ref={overlayRef} className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"

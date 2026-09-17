@@ -12,6 +12,7 @@
     "verify:feeds:ci": "node scripts/verify-feeds.js || true"
   },
   "dependencies": {
+    "animejs": "^4.5.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "lucide": "^1.40.0",

@@ -7,6 +7,7 @@ import { Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react"
 import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
+import { animarEntradaTarjetas } from "@/lib/animaciones";
 import { getCategoryStyle } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
@@ -158,6 +159,7 @@ const TarjetaNoticia = memo(function TarjetaNoticia({ art, indice = 0, onAbrir, 
 export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdateCategory, onDelete, autoMarcarLeida = false }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const { t, locale } = useIdioma();
+  const rejillaRef = useRef(null);
 
   const articlesRef = useRef(articles);
   // Foto de la lista al abrir el lector: la navegación (anterior/siguiente,
@@ -175,6 +177,19 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
   useEffect(() => {
     seleccionRef.current = selectedArticle;
   }, [selectedArticle]);
+
+  // Aparición progresiva de tarjetas (Anime.js, solo transform/opacity):
+  // fade-in + desplazamiento vertical sutil al cargar o actualizar el feed.
+  // El CSS `stagger-in` queda como mejora progresiva si Anime.js no corre.
+  useEffect(() => {
+    if (!articles || articles.length === 0) return;
+    const contenedor = rejillaRef.current;
+    if (!contenedor) return;
+    const marco = requestAnimationFrame(() => {
+      animarEntradaTarjetas(contenedor, ".tarjeta-noticia");
+    });
+    return () => cancelAnimationFrame(marco);
+  }, [articles]);
 
   const lista = listaModal || articles;
 
@@ -228,7 +243,7 @@ export default function NewsFeed({ articles, onToggleRead, onToggleSave, onUpdat
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div ref={rejillaRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {articles.map((art, indice) => (
           <TarjetaNoticia
             key={art.id}
