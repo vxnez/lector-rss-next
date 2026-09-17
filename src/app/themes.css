@@ -418,6 +418,41 @@
   border-color: rgb(2 132 199 / 0.7);
 }
 
+/* Tarjeta de guía (texto sky-100) y botones fantasma de peligro
+   (texto rose-300 sobre tinte rose-500/10): en temas claros el texto
+   casi blanco/rosa pálido es invisible; se oscurecen al tono 700
+   correspondiente. El /70 del subtítulo se conserva vía color-mix. */
+[data-theme="celeste"] .text-sky-100,
+[data-theme="menta"] .text-sky-100,
+[data-theme="celadon"] .text-sky-100 {
+  color: #0c4a6e;
+}
+[data-theme="celeste"] .text-rose-300,
+[data-theme="menta"] .text-rose-300,
+[data-theme="celadon"] .text-rose-300 {
+  color: #be123c;
+}
+[data-theme="celeste"] .bg-rose-500\/10,
+[data-theme="menta"] .bg-rose-500\/10,
+[data-theme="celadon"] .bg-rose-500\/10 {
+  background-color: rgb(190 18 60 / 0.08);
+}
+[data-theme="celeste"] .hover\:bg-rose-500\/15:hover,
+[data-theme="menta"] .hover\:bg-rose-500\/15:hover,
+[data-theme="celadon"] .hover\:bg-rose-500\/15:hover {
+  background-color: rgb(190 18 60 / 0.15);
+}
+[data-theme="celeste"] .border-rose-500\/30,
+[data-theme="menta"] .border-rose-500\/30,
+[data-theme="celadon"] .border-rose-500\/30 {
+  border-color: rgb(190 18 60 / 0.35);
+}
+[data-theme="celeste"] .hover\:border-rose-400\/50:hover,
+[data-theme="menta"] .hover\:border-rose-400\/50:hover,
+[data-theme="celadon"] .hover\:border-rose-400\/50:hover {
+  border-color: rgb(190 18 60 / 0.55);
+}
+
 /* Scroll sin barra visible (panel de ajustes): se sigue desplazando con rueda, tacto y teclado. */
 .panel-scroll { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
 .panel-scroll::-webkit-scrollbar { display: none; }
