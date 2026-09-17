@@ -10,7 +10,7 @@ Aplicación web full-stack para centralizar, organizar y leer noticias de fuente
 | Estilos | Tailwind CSS 4, tema oscuro editorial, 8 temas configurables |
 | Iconos | lucide-react + morphicons (iconos animados) |
 | Tipografía | Geist / Geist Mono (`next/font`) |
-| Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `mysql2/promise`, `bcryptjs`) |
+| Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `mysql2/promise`, `bcryptjs`, `animejs`) |
 | Autenticación | NextAuth 5 beta: credenciales, Google OAuth, GitHub OAuth |
 | Base de datos | MySQL 8.4 en servidor local Ubuntu Server (pool 10, SSL, `utf8mb4`) |
 | IA | Gemini REST (`gemini-3.5-flash-lite` principal, `gemini-2.5-flash` alterno) |
@@ -32,8 +32,11 @@ Acepta URL directa de feed o página principal. Estrategias en cascada:
 
 Encabezados de navegador reales y timeouts. Si la URL ya existe en la cuenta (comparación normalizada: minúsculas, sin slash final, sin `utm_*`, sin hash), responde **409** con el nombre de la fuente duplicada.
 
+### 2b. Conversión web → RSS (estilo RSS.app)
+Si la página no tiene feed nativo, el motor `src/lib/webToRss.js` la convierte automáticamente: extracción en 3 capas (JSON-LD → artículo único por Open Graph → heurística de lista con puntuación), fechas textuales EN/ES, autor, imagen y video. Incluye **crawling multipágina** (detecta `rel="next"`, `/page/N`, botones "Siguiente"; topes: 20 páginas / 100 noticias / 45 s, con pausa de cortesía) y consolidación desduplicada en orden cronológico inverso. Con el checkbox *"Convertir página completa"* (`forzar_conversion`) se omite el feed nativo y se crawlea la paginación (útil cuando el feed recorta el histórico, p. ej. WordPress sirve ~10 ítems). Las convertidas se guardan con `origen='web'` y se refrescan re-scrapeando, con el mismo caché condicional. Descargas bajo guarda SSRF (`src/lib/ssrf.js`: IP pública, redirects revalidados).
+
 ### 3. Clasificación 100% IA (sin clasificador local)
-Gemini recibe título, resumen y un **catálogo cerrado de 23 categorías** con descripción. Solo puede elegir una categoría existente (validación insensible a acentos). Cadena de modelos con reintento ante 429 (espera sugerida por la API), timeout 25 s y `maxDuration = 60` en la ruta.
+Gemini recibe título, resumen y un **catálogo cerrado de 24 categorías** con descripción (incluye **Developers**: programación, frameworks, DevOps, APIs, código abierto e IA aplicada). Solo puede elegir una categoría existente (validación insensible a acentos). Cadena de modelos con reintento ante 429 (espera sugerida por la API), timeout 25 s y `maxDuration = 60` en la ruta.
 
 ### 4. Sincronización optimizada para serverless
 - **Respuesta inmediata**: noticias se guardan con categoría provisional, sin bloquear en IA
@@ -50,7 +53,7 @@ Tiempos estimados: refresco sin novedades ~2–4 s; fuente nueva de 40 artículo
 ### 5. Persistencia (esquema MySQL)
 Tablas principales:
 - `usuarios` — identidad, hash, proveedor
-- `fuentes_rss` — propietario, título, URL, categoría, creación
+- `fuentes_rss` — propietario, título, URL, categoría, creación, validadores de caché (`etag`, `last_modified`, `ultima_revision`) y `origen` (`rss` nativo / `web` convertida)
 - `articulos_publicados` — fuente, título, resumen, URL, fecha, categoría, método y confianza de clasificación, leído, guardado, descartado
 
 Columnas de clasificación creadas de forma idempotente. Soporte UTF-8 / ISO-8859-1 / Windows-1252 con reparación de mojibake.
@@ -68,13 +71,16 @@ Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto /
 - Imagen del artículo como fondo lateral (gradiente, máscara, solo visual)
 
 ### 8. Onboarding de nuevos usuarios
-Encuesta de preferencias al primer ingreso que sugiere feeds recomendados (curados en `src/data/recommended-feeds.json`) y permite agregarlos con un clic. Verificación automática semanal de feeds recomendados via GitHub Action.
+Encuesta de preferencias al primer ingreso que sugiere feeds recomendados (curados en `src/data/recommended-feeds.json`, 108 feeds verificados) y permite agregarlos con un clic. Incluye la categoría **Developers** (🧑‍💻) con 7 fuentes curadas y verificadas: GitHub Blog, Hacker News, DEV Community, Stack Overflow Blog, CSS-Tricks, Smashing Magazine y Martin Fowler. Verificación automática semanal de feeds recomendados via GitHub Action.
 
 ### 9. Notificaciones push
 Web Push API con VAPID. Service Worker registrado en cliente. Suscripción/desuscripción desde panel de ajustes. Clave pública servida desde `/api/push`.
 
 ### 10. Seguridad
 Consultas parametrizadas (anti SQL injection), contraseñas con bcrypt, aislamiento por usuario, clave de Gemini solo en servidor, `.env*` ignorados en Git.
+
+### 11. Caché client-side del dashboard
+`src/lib/fetchCache.js`: deduplicación de peticiones concurrentes idénticas, TTL por endpoint (fuentes, facetas, páginas) y versión global que invalida todo al mutar (o al cambiar de cuenta). El feed usa stale-while-revalidate por vista (pintado instantáneo + revalidación) con prefetch de páginas vecinas y guarda anti-carreras. Sin cambios visuales ni de UX.
 
 ## Estructura del proyecto (puntos de entrada)
 
@@ -90,7 +96,7 @@ src/
 │   ├── register/                # Página de registro
 │   ├── recuperar/               # Recuperación de contraseña
 │   ├── components/
-│   │   ├── AddFeedModal.js      # Alta de feeds (propaga pendientes de IA)
+│   │   ├── AddFeedModal.js      # Alta de feeds (propaga pendientes de IA + conversión forzada)
 │   │   ├── ManageSourcesModal.js# Editar, refrescar y eliminar fuentes
 │   │   ├── NewsFeed.js          # Tarjetas de noticias (memo, stagger, spotlight)
 │   │   ├── ArticleReaderModal.js# Lector modal con badge IA/Sin IA y confianza
@@ -112,12 +118,17 @@ src/
 │   │   └── repo/                # Info del repositorio
 ├── lib/
 │   ├── db.js                    # Pool MySQL (servidor local Ubuntu, SSL)
-│   ├── categoryClassifier.js    # Catálogo cerrado 23 categorías + prompt
+│   ├── ssrf.js                  # Guarda de egreso: IP pública, redirects, tope de bytes
+│   ├── webToRss.js              # Motor web→RSS: extracción, paginación, fechas/autor
+│   ├── fetchCache.js            # Caché client-side: dedupe, TTL, SWR, prefetch
+│   ├── ajustesPorDefecto.js     # Defaults y limpieza de ajustes locales por cuenta
+│   ├── animaciones.js           # Helpers Anime.js (tarjetas, modales, botones)
+│   ├── categoryClassifier.js    # Catálogo cerrado 24 categorías + prompt
 │   ├── categoryStyles.js        # Colores deterministas por hash del nombre
 │   ├── feed-utils.js            # Utilidades puras (params, VAPID, paginación)
 │   ├── formato.js               # Formato fecha, dominio, truncado
 │   ├── lectura.js               # Estimación tiempo de lectura
-│   ├── i18n.js                  # ES/EN con diccionario plano
+│   ├── i18n.js                  # Solo español con diccionario plano
 │   ├── temas.js                 # 8 temas (oscuros + claros) + aplicador
 │   ├── useBloquearScroll.js     # Hook: bloquea scroll body al abrir modal
 │   ├── opml.js                  # Export/import OPML
@@ -132,10 +143,13 @@ sql/
 ├── 02_fuentes_rss.sql           # Tabla fuentes_rss + FK usuario
 ├── 03_articulos.sql             # Tabla articulos_publicados + FKs + índices
 ├── 04_recuperacion.sql          # Tokens de recuperación contraseña
-├── 05_paginacion.sql            # Vistas para paginación eficiente
+├── 05_paginacion.sql            # Índices para paginación eficiente
 ├── 06_ensure_schema.sql         # Migraciones idempotentes (columnas IA)
 ├── 07_push.sql                  # Tabla push_subscriptions
-└── 09_drop_vistas.sql           # Limpieza vistas legacy
+├── 08_bienvenida.sql            # Flag bienvenida_vista en usuarios
+├── 09_drop_vistas.sql           # Limpieza vistas legacy
+├── 10_borrado_cascada.sql       # Verificación FKs en cascada (borrado permanente)
+└── 11_fuentes_convertidas.sql   # Columna origen (rss / web) en fuentes_rss
 scripts/
 ├── verify-feeds.js              # Verifica feeds recomendados (HTTP 200 + XML válido + items)
 ├── recategorizar-feeds.js       # Reclasificación masiva

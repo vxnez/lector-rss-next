@@ -542,12 +542,49 @@
         "url": "https://www.jornada.com.mx/rss/edicion.xml?v=1",
         "descripcion": "Edición completa del periódico"
       }
+    ],
+    "Developers": [
+      {
+        "titulo": "GitHub Blog",
+        "url": "https://github.blog/feed/",
+        "descripcion": "Producto, ingeniería y código abierto (GitHub)"
+      },
+      {
+        "titulo": "Hacker News",
+        "url": "https://news.ycombinator.com/rss",
+        "descripcion": "Comunidad tech: programación y startups"
+      },
+      {
+        "titulo": "DEV Community",
+        "url": "https://dev.to/feed",
+        "descripcion": "Artículos de desarrolladores para desarrolladores"
+      },
+      {
+        "titulo": "Stack Overflow Blog",
+        "url": "https://stackoverflow.blog/feed/",
+        "descripcion": "Ingeniería, IA y cultura dev"
+      },
+      {
+        "titulo": "CSS-Tricks",
+        "url": "https://css-tricks.com/feed/",
+        "descripcion": "Frontend, CSS y desarrollo web"
+      },
+      {
+        "titulo": "Smashing Magazine",
+        "url": "https://www.smashingmagazine.com/feed/",
+        "descripcion": "Diseño y desarrollo web profesional"
+      },
+      {
+        "titulo": "Martin Fowler",
+        "url": "https://martinfowler.com/feed.atom",
+        "descripcion": "Arquitectura y métodos de desarrollo"
+      }
     ]
   },
   "metadata": {
     "fuente": "Curated from vxnez/rssfeeds and verified Spanish/Mexican RSS sources",
     "actualizado": "2026-09-16",
-    "total_feeds": 101,
+    "total_feeds": 108,
     "verificado": "2026-09-16T00:23:36.244Z",
     "nota": "Categorías asignadas automáticamente por palabras clave (título + descripción) según las 24 categorías del dashboard"
   }

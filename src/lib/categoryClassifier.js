@@ -3,6 +3,7 @@ const CATEGORIAS = [
   { nombre: "Economía y Finanzas", descripcion: "Mercados, empresas, inflación, bancos, impuestos, inversión, empleo, divisas, bolsa, criptomonedas y finanzas personales." },
   { nombre: "Seguridad y Justicia", descripcion: "Delincuencia, crimen organizado, narcotráfico, policía, juicios, tribunales, fiscalías, sentencias y sucesos violentos." },
   { nombre: "Tecnología", descripcion: "Software, internet, inteligencia artificial, ciberseguridad, plataformas digitales, apps y novedades generales de tecnología." },
+  { nombre: "Developers", descripcion: "Programación, lenguajes, frameworks, DevOps, APIs, código abierto, ingeniería de software e IA aplicada al desarrollo: contenido práctico para quienes programan." },
   { nombre: "Celulares", descripcion: "Smartphones, teléfonos móviles, iPhone, Android y dispositivos móviles, accesorios móviles y wearables." },
   { nombre: "Computadoras", descripcion: "PC, laptops, procesadores, tarjetas gráficas, sistemas operativos, hardware, memoria y periféricos." },
   { nombre: "Videojuegos", descripcion: "Videojuegos, consolas, PC gaming, eSports y la industria del entretenimiento interactivo." },

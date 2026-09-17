@@ -10,6 +10,7 @@ import RecommendedFeedsList from "./RecommendedFeedsList";
 // Fallback de iconos/colores por si la API no los proporciona
 const CATEGORY_META = {
   "Tecnología": { icon: "💻", color: "bg-sky-500" },
+  "Developers": { icon: "🧑‍💻", color: "bg-teal-500" },
   "Ciencia y Espacio": { icon: "🚀", color: "bg-purple-500" },
   "Videojuegos": { icon: "🎮", color: "bg-pink-500" },
   "Cine y Series": { icon: "🎬", color: "bg-red-500" },
