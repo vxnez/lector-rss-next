@@ -45,6 +45,34 @@ function cacheClasificacionSet(key, valor) {
   }
 }
 
+// Resuelve rutas relativas (/images/x.jpg, //cdn/...) contra la página y
+// valida scheme http(s). Sin esto se pierden imágenes con src relativo,
+// muy común en WordPress y CMS propios.
+function absolverUrlMultimedia(valor, base) {
+  if (typeof valor !== "string") return null;
+  const v = valor.trim();
+  if (!v || /^(data:|blob:|javascript:)/i.test(v)) return null;
+  try {
+    const abs = new URL(v, base).href;
+    if (!/^https?:\/\//i.test(abs)) return null;
+    return abs;
+  } catch {
+    return null;
+  }
+}
+
+// Píxeles de seguimiento / trackers 1x1 por nombre o dimensiones.
+// (No se verifica con HEAD cada candidato: el costo en latencia es alto y
+// el cliente ya descarta con onError; esto filtra lo evidente en origen.)
+function esTrackerMultimedia(img, abs) {
+  const texto = `${img.attr("src") || ""} ${img.attr("data-src") || ""} ${img.attr("alt") || ""} ${img.attr("class") || ""} ${abs || ""}`.toLowerCase();
+  if (/pixel|beacon|\/track|tracking|analytics|spacer|transparent|blank|1x1|clear\.gif|dot\.gif/i.test(texto)) return true;
+  const w = parseInt(img.attr("width") || "0", 10);
+  const h = parseInt(img.attr("height") || "0", 10);
+  if ((w === 1 && h <= 1) || (h === 1 && w <= 1)) return true;
+  return false;
+}
+
 // ¿URL directa a archivo de video reproducible en <video>? Solo ficheros
 // (mp4/webm/ogv/mov/m4v); se rechazan players embebidos (youtube, embeds)
 // porque no son reproducibles como fondo sin controles.
@@ -68,12 +96,15 @@ async function obtenerHtmlPagina(url) {
   }
 }
 
-// Video de la página vía meta tags estándar (og:video, twitter:player:stream).
-// Solo archivos directos; si la página es un player embebido se devuelve "".
+// Video de la página: meta tags, <video> nativos e iframes embebidos.
+// Devuelve { video, poster }: el poster (og:video n/a, <video poster>,
+// thumbnail YouTube/Vimeo) sirve como imagen cuando no hay otra.
 async function extraerVideoDePagina(url) {
+  const vacio = { video: "", poster: "" };
   const pagina = await obtenerHtmlPagina(url);
-  if (!pagina) return "";
+  if (!pagina) return vacio;
   const $ = cheerio.load(pagina.html);
+  // 1) Meta tags estándar.
   const candidatos = [
     { url: $('meta[property="og:video:secure_url"]').attr("content"), tipo: $('meta[property="og:video:type"]').attr("content") },
     { url: $('meta[property="og:video"]').attr("content"), tipo: $('meta[property="og:video:type"]').attr("content") },
@@ -84,13 +115,63 @@ async function extraerVideoDePagina(url) {
     if (typeof c.tipo === "string" && c.tipo && !c.tipo.toLowerCase().startsWith("video/")) continue;
     if (esUrlVideoDirecta(c.url)) {
       try {
-        return new URL(c.url.trim(), pagina.baseFinal).href;
+        return { video: new URL(c.url.trim(), pagina.baseFinal).href, poster: "" };
       } catch {
         // Probar con el siguiente candidato.
       }
     }
   }
-  return "";
+  // 2) <video> nativos: <source> directo + poster representativo.
+  const videos = $("video");
+  for (const el of videos.toArray()) {
+    const v = $(el);
+    const poster = absolverUrlMultimedia(v.attr("poster"), pagina.baseFinal) || "";
+    const fuentes = [];
+    if (v.attr("src")) fuentes.push(v.attr("src"));
+    v.find("source").each((_, s) => {
+      const u = $(s).attr("src");
+      if (u) fuentes.push(u);
+    });
+    for (const f of fuentes) {
+      if (esUrlVideoDirecta(f)) {
+        try {
+          return { video: new URL(f.trim(), pagina.baseFinal).href, poster };
+        } catch {
+          // Probar con la siguiente fuente.
+        }
+      }
+    }
+    if (poster) return { video: "", poster };
+  }
+  // 3) iframes embebidos: YouTube → thumbnail determinista (sin red);
+  // Vimeo → oEmbed público (una sola llamada con guard SSRF).
+  const frames = $("iframe");
+  for (const el of frames.toArray()) {
+    const src = $(el).attr("src") || "";
+    const yt = src.match(/(?:youtube\.com\/(?:embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+    if (yt) return { video: "", poster: `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg` };
+    const vm = src.match(/player\.vimeo\.com\/video\/(\d+)/i);
+    if (vm) {
+      const thumb = await miniaturaVimeo(vm[1]);
+      if (thumb) return { video: "", poster: thumb };
+    }
+  }
+  return vacio;
+}
+
+async function miniaturaVimeo(id) {
+  try {
+    const { res } = await fetchPublico(
+      `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(`https://vimeo.com/${id}`)}`,
+      { headers: { Accept: "application/json" }, timeoutMs: 5000 }
+    );
+    if (!res.ok) return "";
+    const data = await res.json().catch(() => null);
+    const thumb = data?.thumbnail_url;
+    return typeof thumb === "string" && /^https?:\/\//i.test(thumb.trim()) ? thumb.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 // Video incluido en el propio feed (enclosure o media:content de video).
@@ -248,13 +329,8 @@ async function extraerImagenDirecta(url) {
         const srcset = img.attr("srcset");
         const srcDeSrcset = mejorDeSrcset(srcset);
         const src = srcDeSrcset || img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || img.attr("data-original") || img.attr("data-srcset") && mejorDeSrcset(img.attr("data-srcset"));
-        if (src && /^https?:\/\//i.test(src)) {
-          try {
-            return new URL(src, baseFinal).href;
-          } catch {
-            // continuar
-          }
-        }
+        const abs = absolverUrlMultimedia(src, baseFinal);
+        if (abs && !esTrackerMultimedia(img, abs)) return abs;
       }
     }
 
@@ -263,13 +339,8 @@ async function extraerImagenDirecta(url) {
     for (const source of pictureSources.toArray()) {
       const srcset = $(source).attr("srcset");
       const srcDeSrcset = mejorDeSrcset(srcset);
-      if (srcDeSrcset) {
-        try {
-          return new URL(srcDeSrcset, baseFinal).href;
-        } catch {
-          // continuar
-        }
-      }
+      const abs = absolverUrlMultimedia(srcDeSrcset, baseFinal);
+      if (abs) return abs;
     }
 
     // 4. Fallback: primera imagen válida en todo el HTML (excluyendo iconos, avatares, etc.)
@@ -280,7 +351,7 @@ async function extraerImagenDirecta(url) {
       const srcDeSrcset = mejorDeSrcset(srcset);
       const src = srcDeSrcset || img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || img.attr("data-original") || img.attr("data-srcset") && mejorDeSrcset(img.attr("data-srcset"));
       if (!src) continue;
-      // Filtrar imágenes pequeñas/iconos/avatares
+      // Filtrar imágenes pequeñas/iconos/avatares/trackers
       const width = parseInt(img.attr("width") || "0", 10);
       const height = parseInt(img.attr("height") || "0", 10);
       if ((width && width < 100) || (height && height < 100)) continue;
@@ -288,6 +359,7 @@ async function extraerImagenDirecta(url) {
       if (alt.includes("logo") || alt.includes("icon") || alt.includes("avatar") || alt.includes("badge")) continue;
       try {
         const abs = new URL(src, baseFinal).href;
+        if (esTrackerMultimedia(img, abs)) continue;
         if (/^https?:\/\//i.test(abs) && /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(abs)) return abs;
       } catch {
         // continuar
@@ -1072,17 +1144,18 @@ export async function GET(req) {
         return NextResponse.json({ imagen: cacheada.imagen || null, video: cacheada.video || null });
       }
       const encontrada = await extraerImagenDirecta(verificada);
-      // Orden de medios: imagen directa → video (og:video) → screenshot.
-      // El video prima sobre la captura de pantalla; el screenshot es el
-      // último recurso porque suele ser lento y poco representativo.
+      // Orden de medios: imagen directa → video/poster embebido →
+      // screenshot. El poster (<video poster>, thumbnail YouTube/Vimeo)
+      // cuenta como imagen y evita el screenshot lento.
       let medios;
       if (encontrada) {
         medios = { imagen: encontrada, video: null };
       } else {
-        const video = await extraerVideoDePagina(verificada);
-        medios = video
-          ? { imagen: null, video }
-          : { imagen: await extraerImagenScreenshot(verificada), video: null };
+        const embebido = await extraerVideoDePagina(verificada);
+        medios =
+          embebido.video || embebido.poster
+            ? { imagen: embebido.poster || null, video: embebido.video || null }
+            : { imagen: await extraerImagenScreenshot(verificada), video: null };
       }
       imagenPaginaCache.set(verificada, medios);
       if (imagenPaginaCache.size > 500) {
