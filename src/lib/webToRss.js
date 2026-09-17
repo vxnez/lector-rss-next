@@ -15,6 +15,19 @@ import { fetchPublico, leerTextoLimitado } from "@/lib/ssrf";
 const TIMEOUT_MS = 12000;
 const MAX_ITEMS = 25;
 
+// Límites del crawling multipágina (anti-bloqueo y anti-bucle infinito):
+// como máximo N páginas o M noticias en total, y un presupuesto global de
+// tiempo para no agotar el maxDuration del serverless. Entre páginas hay una
+// pausa de cortesía secuencial (sin concurrencia: más amable con el origen).
+const MAX_PAGINAS_CRAWL = 8;
+const MAX_ITEMS_TOTAL = 100;
+const TIEMPO_MAX_CRAWL_MS = 45000;
+const CORTESIA_ENTRE_PAGINAS_MS = 500;
+
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const UA_CHROME =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const UA_FIREFOX =
@@ -386,22 +399,124 @@ function itemsDesdeLista($, base, baseHost) {
     .map(({ puntuacion, ...item }) => item);
 }
 
-// ---- Entrada principal ----
+// ---- Paginación multipágina (pagination crawling) ----
 
-/**
- * Convierte una página web sin feed nativo en un feed compatible con el
- * pipeline del dashboard. Devuelve:
- * { feed: { title, link, items: [{title, link, contentSnippet, isoDate,
- *   enclosure?, "media:content"?}] }, urlFinal, etag, lastModified }
- * o { sinCambios: true, urlFinal } si la página no cambió (validadores).
- * Lanza Error con mensaje limpio para el usuario si no es convertible.
- */
-export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = {}) {
-  const urlLimpia = limpiarUrlEntrada(urlIngresada);
-  const descarga = await descargarPagina(urlLimpia, validadores);
-  if (descarga.sinCambios) return { sinCambios: true, urlFinal: descarga.urlFinal };
+// Número de página explícito en la URL (?page=2, /page/3/, /p/2...). 1 si no hay.
+function numeroDePagina(abs) {
+  try {
+    const url = new URL(abs);
+    const params = ["page", "paged", "p", "pagina", "pg"];
+    for (const nombre of params) {
+      const n = Number(url.searchParams.get(nombre));
+      if (Number.isInteger(n) && n > 0) return n;
+    }
+    const m = url.pathname.match(/\/(?:page|p|pagina|pg|paged?)\/(\d+)(?:\/|$)/i);
+    if (m) return Number(m[1]);
+  } catch {
+    // URL inválida: se asume primera página.
+  }
+  return 1;
+}
 
-  const { html, baseFinal, etag, lastModified } = descarga;
+function normalizarUrlPagina(abs) {
+  try {
+    const url = new URL(abs);
+    url.hash = "";
+    url.hostname = url.hostname.toLowerCase();
+    url.pathname = url.pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "") || "/";
+    return url.href;
+  } catch {
+    return String(abs || "");
+  }
+}
+
+// ¿El enlace apunta a una página de listado numerada? Devuelve su número o 0.
+function numeroDeEnlacePaginado(abs) {
+  try {
+    const url = new URL(abs);
+    if (/\/wp-admin|\/wp-json|\/feed|\/rss|\/atom|\/amp(\/|$)/i.test(url.pathname)) return 0;
+    return numeroDePagina(abs) > 1 || /[?&](page|paged|p|pagina|pg)=\d+/i.test(abs) ||
+      /\/(?:page|p|pagina|pg|paged?)\/\d+(?:\/|$)/i.test(url.pathname)
+      ? numeroDePagina(abs)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const TEXTO_SIGUIENTE = /^(siguiente|next|»|›|→|más resultados|mas resultados|cargar más|cargar mas|ver más|ver mas|mostrar más|older|older posts|entradas antiguas|página siguiente|pagina siguiente)$/i;
+
+// Detecta la URL de la página siguiente de un listado. Solo mismo host
+// (no se persiguen enlaces externos) y solo enlaces con href real: los
+// botones "Load More" 100% JS (sin href) no son seguibles sin navegador.
+function detectarSiguientePagina($, base, baseHost, paginaActual) {
+  const candidata = (href) => {
+    const abs = absolver(href, base);
+    if (!abs || !/^https?:\/\//i.test(abs)) return "";
+    try {
+      if (new URL(abs).hostname.toLowerCase() !== baseHost) return "";
+    } catch {
+      return "";
+    }
+    return normalizarUrlPagina(abs);
+  };
+
+  // 1) Señal explícita: <link rel="next"> o <a rel="next">.
+  const relNext =
+    $('link[rel="next"]').first().attr("href") || $('a[rel="next"]').first().attr("href");
+  if (relNext) {
+    const abs = candidata(relNext);
+    if (abs) return abs;
+  }
+
+  // 2) Enlace numerado inmediatamente posterior (?page=N+1, /page/N+1/).
+  let mejorNumerado = "";
+  $("a[href]").each((_, el) => {
+    if (mejorNumerado) return;
+    const n = numeroDeEnlacePaginado(absolver($(el).attr("href"), base));
+    if (n === paginaActual + 1) {
+      const abs = candidata($(el).attr("href"));
+      if (abs) mejorNumerado = abs;
+    }
+  });
+  if (mejorNumerado) return mejorNumerado;
+
+  // 3) Botón/enlace "Siguiente" con href navegable.
+  let siguienteTexto = "";
+  $("a[href]").each((_, el) => {
+    if (siguienteTexto) return;
+    if (TEXTO_SIGUIENTE.test(textoLimpio($, el))) {
+      const abs = candidata($(el).attr("href"));
+      if (abs) siguienteTexto = abs;
+    }
+  });
+  if (siguienteTexto) return siguienteTexto;
+
+  // 4) Sondeo prudente: hay UI de paginación pero sin "siguiente" explícito.
+  // Solo desde la página 1 y construyendo ?page=2 (un único intento, que el
+  // bucle valida: si no aporta noticias nuevas, se detiene).
+  if (paginaActual === 1) {
+    const hayPaginador =
+      $(".pagination,.paginacion,.paginador,ul.page-numbers,nav[class*='pagin' i],div[class*='pagin' i]").length > 0;
+    if (hayPaginador) {
+      try {
+        const url = new URL(base);
+        if (url.hostname.toLowerCase() === baseHost) {
+          url.searchParams.set("page", "2");
+          url.hash = "";
+          return normalizarUrlPagina(url.href);
+        }
+      } catch {
+        // Base inválida: sin sondeo.
+      }
+    }
+  }
+  return "";
+}
+
+// ---- Extracción de una página HTML a { tituloSitio, items, esArticuloUnico } ----
+
+function extraerFeedDeHtml(html, baseFinal) {
   const $ = cheerio.load(html, { decodeEntities: true });
   $("script:not([type='application/ld+json']), style, noscript").remove();
 
@@ -426,26 +541,116 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
 
   const nodosJsonLd = extraerJsonLd($);
   let items = itemsDesdeJsonLd(nodosJsonLd, base, baseHost);
+  let esArticuloUnico = false;
   if (items.length === 0) {
     const unico = extraerArticuloUnico($, base, baseHost, nodosJsonLd);
-    if (unico) items = [unico];
+    if (unico) {
+      items = [unico];
+      esArticuloUnico = true;
+    }
   }
   if (items.length === 0) {
     items = itemsDesdeLista($, base, baseHost);
   }
-  if (items.length === 0) {
+  const paginaActual = numeroDePagina(base);
+  const siguiente = esArticuloUnico ? "" : detectarSiguientePagina($, base, baseHost, paginaActual);
+  return { tituloSitio, items, esArticuloUnico, siguiente, base: normalizarUrlPagina(base) };
+}
+
+// ---- Entrada principal ----
+
+/**
+ * Convierte una página web sin feed nativo en un feed compatible con el
+ * pipeline del dashboard. Devuelve:
+ * { feed: { title, link, items: [{title, link, contentSnippet, isoDate,
+ *   enclosure?, "media:content"?}] }, urlFinal, etag, lastModified }
+ * o { sinCambios: true, urlFinal } si la página no cambió (validadores).
+ * Lanza Error con mensaje limpio para el usuario si no es convertible.
+ */
+export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = {}) {
+  const urlLimpia = limpiarUrlEntrada(urlIngresada);
+  const descarga = await descargarPagina(urlLimpia, validadores);
+  if (descarga.sinCambios) return { sinCambios: true, urlFinal: descarga.urlFinal };
+
+  const { html, baseFinal, etag, lastModified } = descarga;
+  const primera = extraerFeedDeHtml(html, baseFinal);
+  if (primera.items.length === 0) {
     throw errorWeb(
       "Esta página no tiene una estructura de contenido compatible: no se encontraron artículos (ni datos JSON-LD, ni artículo único, ni lista de titulares).",
       "WEB_INCOMPATIBLE"
     );
   }
 
+  // Multipage crawling: recorre páginas siguientes hasta agotar el listado o
+  // alcanzar los topes (páginas, noticias, tiempo). Los artículos únicos no
+  // paginan. Corte por página sin novedades = fin del listado.
+  let todos = [...primera.items];
+  let paginas = 1;
+  const visitadas = new Set([primera.base, normalizarUrlPagina(urlLimpia)]);
+  let siguiente = primera.siguiente;
+  const arranque = Date.now();
+  while (
+    siguiente &&
+    !primera.esArticuloUnico &&
+    paginas < MAX_PAGINAS_CRAWL &&
+    todos.length < MAX_ITEMS_TOTAL &&
+    Date.now() - arranque < TIEMPO_MAX_CRAWL_MS
+  ) {
+    const urlPagina = normalizarUrlPagina(siguiente);
+    siguiente = "";
+    if (!urlPagina || visitadas.has(urlPagina)) break;
+    visitadas.add(urlPagina);
+    await esperar(CORTESIA_ENTRE_PAGINAS_MS);
+    if (Date.now() - arranque >= TIEMPO_MAX_CRAWL_MS) break;
+    let pagina;
+    try {
+      pagina = await descargarPagina(urlPagina);
+    } catch {
+      break; // Página caída/bloqueada: se conserva lo ya recolectado.
+    }
+    if (pagina?.sinCambios) break;
+    if (!pagina?.html) break;
+    let extraidos;
+    try {
+      extraidos = extraerFeedDeHtml(pagina.html, pagina.baseFinal);
+    } catch {
+      break;
+    }
+    visitadas.add(extraidos.base);
+    const vistos = new Set(todos.map((item) => item.url));
+    let nuevos = 0;
+    for (const item of extraidos.items) {
+      if (todos.length >= MAX_ITEMS_TOTAL) break;
+      if (!item.url || vistos.has(item.url)) continue;
+      vistos.add(item.url);
+      todos.push(item);
+      nuevos++;
+    }
+    paginas++;
+    if (nuevos === 0) break; // Listado agotado (o página repetida).
+    siguiente = extraidos.siguiente;
+  }
+
+  // Consolidación: desduplicar por URL y ordenar cronológicamente inverso
+  // (más reciente primero). Sin fecha válida van al final, en orden de
+  // descubrimiento, para no fingir una novedad que no tienen.
+  const vistosFinal = new Set();
+  const unicos = todos.filter((item) => {
+    if (!item.url || vistosFinal.has(item.url)) return false;
+    vistosFinal.add(item.url);
+    return true;
+  });
+  unicos.sort((a, b) => {
+    const ta = Date.parse(a.fecha || "");
+    const tb = Date.parse(b.fecha || "");
+    const va = Number.isNaN(ta) ? -1 : ta;
+    const vb = Number.isNaN(tb) ? -1 : tb;
+    return vb - va;
+  });
+
   const ahora = new Date().toISOString();
-  const vistos = new Set();
   const itemsFeed = [];
-  for (const item of items) {
-    if (!item.url || vistos.has(item.url)) continue;
-    vistos.add(item.url);
+  for (const item of unicos.slice(0, MAX_ITEMS_TOTAL)) {
     const descripcion = [item.resumen, item.autor ? `Por ${item.autor}` : ""]
       .filter(Boolean)
       .join(" · ")
@@ -465,7 +670,6 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
       entrada["media:content"] = { $: { url: item.video, type: "video/mp4" } };
     }
     itemsFeed.push(entrada);
-    if (itemsFeed.length >= MAX_ITEMS) break;
   }
   if (itemsFeed.length === 0) {
     throw errorWeb(
@@ -475,10 +679,11 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
   }
 
   return {
-    feed: { title: tituloSitio, link: baseFinal, items: itemsFeed },
+    feed: { title: primera.tituloSitio, link: baseFinal, items: itemsFeed },
     urlFinal: baseFinal,
     etag: etag || null,
     lastModified: lastModified || null,
     convertida: true,
+    paginas,
   };
 }
