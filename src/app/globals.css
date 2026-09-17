@@ -701,6 +701,14 @@ textarea:focus-visible {
   transform-origin: left center;
 }
 
+/* Oculta el botón nativo de mostrar/ocultar contraseña del navegador
+   (Edge/IE): la app ya tiene su propio toggle animado (MorphIcon). */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="text"]::-ms-clear {
+  display: none;
+}
+
 /* Interruptor: píldora y pomo solo con transform/opacity. */
 .switch-pill {
   transition: background-color 200ms var(--ease-out), border-color 200ms var(--ease-out);
