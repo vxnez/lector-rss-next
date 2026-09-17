@@ -45,12 +45,6 @@ function cacheClasificacionSet(key, valor) {
   }
 }
 
-async function extraerImagenDePagina(url) {
-  const directa = await extraerImagenDirecta(url);
-  if (directa) return directa;
-  return extraerImagenScreenshot(url);
-}
-
 // ¿URL directa a archivo de video reproducible en <video>? Solo ficheros
 // (mp4/webm/ogv/mov/m4v); se rechazan players embebidos (youtube, embeds)
 // porque no son reproducibles como fondo sin controles.
@@ -1077,11 +1071,19 @@ export async function GET(req) {
         }
         return NextResponse.json({ imagen: cacheada.imagen || null, video: cacheada.video || null });
       }
-      const encontrada = await extraerImagenDePagina(verificada);
-      // Video de la página (og:video) solo cuando no hay imagen directa:
-      // evita una segunda descarga cuando la imagen ya resolvió.
-      const video = encontrada ? "" : await extraerVideoDePagina(verificada);
-      const medios = { imagen: encontrada || null, video: video || null };
+      const encontrada = await extraerImagenDirecta(verificada);
+      // Orden de medios: imagen directa → video (og:video) → screenshot.
+      // El video prima sobre la captura de pantalla; el screenshot es el
+      // último recurso porque suele ser lento y poco representativo.
+      let medios;
+      if (encontrada) {
+        medios = { imagen: encontrada, video: null };
+      } else {
+        const video = await extraerVideoDePagina(verificada);
+        medios = video
+          ? { imagen: null, video }
+          : { imagen: await extraerImagenScreenshot(verificada), video: null };
+      }
       imagenPaginaCache.set(verificada, medios);
       if (imagenPaginaCache.size > 500) {
         imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);

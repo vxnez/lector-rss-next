@@ -67,6 +67,8 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [totalAgregados, setTotalAgregados] = useState(0);
   const [completando, setCompletando] = useState(false);
   const cargandoRef = useRef(false);
+  // Nota: el reinicio al Punto 1 en cada apertura manual lo garantiza el
+  // padre con `key` (remontaje): el estado inicial ya es paso 1 vacío.
 
   // Cargar categorías disponibles (solo las que tienen feeds verificados)
   useEffect(() => {

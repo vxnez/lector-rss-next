@@ -397,8 +397,18 @@ export default function HomePage() {
     setDensidad(normalizada);
   };
 
-  // Sesión inicial (cuenta o invitado) + modal de bienvenida. El feed lo
-  // carga el efecto de datos paginados cuando hay sesión.
+  // Sesión inicial (cuenta o invitado). El feed lo carga el efecto de
+  // datos paginados cuando hay sesión.
+  // Guía de bienvenida como flujo de PRIMER USO:
+  // - Cuentas: el servidor expone bienvenidaVista (0 = pendiente: cuenta
+  //   nueva o proveedor recién vinculado). Solo entonces se abre sola; al
+  //   cerrarla se persiste en servidor y jamás vuelve a abrirse sola.
+  // - Invitados: sin perfil en servidor; control por clave local
+  //   guest_has_seen_onboarding (se honra la marca anterior
+  //   welcome_seen_invitado para no repetirla). Se abre solo la primera
+  //   vez por navegador; recargas y sesiones posteriores no la reabren.
+  // - En cualquier otro caso la apertura es solo manual ("Sugerencia de
+  //   fuentes" o Ajustes → Guía).
   useEffect(() => {
     const controller = new AbortController();
 
@@ -411,22 +421,7 @@ export default function HomePage() {
 
         if (sessionData?.user) {
           setSession(sessionData);
-          // Simplificación de la clave: usamos solo el email o el id para evitar inconsistencias
-          const userId = sessionData.user.email || sessionData.user.id;
-          const welcomeKey = `welcome_seen_${userId}`;
-          let hasSeenWelcome = false;
-          try {
-            hasSeenWelcome = Boolean(localStorage.getItem(welcomeKey));
-          } catch {
-            // Sin almacenamiento disponible: se muestra como a los invitados.
-            hasSeenWelcome = false;
-          }
-          // bienvenidaVista = 0 lo pone el servidor en el primer login con
-          // Google/GitHub (cuenta nueva o proveedor recién vinculado): la
-          // bienvenida salta aunque el localStorage por email ya existiera.
-          const bienvenidaPendiente = Number(sessionData.user?.bienvenidaVista ?? 1) === 0;
-
-          if (!hasSeenWelcome || bienvenidaPendiente) {
+          if (Number(sessionData.user?.bienvenidaVista ?? 1) === 0) {
             setShowOnboardingSurvey(true);
           }
         } else {
@@ -437,7 +432,16 @@ export default function HomePage() {
             });
             if (!resInvitado.ok || controller.signal.aborted) return;
             setSession({ user: { name: "Invitado", invitado: true } });
-            setShowOnboardingSurvey(true);
+            let guiaVista = false;
+            try {
+              guiaVista = Boolean(
+                localStorage.getItem("guest_has_seen_onboarding") ||
+                  localStorage.getItem("welcome_seen_invitado")
+              );
+            } catch {
+              // Sin almacenamiento: se muestra una vez por sesión.
+            }
+            if (!guiaVista) setShowOnboardingSurvey(true);
           } catch (err) {
             if (err.name !== "AbortError") console.error("Error al cargar invitado:", err);
           }
@@ -545,16 +549,16 @@ export default function HomePage() {
 
   const closeOnboardingSurvey = () => {
     // La guía se marca como vista al cerrarla por cualquier vía (completar,
-    // omitir o X): reabrirla queda disponible en Ajustes → Guía. Antes solo
-    // persistía al completar, por eso reaparecía en cada inicio de sesión.
+    // omitir o X): reabrirla queda disponible en "Sugerencia de fuentes" o
+    // Ajustes → Guía. Invitados: clave local guest_has_seen_onboarding.
     if (session?.user) {
-      const clave = esInvitado ? "invitado" : (session.user.email || session.user.id);
-      if (clave) {
-        try {
-          localStorage.setItem(`welcome_seen_${clave}`, "true");
-        } catch {
-          // Sin almacenamiento disponible
-        }
+      const clave = esInvitado
+        ? "guest_has_seen_onboarding"
+        : `welcome_seen_${session.user.email || session.user.id}`;
+      try {
+        localStorage.setItem(clave, "true");
+      } catch {
+        // Sin almacenamiento disponible
       }
       // Cuentas reales: persistir en el servidor para que no vuelva a saltar
       // en otros navegadores/dispositivos. Los invitados son efímeros.
@@ -1155,7 +1159,7 @@ export default function HomePage() {
                         className="btn-press flex w-full items-center justify-center gap-1.5 rounded-xl border border-app-line bg-app-raised/70 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-app-fg hover:border-[var(--accent)]/50 hover:bg-app-raised"
                       >
                         <Sparkles size={14} />
-                        <span className="truncate">{t("controles.guia")}</span>
+                        <span className="truncate">Sugerencia de fuentes</span>
                       </button>
                     </section>
                   </div>
@@ -1414,6 +1418,7 @@ export default function HomePage() {
       </footer>
 
       <OnboardingSurvey
+        key={showOnboardingSurvey ? "guia-abierta" : "guia-cerrada"}
         abierto={showOnboardingSurvey}
         onCerrar={closeOnboardingSurvey}
         t={t}

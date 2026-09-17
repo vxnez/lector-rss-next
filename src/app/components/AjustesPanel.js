@@ -273,7 +273,12 @@ export default function AjustesPanel({
         const claves = [];
         for (let i = 0; i < window.localStorage.length; i++) {
           const clave = window.localStorage.key(i);
-          if (clave && clave.startsWith("welcome_seen_")) claves.push(clave);
+          if (
+            clave &&
+            (clave.startsWith("welcome_seen_") || clave === "guest_has_seen_onboarding")
+          ) {
+            claves.push(clave);
+          }
         }
         claves.forEach((clave) => window.localStorage.removeItem(clave));
       } catch {
