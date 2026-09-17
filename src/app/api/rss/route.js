@@ -587,6 +587,52 @@ async function ensureFuentesOrigenSchema() {
   return fuentesOrigenSchemaPromise;
 }
 
+// Interruptor por fuente "convertir la página completa": 1 = refrescar con el
+// crawler multipágina completo (convertirPaginaAFeed) bajo demanda, 0 =
+// extracción estándar. Patrón ensure* del proyecto: columna creada bajo
+// demanda y promesa cacheada por vida del servidor.
+let fuentesFullPageSchemaPromise;
+
+async function ensureFuentesFullPageSchema() {
+  if (!fuentesFullPageSchemaPromise) {
+    fuentesFullPageSchemaPromise = (async () => {
+      const [columns] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'fuentes_rss'
+           AND COLUMN_NAME = 'convert_full_page'`
+      );
+      if (columns.length === 0) {
+        await db.query(
+          "ALTER TABLE fuentes_rss ADD COLUMN convert_full_page TINYINT(1) NOT NULL DEFAULT 0"
+        );
+      }
+    })().catch((error) => {
+      fuentesFullPageSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return fuentesFullPageSchemaPromise;
+}
+
+// Mapa id → convertFullPage tolerante a BDs sin la columna (todo 0).
+// Evita que un SELECT con columna inexistente rompa refrescos/cron.
+async function mapaFullPageFuentes(ids = []) {
+  const mapa = new Map();
+  if (!ids.length) return mapa;
+  try {
+    const [filas] = await db.query(
+      `SELECT id, convert_full_page FROM fuentes_rss WHERE id IN (${ids.map(() => "?").join(",")})`,
+      ids
+    );
+    for (const fila of filas) mapa.set(fila.id, Number(fila.convert_full_page) === 1);
+  } catch (error) {
+    if (error?.code !== "ER_BAD_FIELD_ERROR" && error?.code !== "ER_NO_SUCH_TABLE") throw error;
+    for (const id of ids) mapa.set(id, false);
+  }
+  return mapa;
+}
+
 // Mapa id → origen tolerante a BDs sin la columna (todo 'rss').
 // Evita que un SELECT con columna inexistente rompa refrescos/cron.
 async function mapaOrigenFuentes(ids = []) {
@@ -605,11 +651,23 @@ async function mapaOrigenFuentes(ids = []) {
   return mapa;
 }
 
-// Obtiene el feed de una fuente según su origen: parseo nativo o
-// re-scrapeo de la página convertida (con validadores condicionales en
-// ambos casos para no descargar sin cambios).
+// Obtiene el feed de una fuente según su origen y su interruptor
+// convertFullPage: parseo nativo, re-scrapeo de página convertida, o
+// crawler multipágina completo bajo demanda (flag activo). Con validadores
+// condicionales en todos los casos para no descargar sin cambios.
 async function obtenerFeedFuente(fuente, { omitirOrigenDb = false } = {}) {
   const validadores = { etag: fuente.etag, lastModified: fuente.last_modified };
+  let convertFullPage = Number(fuente.convert_full_page) === 1 || fuente.convertFullPage === true;
+  if (!fuente.convert_full_page && fuente.convertFullPage === undefined && !omitirOrigenDb && fuente.id) {
+    convertFullPage = (await mapaFullPageFuentes([fuente.id])).get(fuente.id) || false;
+  }
+  // Flag activo: invoca el motor de paginación/crawler completo en lugar de
+  // la extracción estándar limitada a la primera página.
+  if (convertFullPage) {
+    const conversion = await convertirPaginaAFeed(fuente.url_feed, { validadores });
+    if (conversion?.sinCambios) return { sinCambios: true, urlFinal: conversion.urlFinal };
+    return { feed: conversion.feed, etag: conversion.etag, lastModified: conversion.lastModified, paginas: conversion.paginas || 1 };
+  }
   let origen = fuente.origen;
   if (!origen && !omitirOrigenDb) {
     origen = (await mapaOrigenFuentes([fuente.id])).get(fuente.id) || "rss";
@@ -1054,6 +1112,7 @@ export async function POST(req) {
     await ensureVideoSchema();
     await ensureFuentesCacheSchema();
     await ensureFuentesOrigenSchema();
+    await ensureFuentesFullPageSchema();
     await ensureArticulosUnicidad(userId);
 
     const limiteFecha = new Date();
@@ -1116,10 +1175,21 @@ export async function POST(req) {
       try {
         // Ownership: la fuente debe pertenecer al llamante antes de
         // leer, persistir, restaurar o purgar bajo su id.
-        const [propias] = await db.query(
-          "SELECT id, etag, last_modified FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
-          [source_id, userId]
-        );
+        // Se lee también el flag convert_full_page (tolerante a BDs sin la
+        // columna) para decidir entre extracción estándar y crawler completo.
+        let propias;
+        try {
+          [propias] = await db.query(
+            "SELECT id, etag, last_modified, convert_full_page FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
+            [source_id, userId]
+          );
+        } catch (error) {
+          if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
+          [propias] = await db.query(
+            "SELECT id, etag, last_modified FROM fuentes_rss WHERE id = ? AND usuario_id = ?",
+            [source_id, userId]
+          );
+        }
         if (!propias[0]) {
           return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
         }
@@ -1128,6 +1198,7 @@ export async function POST(req) {
           url_feed: url,
           etag: propias[0]?.etag,
           last_modified: propias[0]?.last_modified,
+          convert_full_page: propias[0]?.convert_full_page,
         });
         if (resultado?.sinCambios) {
           await actualizarValidadoresFuente(source_id, null, null);
@@ -1149,7 +1220,17 @@ export async function POST(req) {
           [source_id, inicioHoy]
         );
         const purgados = await purgarArticulosAntiguos({ fuenteId: source_id });
-        return NextResponse.json({ message: "Fuente individual actualizada correctamente", restaurados: restauradosFuente.affectedRows || 0, pendientes, purgados });
+        const usoFullPage = Number(propias[0]?.convert_full_page) === 1;
+        return NextResponse.json({
+          message: usoFullPage
+            ? `Fuente actualizada con página completa (${resultado?.paginas || 1} páginas recorridas)`
+            : "Fuente individual actualizada correctamente",
+          restaurados: restauradosFuente.affectedRows || 0,
+          pendientes,
+          purgados,
+          convertFullPage: usoFullPage,
+          paginas: resultado?.paginas || 1,
+        });
       } catch (e) {
         console.error(`[RSS REFRESH SOURCE ERROR] Fuente ID ${source_id}:`, e.message);
         return NextResponse.json({ error: e.message || "No se pudo actualizar la fuente seleccionada" }, { status: 500 });
@@ -1215,10 +1296,20 @@ export async function POST(req) {
       );
     }
 
-    const [resFuente] = await db.query(
-      "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision, origen) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)",
-      [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null, convertida ? "web" : "rss"]
-    );
+    let resFuente;
+    try {
+      [resFuente] = await db.query(
+        "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision, origen, convert_full_page) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)",
+        [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null, convertida ? "web" : "rss", body.forzar_conversion === true ? 1 : 0]
+      );
+    } catch (error) {
+      // BD sin migrar (sin convert_full_page): reintenta sin el flag.
+      if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
+      [resFuente] = await db.query(
+        "INSERT INTO fuentes_rss (usuario_id, titulo, url_feed, categoria, etag, last_modified, ultima_revision, origen) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)",
+        [userId, derivarNombreFuente(feed, urlFinal), urlFinal, body.categoria?.trim() || "General", etag || null, lastModified || null, convertida ? "web" : "rss"]
+      );
+    }
 
     const fuenteId = resFuente.insertId;
 
@@ -1265,15 +1356,34 @@ export async function GET(req) {
     await ensureClassificationSchema();
     await ensureVideoSchema();
     await ensureArticulosUnicidad(userId);
+    try {
+      await ensureFuentesFullPageSchema();
+    } catch {
+      // Sin columna: el listado sale sin flag (todo 0).
+    }
     const { searchParams } = new URL(req.url);
     const tipo = searchParams.get("tipo");
 
     if (tipo === "fuentes") {
-      const [fuentes] = await db.query(
-        "SELECT id, titulo, url_feed, categoria FROM fuentes_rss WHERE usuario_id = ? ORDER BY id DESC",
-        [userId]
+      let fuentes;
+      try {
+        [fuentes] = await db.query(
+          "SELECT id, titulo, url_feed, categoria, convert_full_page FROM fuentes_rss WHERE usuario_id = ? ORDER BY id DESC",
+          [userId]
+        );
+      } catch (error) {
+        if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
+        [fuentes] = await db.query(
+          "SELECT id, titulo, url_feed, categoria FROM fuentes_rss WHERE usuario_id = ? ORDER BY id DESC",
+          [userId]
+        );
+      }
+      return NextResponse.json(
+        (fuentes || []).map((f) => ({
+          ...f,
+          convertFullPage: Number(f.convert_full_page) === 1,
+        }))
       );
-      return NextResponse.json(fuentes);
     }
 
     if (tipo === "categorias") {
@@ -1768,15 +1878,23 @@ export async function refrescarFuentesDeUsuario(userId, { restoreToday = false }
     return { vacia: true, nuevos: 0, pendientes: 0, omitidas: 0, restaurados: 0, purgados: 0 };
   }
 
-  // Origen por fuente (tolerante a BDs sin la columna): las 'web' se
-  // refrescan re-scrapeando la página convertida, no parseando un feed.
+  // Origen + flag full-page por fuente (tolerante a BDs sin las columnas):
+  // las 'web' se refrescan re-scrapeando la página convertida, y cualquier
+  // fuente con convert_full_page=1 usa el crawler multipágina completo.
   // El ensure nunca rompe el refresco/cron: si falla, todo se trata como rss.
   let mapaOrigen = new Map();
+  let mapaFullPage = new Map();
   try {
     await ensureFuentesOrigenSchema();
     mapaOrigen = await mapaOrigenFuentes(fuentes.map((fuente) => fuente.id));
   } catch {
     // Sin columna de origen: refresco nativo para todas.
+  }
+  try {
+    await ensureFuentesFullPageSchema();
+    mapaFullPage = await mapaFullPageFuentes(fuentes.map((fuente) => fuente.id));
+  } catch {
+    // Sin columna full-page: extracción estándar para todas.
   }
 
   let nuevos = 0;
@@ -1786,7 +1904,11 @@ export async function refrescarFuentesDeUsuario(userId, { restoreToday = false }
   await mapWithConcurrency(fuentes, 4, async (fuente) => {
     try {
       const resultado = await obtenerFeedFuente(
-        { ...fuente, origen: mapaOrigen.get(fuente.id) || "rss" },
+        {
+          ...fuente,
+          origen: mapaOrigen.get(fuente.id) || "rss",
+          convert_full_page: mapaFullPage.get(fuente.id) ? 1 : 0,
+        },
         { omitirOrigenDb: true }
       );
       if (resultado?.sinCambios) {

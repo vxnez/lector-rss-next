@@ -26,11 +26,13 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const [refreshingSourceId, setRefreshingSourceId] = useState(null);
   const [editingSourceId, setEditingSourceId] = useState(null);
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null);
+  // Interruptor "convertir página completa" por fuente (persistido en BD).
+  const [togglingFullPageId, setTogglingFullPageId] = useState(null);
   // Selección múltiple para borrado en lote (eco del sistema de filtros).
   const [seleccionadas, setSeleccionadas] = useState([]);
   const [confirmarLote, setConfirmarLote] = useState(false);
   const [eliminandoLote, setEliminandoLote] = useState(false);
-  const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General" });
+  const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General", convertFullPage: false });
   // Sub-vista OPML: importar (archivo → selección → alta) y exportar.
   const [vistaOpml, setVistaOpml] = useState(false);
   const [opmlItems, setOpmlItems] = useState([]);
@@ -46,7 +48,10 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       if (res.ok) {
         const data = await res.json();
         const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
-        return sourcesArr;
+        return sourcesArr.map((s) => ({
+          ...s,
+          convertFullPage: Number(s.convert_full_page) === 1 || s.convertFullPage === true,
+        }));
       }
     } catch (err) {
       if (err.name !== "AbortError") {
@@ -222,6 +227,38 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   }, [onChange]);
 
+  // Interruptor por fuente "Convertir la página completa": toggle optimista
+  // con reversión si el PUT falla. El refresco posterior lee este flag en BD
+  // y usa el crawler multipágina completo en vez de la extracción estándar.
+  const handleToggleFullPage = async (source) => {
+    const sourceId = source.id;
+    const siguiente = !(Number(source.convert_full_page) === 1 || source.convertFullPage === true);
+    const previo = sources;
+    setTogglingFullPageId(sourceId);
+    setSources((anteriores) => anteriores.map((s) => (
+      s.id === sourceId ? { ...s, convertFullPage: siguiente, convert_full_page: siguiente ? 1 : 0 } : s
+    )));
+    try {
+      const res = await fetch("/api/sources", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: sourceId, convertFullPage: siguiente }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t("fuentes.convert_full_err"));
+      }
+      onNotify?.(t(siguiente ? "fuentes.convert_full_on" : "fuentes.convert_full_off"), "success");
+      if (onChange) onChange();
+    } catch (err) {
+      console.error("Error al guardar página completa:", err);
+      setSources(previo);
+      onNotify?.(err.message || t("fuentes.convert_full_err"), "error");
+    } finally {
+      setTogglingFullPageId(null);
+    }
+  };
+
   // Refrescar una fuente individual por su ID o URL de feed
   const handleRefreshSingle = async (source) => {
     const sourceId = source.id;
@@ -360,6 +397,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       titulo: source.titulo || source.nombre || t("fuentes.sin_nombre"),
       url_feed: source.url_feed || "",
       categoria: source.categoria || "General",
+      convertFullPage: Number(source.convert_full_page) === 1 || source.convertFullPage === true,
     });
   };
 
@@ -377,7 +415,9 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       }
 
       setSources((prev) => prev.map((source) => (
-        source.id === sourceId ? { ...source, ...editForm } : source
+        source.id === sourceId
+          ? { ...source, ...editForm, convert_full_page: editForm.convertFullPage ? 1 : 0 }
+          : source
       )));
       setEditingSourceId(null);
       if (onChange) onChange();
@@ -659,6 +699,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               const nombreFuente = source.titulo || source.nombre || t("fuentes.sin_nombre");
               const isEditing = editingSourceId === sId;
               const marcada = seleccionadas.includes(sId);
+              const fullPageActivo = Number(source.convert_full_page) === 1 || source.convertFullPage === true;
+              const isTogglingThis = togglingFullPageId === sId;
 
               return (
                 <div
@@ -710,6 +752,19 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         aria-label={t("fuentes.cat_ph")}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
                       />
+                      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 hover:border-gray-600 transition">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editForm.convertFullPage)}
+                          onChange={(event) => setEditForm((form) => ({ ...form, convertFullPage: event.target.checked }))}
+                          aria-label={t("fuentes.convert_full_aria")}
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-sky-500"
+                        />
+                        <span>
+                          <span className="block text-xs font-medium text-gray-200">{t("fuentes.convert_full")}</span>
+                          <span className="block text-[11px] text-gray-500 leading-relaxed">{t("fuentes.convert_full_hint")}</span>
+                        </span>
+                      </label>
                     </div>
                   ) : (
                     <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
@@ -729,6 +784,35 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           {source.categoria}
                         </span>
                       )}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={fullPageActivo}
+                        aria-label={`${t("fuentes.convert_full_aria")}: ${nombreFuente}`}
+                        title={t("fuentes.convert_full_hint")}
+                        disabled={isTogglingThis}
+                        onClick={() => handleToggleFullPage(source)}
+                        className="btn-press mt-1 flex max-w-full items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/60 px-2 py-1.5 text-left hover:border-gray-600 disabled:opacity-50"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition ${
+                            fullPageActivo ? "bg-sky-500" : "bg-gray-700"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                              fullPageActivo ? "translate-x-3.5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={`block truncate text-[11px] font-medium ${fullPageActivo ? "text-sky-300" : "text-gray-400"}`}>
+                            {t("fuentes.convert_full")}{isTogglingThis ? "…" : ""}
+                          </span>
+                          <span className="block truncate text-[10px] text-gray-500">{t("fuentes.convert_full_hint")}</span>
+                        </span>
+                      </button>
                     </div>
                   )}
                   </div>
@@ -764,8 +848,12 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         <button
                           onClick={() => handleRefreshSingle(source)}
                           disabled={isRefreshingThis}
-                          title={t("fuentes.refrescar_titulo")}
-                          className="btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5 disabled:opacity-50"
+                          title={fullPageActivo ? `${t("fuentes.refrescar_titulo")} · ${t("fuentes.convert_full")}` : t("fuentes.refrescar_titulo")}
+                          className={`btn-press text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 disabled:opacity-50 ${
+                            fullPageActivo
+                              ? "bg-sky-600/20 text-sky-300 border-sky-500/40 hover:bg-sky-600/30"
+                              : "bg-gray-800 hover:bg-gray-700 text-sky-400 border-gray-700"
+                          }`}
                         >
                           <MorphIcon
                             icon={isRefreshingThis ? LoaderCircleData : RotateCwData}

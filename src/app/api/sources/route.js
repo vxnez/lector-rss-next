@@ -12,25 +12,54 @@ export async function GET(req) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const [rows] = await db.query(
-      `SELECT
-         f.id,
-         f.titulo,
-         f.url_feed,
-         f.categoria,
-         f.creado_en,
-         COUNT(a.id) AS articulos_count,
-         MAX(a.fecha_publicacion) AS ultima_actualizacion,
-         'activa' AS estado
-       FROM fuentes_rss f
-       LEFT JOIN articulos_publicados a ON a.fuente_id = f.id AND (a.descartado = 0 OR a.descartado IS NULL)
-       WHERE f.usuario_id = ?
-       GROUP BY f.id, f.titulo, f.url_feed, f.categoria, f.creado_en
-       ORDER BY f.id DESC`,
-      [userId]
-    );
+    let rows;
+    try {
+      [rows] = await db.query(
+        `SELECT
+          f.id,
+          f.titulo,
+          f.url_feed,
+          f.categoria,
+          f.creado_en,
+          f.convert_full_page,
+          COUNT(a.id) AS articulos_count,
+          MAX(a.fecha_publicacion) AS ultima_actualizacion,
+          'activa' AS estado
+        FROM fuentes_rss f
+        LEFT JOIN articulos_publicados a ON a.fuente_id = f.id AND (a.descartado = 0 OR a.descartado IS NULL)
+        WHERE f.usuario_id = ?
+        GROUP BY f.id, f.titulo, f.url_feed, f.categoria, f.creado_en, f.convert_full_page
+        ORDER BY f.id DESC`,
+        [userId]
+      );
+    } catch (error) {
+      // BD sin migrar (sin convert_full_page): listado sin el flag.
+      if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
+      [rows] = await db.query(
+        `SELECT
+          f.id,
+          f.titulo,
+          f.url_feed,
+          f.categoria,
+          f.creado_en,
+          COUNT(a.id) AS articulos_count,
+          MAX(a.fecha_publicacion) AS ultima_actualizacion,
+          'activa' AS estado
+        FROM fuentes_rss f
+        LEFT JOIN articulos_publicados a ON a.fuente_id = f.id AND (a.descartado = 0 OR a.descartado IS NULL)
+        WHERE f.usuario_id = ?
+        GROUP BY f.id, f.titulo, f.url_feed, f.categoria, f.creado_en
+        ORDER BY f.id DESC`,
+        [userId]
+      );
+    }
 
-    return NextResponse.json(rows, {
+    const normalizadas = (rows || []).map((f) => ({
+      ...f,
+      convertFullPage: Number(f.convert_full_page) === 1,
+    }));
+
+    return NextResponse.json(normalizadas, {
       headers: { "Cache-Control": "no-store, max-age=0" },
     });
   } catch (error) {
@@ -84,7 +113,43 @@ export async function PUT(req) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { id, titulo, url_feed, categoria } = await req.json();
+    const { id, titulo, url_feed, categoria, convertFullPage, convert_full_page } = await req.json();
+
+    // Interruptor por fuente: acepta camelCase (frontend) o snake_case.
+    // undefined = no tocar (ediciones antiguas), true/false = persistir.
+    const flagRaw = convertFullPage !== undefined ? convertFullPage : convert_full_page;
+    const flag = flagRaw === undefined || flagRaw === null ? undefined : (flagRaw === true || flagRaw === 1 || flagRaw === "1" ? 1 : 0);
+
+    // Actualización parcial solo del interruptor (toggle rápido sin editar título/URL).
+    if ((!titulo || !url_feed) && flag !== undefined && id) {
+      try {
+        const [parcial] = await db.query(
+          "UPDATE fuentes_rss SET convert_full_page = ? WHERE id = ? AND usuario_id = ?",
+          [flag, id, userId]
+        );
+        if (parcial.affectedRows === 0) {
+          return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+        }
+        return NextResponse.json({ message: "Fuente actualizada", convertFullPage: flag === 1 });
+      } catch (error) {
+        if (error?.code === "ER_BAD_FIELD_ERROR") {
+          try {
+            await db.query("ALTER TABLE fuentes_rss ADD COLUMN convert_full_page TINYINT(1) NOT NULL DEFAULT 0");
+            const [reintento] = await db.query(
+              "UPDATE fuentes_rss SET convert_full_page = ? WHERE id = ? AND usuario_id = ?",
+              [flag, id, userId]
+            );
+            if (reintento.affectedRows === 0) {
+              return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+            }
+            return NextResponse.json({ message: "Fuente actualizada", convertFullPage: flag === 1 });
+          } catch {
+            return NextResponse.json({ error: "Error al actualizar fuente" }, { status: 500 });
+          }
+        }
+        throw error;
+      }
+    }
 
     if (!id || !titulo || !url_feed) {
       return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
@@ -110,7 +175,32 @@ export async function PUT(req) {
       return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Fuente actualizada" });
+    // Persiste el interruptor solo si el cliente lo envió (edición parcial).
+    // Tolerante a BDs sin la columna: el resto de la edición ya quedó guardada.
+    if (flag !== undefined) {
+      try {
+        await db.query(
+          "UPDATE fuentes_rss SET convert_full_page = ? WHERE id = ? AND usuario_id = ?",
+          [flag, id, userId]
+        );
+      } catch (error) {
+        if (error?.code === "ER_BAD_FIELD_ERROR") {
+          try {
+            await db.query("ALTER TABLE fuentes_rss ADD COLUMN convert_full_page TINYINT(1) NOT NULL DEFAULT 0");
+            await db.query(
+              "UPDATE fuentes_rss SET convert_full_page = ? WHERE id = ? AND usuario_id = ?",
+              [flag, id, userId]
+            );
+          } catch {
+            // Sin columna: no bloquea la edición principal.
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return NextResponse.json({ message: "Fuente actualizada", convertFullPage: flag === undefined ? undefined : flag === 1 });
   } catch (error) {
     console.error("Error en PUT /api/sources:", error);
     return NextResponse.json({ error: "Error al actualizar fuente" }, { status: 500 });
