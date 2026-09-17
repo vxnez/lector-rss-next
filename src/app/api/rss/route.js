@@ -321,6 +321,13 @@ async function extraerImagenDirecta(url) {
       '.post-image img',
       '.article-image img',
       '.hero-image img',
+      // Señales de alta precisión: LCP del artículo, microdatos y
+      // miniatura del post (Astra/WordPress: .post-thumb).
+      'img[fetchpriority="high"]',
+      '[itemprop="image"]',
+      '.post-thumb img',
+      '[class*="post-thumb"] img',
+      '.attachment-full',
       // Clases comunes de temas
       '.td-post-content img',
       '.post-body img',
