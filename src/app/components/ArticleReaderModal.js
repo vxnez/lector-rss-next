@@ -62,6 +62,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [imagenRemota, setImagenRemota] = useState(null);
   const [videoRemoto, setVideoRemoto] = useState(null);
   const [videoRoto, setVideoRoto] = useState(false);
+  // Aviso cuando no hay medios que ocultar: se muestra al pulsar el ojo.
+  const [avisoSinMedios, setAvisoSinMedios] = useState(false);
   // Si la optimización next/image falla (CDN que bloquea al servidor),
   // se reintenta con <img> directo al origen antes de darla por rota.
   const [sinOptimizar, setSinOptimizar] = useState(false);
@@ -276,6 +278,17 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // reproduce solo, muteado y en bucle, sin controles para el usuario.
   const videoVisible = !videoRoto && (article.video_url || videoRemoto);
   const medioVisible = (imagenVisible || videoVisible || cargandoImagen) && !imagenOculta && (!imagenRota || videoVisible);
+  // El ojo siempre está visible: con medios alterna el fondo; sin medios
+  // muestra la nota informativa en lugar de ocultar algo inexistente.
+  const tieneMedios = Boolean((imagenVisible && !imagenRota) || videoVisible);
+  const manejarOjo = () => {
+    if (tieneMedios) {
+      alternarImagen();
+      return;
+    }
+    setAvisoSinMedios(true);
+    setTimeout(() => setAvisoSinMedios(false), 4000);
+  };
 
   const categoriaMostrada = vistaLocal?.categoria ?? article.categoria;
   const metodoMostrado = vistaLocal?.metodo ?? article.clasificacion_metodo;
@@ -488,6 +501,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 >
                   <MorphIcon icon={imagenOculta ? EyeOffData : EyeData} size={16} />
                 </button>
+              )}
+              {!tieneMedios && !cargandoImagen && (
+                <span className="relative shrink-0">
+                  <button
+                    onClick={manejarOjo}
+                    title={t("lector.img_nota")}
+                    aria-label={t("lector.img_nota")}
+                    className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
+                  >
+                    <MorphIcon icon={EyeData} size={16} />
+                  </button>
+                  {avisoSinMedios && (
+                    <span role="status" className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-app-line bg-app-raised p-2.5 text-xs leading-relaxed text-app-fg shadow-xl">
+                      {t("lector.img_nota")}
+                    </span>
+                  )}
+                </span>
               )}
               <button
                 onClick={onClose}

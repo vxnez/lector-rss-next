@@ -185,12 +185,25 @@ async function extraerVideoDePagina(url) {
       if (abs) return { video: "", poster: abs };
     }
   }
-  // 3) iframes embebidos: YouTube → thumbnail determinista (sin red);
-  // Vimeo → oEmbed público (una sola llamada con guard SSRF).
+  // 3) iframes embebidos: YouTube (incl. youtube-nocookie y web-components
+  // ytm-*) → thumbnail determinista (sin red); Vimeo → oEmbed público
+  // (una sola llamada con guard SSRF).
+  const esPaginaYouTube =
+    pagina.html.includes("youtube-nocookie") ||
+    pagina.html.includes("ytm-") ||
+    pagina.html.includes("youtube.com/embed");
+  const idYouTubeValido = (v) => (typeof v === "string" && /^[\w-]{11}$/.test(v.trim() || "") ? v.trim() : "");
+  if (esPaginaYouTube) {
+    const conId = $("[video-id], [data-video-id]");
+    for (const el of conId.toArray()) {
+      const id = idYouTubeValido($(el).attr("video-id")) || idYouTubeValido($(el).attr("data-video-id"));
+      if (id) return { video: "", poster: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` };
+    }
+  }
   const frames = $("iframe");
   for (const el of frames.toArray()) {
     const src = $(el).attr("src") || "";
-    const yt = src.match(/(?:youtube\.com\/(?:embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+    const yt = src.match(/(?:youtube\.com\/(?:embed\/|v\/|shorts\/)|youtube-nocookie\.com\/embed\/|youtu\.be\/)([\w-]{6,})/i);
     if (yt) return { video: "", poster: `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg` };
     const vm = src.match(/player\.vimeo\.com\/video\/(\d+)/i);
     if (vm) {
@@ -422,27 +435,6 @@ async function extraerImagenDirecta(url) {
   }
 }
 
-async function extraerImagenScreenshot(url) {
-  const controller = new AbortController();
-  // Tope reducido (antes 20 s): el screenshot es último recurso y no debe
-  // bloquear el lector; si tarda, se devuelve null y listo.
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(
-      `https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=true&meta=false`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timeoutId);
-    if (!res.ok) return null;
-    const data = await res.json().catch(() => null);
-    const captura = data?.data?.screenshot?.url;
-    if (typeof captura === "string" && /^https?:\/\//i.test(captura)) return captura;
-    return null;
-  } catch {
-    clearTimeout(timeoutId);
-    return null;
-  }
-}
 let classificationSchemaPromise;
 
 // Red de seguridad en cold start (cacheada por promesa): el esquema canónico
@@ -1194,9 +1186,9 @@ export async function GET(req) {
         return NextResponse.json({ imagen: cacheada.imagen || null, video: cacheada.video || null });
       }
       const encontrada = await extraerImagenDirecta(verificada);
-      // Orden de medios: imagen directa → video/poster embebido →
-      // screenshot. El poster (<video poster>, thumbnail YouTube/Vimeo)
-      // cuenta como imagen y evita el screenshot lento.
+      // Orden de medios: imagen directa → video/poster embebido.
+      // Sin screenshot: si no hay medio legítimo se devuelve nulo
+      // controlado y el lector renderiza solo texto.
       const tMedia = Date.now();
       let medios;
       let etapa = "directa";
@@ -1208,9 +1200,8 @@ export async function GET(req) {
           etapa = embebido.video ? "video" : "poster";
           medios = { imagen: embebido.poster || null, video: embebido.video || null };
         } else {
-          etapa = "screenshot";
-          medios = { imagen: await extraerImagenScreenshot(verificada), video: null };
-          if (!medios.imagen) etapa = "nada";
+          etapa = "nada";
+          medios = { imagen: null, video: null };
         }
       }
       // Trazabilidad: qué etapa ganó, para qué host y en cuánto tiempo.

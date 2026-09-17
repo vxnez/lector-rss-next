@@ -194,6 +194,7 @@ const TEXTOS = {
       sin_ia: "Sin IA",
       img_mostrar: "Mostrar imagen de fondo",
       img_ocultar: "Ocultar imagen de fondo",
+      img_nota: "De esa fuente no se pudo recuperar la imagen de la noticia",
       letra_t: "Tamaño de letra: {t} (toca para cambiar)",
       letra_aria: "Tamaño de letra actual: {t}. Activar para cambiar.",
       desliza: "Desliza para cambiar de noticia",
