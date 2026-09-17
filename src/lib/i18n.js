@@ -213,6 +213,8 @@ const TEXTOS = {
       url: "URL del Feed RSS",
       url_ph: "https://ejemplo.com/feed.xml",
       web_hint: "¿La página no tiene RSS? Pega su URL: la convertiremos en fuente automáticamente.",
+      forzar_web: "Convertir página completa (recorrer paginación)",
+      forzar_web_hint: "Ignora el feed nativo (suele traer ~10) y recorre todas las páginas.",
       cat: "Categoría",
       cat_ph: "Ej: Tecnología, Noticias, Videojuegos",
       cancelar: "Cancelar",

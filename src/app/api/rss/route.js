@@ -971,9 +971,28 @@ async function buscarPrimerFeed(candidatos) {
   return encontrado;
 }
 
-async function buscarFeedRSS(urlIngresada) {
+async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
   const urlLimpia = limpiarUrl(urlIngresada);
   if (!urlLimpia) throw new Error("La URL es obligatoria.");
+
+  // Conversión forzada (checkbox "página completa"): se omite el
+  // descubrimiento nativo y se crawlea la página con paginación. Útil
+  // cuando el feed nativo existe pero recorta el histórico (p. ej.
+  // WordPress sirve ~10 ítems aunque la sección tenga 17 páginas).
+  if (forzarWeb) {
+    const conversion = await convertirPaginaAFeed(urlLimpia);
+    if (conversion?.sinCambios || !conversion?.feed) {
+      throw new Error("No se pudo convertir la página a RSS.");
+    }
+    return {
+      feed: conversion.feed,
+      urlFinal: conversion.urlFinal,
+      etag: conversion.etag,
+      lastModified: conversion.lastModified,
+      convertida: true,
+      paginas: conversion.paginas || 1,
+    };
+  }
 
   const feedDirecto = await intentarParsearFeed(urlLimpia);
   if (feedDirecto) return feedDirecto;
@@ -1018,6 +1037,7 @@ async function buscarFeedRSS(urlIngresada) {
     etag: conversion.etag,
     lastModified: conversion.lastModified,
     convertida: true,
+    paginas: conversion.paginas || 1,
   };
 }
 
@@ -1179,7 +1199,9 @@ export async function POST(req) {
       );
     }
 
-    const { feed, urlFinal, etag, lastModified, convertida } = await buscarFeedRSS(url_feed);
+    const { feed, urlFinal, etag, lastModified, convertida, paginas } = await buscarFeedRSS(url_feed, {
+      forzarWeb: body.forzar_conversion === true,
+    });
 
     if (!feed.items || feed.items.length === 0) {
       throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");
@@ -1213,7 +1235,13 @@ export async function POST(req) {
 
     if (convertida) {
       return NextResponse.json(
-        { message: "Página convertida a RSS y agregada con éxito", nuevos: totalNuevas, pendientes, convertida: true },
+        {
+          message: "Página convertida a RSS y agregada con éxito",
+          nuevos: totalNuevas,
+          pendientes,
+          convertida: true,
+          paginas: paginas || 1,
+        },
         { status: 201 }
       );
     }

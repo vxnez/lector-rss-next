@@ -17,9 +17,10 @@ const MAX_ITEMS = 25;
 
 // Límites del crawling multipágina (anti-bloqueo y anti-bucle infinito):
 // como máximo N páginas o M noticias en total, y un presupuesto global de
-// tiempo para no agotar el maxDuration del serverless. Entre páginas hay una
-// pausa de cortesía secuencial (sin concurrencia: más amable con el origen).
-const MAX_PAGINAS_CRAWL = 8;
+// tiempo para no agotar el maxDuration del serverless (el presupuesto manda:
+// en sitios lentos el crawl se detiene antes y conserva lo recolectado).
+// Entre páginas hay una pausa de cortesía secuencial (sin concurrencia).
+const MAX_PAGINAS_CRAWL = 20;
 const MAX_ITEMS_TOTAL = 100;
 const TIEMPO_MAX_CRAWL_MS = 45000;
 const CORTESIA_ENTRE_PAGINAS_MS = 500;

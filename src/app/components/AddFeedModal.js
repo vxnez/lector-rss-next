@@ -11,6 +11,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
   const { t } = useIdioma();
   const [url, setUrl] = useState(initialUrl);
   const [categoria, setCategoria] = useState("General");
+  const [forzarWeb, setForzarWeb] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,7 +26,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
       const res = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url_feed: url, categoria }),
+        body: JSON.stringify({ url_feed: url, categoria, forzar_conversion: forzarWeb }),
       });
 
       const data = await res.json();
@@ -108,6 +109,21 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 className="field-focus w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-2.5 hover:border-gray-600 transition">
+              <input
+                type="checkbox"
+                checked={forzarWeb}
+                onChange={(e) => setForzarWeb(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-sky-500"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-200">{t("addfeed.forzar_web")}</span>
+                <span className="block text-xs text-gray-500 leading-relaxed">{t("addfeed.forzar_web_hint")}</span>
+              </span>
+            </label>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3 pt-4 border-t border-gray-800/60">
