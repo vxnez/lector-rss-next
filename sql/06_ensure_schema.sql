@@ -15,6 +15,8 @@ ALTER TABLE articulos_publicados
   ADD COLUMN clasificacion_confianza DECIMAL(4,3) NOT NULL DEFAULT 0.500;
 ALTER TABLE articulos_publicados
   ADD COLUMN imagen_url VARCHAR(500) NULL;
+ALTER TABLE articulos_publicados
+  ADD COLUMN video_url VARCHAR(500) NULL;
 
 -- 2) Validadores de caché HTTP por fuente (ensureFuentesCacheSchema)
 ALTER TABLE fuentes_rss

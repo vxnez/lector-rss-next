@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS articulos_publicados (
   clasificacion_metodo    VARCHAR(20) NOT NULL DEFAULT 'sin-ia' COMMENT 'sin-ia | gemini | manual',
   clasificacion_confianza DECIMAL(4,3) NOT NULL DEFAULT 0.500,
   imagen_url              VARCHAR(500) NULL,
+  video_url               VARCHAR(500) NULL COMMENT 'Video directo (og:video o enclosure) para fondo autoplay',
   leido                   TINYINT(1) NOT NULL DEFAULT 0,
   guardado                TINYINT(1) NOT NULL DEFAULT 0,
   descartado              TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Borrado lógico (se puede restaurar)',

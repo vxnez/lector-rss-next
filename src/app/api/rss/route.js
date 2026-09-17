@@ -51,6 +51,80 @@ async function extraerImagenDePagina(url) {
   return extraerImagenScreenshot(url);
 }
 
+// ¿URL directa a archivo de video reproducible en <video>? Solo ficheros
+// (mp4/webm/ogv/mov/m4v); se rechazan players embebidos (youtube, embeds)
+// porque no son reproducibles como fondo sin controles.
+function esUrlVideoDirecta(valor) {
+  if (typeof valor !== "string") return false;
+  const v = valor.trim();
+  if (!/^https?:\/\//i.test(v)) return false;
+  return /\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)/i.test(v);
+}
+
+// Descarga el HTML de una página (con guard SSRF) o null si no es HTML.
+async function obtenerHtmlPagina(url) {
+  try {
+    const { res, urlFinal } = await fetchPublico(url, { headers: HEADERS_BROWSER, timeoutMs: 8000 });
+    if (!res.ok) return null;
+    if (!/html/i.test(res.headers.get("content-type") || "")) return null;
+    const html = await leerTextoLimitado(res);
+    return { html, baseFinal: urlFinal || url };
+  } catch {
+    return null;
+  }
+}
+
+// Video de la página vía meta tags estándar (og:video, twitter:player:stream).
+// Solo archivos directos; si la página es un player embebido se devuelve "".
+async function extraerVideoDePagina(url) {
+  const pagina = await obtenerHtmlPagina(url);
+  if (!pagina) return "";
+  const $ = cheerio.load(pagina.html);
+  const candidatos = [
+    { url: $('meta[property="og:video:secure_url"]').attr("content"), tipo: $('meta[property="og:video:type"]').attr("content") },
+    { url: $('meta[property="og:video"]').attr("content"), tipo: $('meta[property="og:video:type"]').attr("content") },
+    { url: $('meta[property="og:video:url"]').attr("content"), tipo: $('meta[property="og:video:type"]').attr("content") },
+    { url: $('meta[name="twitter:player:stream"]').attr("content"), tipo: null },
+  ];
+  for (const c of candidatos) {
+    if (typeof c.tipo === "string" && c.tipo && !c.tipo.toLowerCase().startsWith("video/")) continue;
+    if (esUrlVideoDirecta(c.url)) {
+      try {
+        return new URL(c.url.trim(), pagina.baseFinal).href;
+      } catch {
+        // Probar con el siguiente candidato.
+      }
+    }
+  }
+  return "";
+}
+
+// Video incluido en el propio feed (enclosure o media:content de video).
+function extraerVideoUrl(item = {}) {
+  const candidatos = [];
+  const enclosure = item.enclosure;
+  if (enclosure && typeof enclosure.url === "string") {
+    candidatos.push({ url: enclosure.url, tipo: enclosure.type });
+  }
+  const grupos = [item["media:content"], item["media:group"]];
+  for (const grupo of grupos) {
+    const lista = Array.isArray(grupo) ? grupo : [grupo];
+    for (const m of lista) {
+      const datos = m?.$ || (typeof m === "object" && m !== null && typeof m.url === "string" ? m : null);
+      if (datos && typeof datos.url === "string") candidatos.push({ url: datos.url, tipo: datos.type || datos.medium });
+    }
+  }
+  for (const c of candidatos) {
+    if (typeof c.tipo === "string" && c.tipo) {
+      const t = c.tipo.toLowerCase();
+      if (t.startsWith("image/") || t.startsWith("audio/")) continue;
+      if (t.includes("/") && !t.startsWith("video/")) continue;
+    }
+    if (esUrlVideoDirecta(c.url)) return c.url.trim();
+  }
+  return "";
+}
+
 async function extraerImagenDirecta(url) {
   try {
     // fetchPublico aplica el mismo guard SSRF (IP pública + redirects
@@ -286,6 +360,29 @@ async function ensureClassificationSchema() {
 
 let articulosUnicidadPromise;
 
+// Columna video_url (misma red de seguridad que el resto de ensures).
+let videoSchemaPromise;
+
+async function ensureVideoSchema() {
+  if (!videoSchemaPromise) {
+    videoSchemaPromise = (async () => {
+      const [columns] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'articulos_publicados'
+           AND COLUMN_NAME = 'video_url'`
+      );
+      if (columns.length === 0) {
+        await db.query("ALTER TABLE articulos_publicados ADD COLUMN video_url VARCHAR(500) NULL");
+      }
+    })().catch((error) => {
+      videoSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return videoSchemaPromise;
+}
+
 async function ensureArticulosUnicidad(userId) {
   if (!articulosUnicidadPromise) {
     articulosUnicidadPromise = (async () => {
@@ -352,18 +449,28 @@ async function actualizarValidadoresFuente(fuenteId, etag, lastModified) {
   );
 }
 
-// Refuerzo de imágenes: guarda la imagen descubierta bajo demanda en el
-// artículo (solo si aún no tiene y pertenece al llamante) para que las
-// siguientes aperturas la traigan directo de la BD sin re-extraer.
-async function persistirImagenArticulo(idArticulo, userId, imagenUrl) {
+// Refuerzo de medios: guarda imagen/video descubiertos bajo demanda en el
+// artículo (solo vacíos y del llamante) para no re-extraer en cada apertura.
+async function persistirMediaArticulo(idArticulo, userId, { imagen, video } = {}) {
   if (!Number.isInteger(idArticulo) || idArticulo <= 0) return;
-  if (typeof imagenUrl !== "string" || !/^https?:\/\//i.test(imagenUrl.trim())) return;
+  const asignaciones = [];
+  const params = [];
+  if (typeof imagen === "string" && /^https?:\/\//i.test(imagen.trim())) {
+    asignaciones.push("a.imagen_url = ?");
+    params.push(imagen.trim().slice(0, 500));
+  }
+  if (typeof video === "string" && esUrlVideoDirecta(video)) {
+    asignaciones.push("a.video_url = ?");
+    params.push(video.trim().slice(0, 500));
+  }
+  if (asignaciones.length === 0) return;
+  params.push(idArticulo, userId);
   await db.query(
     `UPDATE articulos_publicados a
      INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-     SET a.imagen_url = ?
-     WHERE a.id = ? AND f.usuario_id = ? AND (a.imagen_url IS NULL OR a.imagen_url = "")`,
-    [imagenUrl.trim().slice(0, 500), idArticulo, userId]
+     SET ${asignaciones.join(", ")}
+     WHERE a.id = ? AND f.usuario_id = ?`,
+    params
   );
 }
 
@@ -738,6 +845,7 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     await ensureClassificationSchema();
+    await ensureVideoSchema();
     await ensureFuentesCacheSchema();
     await ensureArticulosUnicidad(userId);
 
@@ -932,6 +1040,7 @@ export async function GET(req) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
     await ensureClassificationSchema();
+    await ensureVideoSchema();
     await ensureArticulosUnicidad(userId);
     const { searchParams } = new URL(req.url);
     const tipo = searchParams.get("tipo");
@@ -960,23 +1069,27 @@ export async function GET(req) {
       }
       const idArticulo = Number(searchParams.get("id") || "0") || null;
       if (imagenPaginaCache.has(verificada)) {
-        const cacheada = imagenPaginaCache.get(verificada);
-        // Refuerzo: si ya se conoce la imagen, guardarla en el artículo
-        // para no re-extraerla en futuras aperturas.
-        if (cacheada && idArticulo) {
-          await persistirImagenArticulo(idArticulo, userId, cacheada).catch(() => {});
+        const cacheada = imagenPaginaCache.get(verificada) || {};
+        // Refuerzo: si ya se conocen los medios, guardarlos en el artículo
+        // para no re-extraerlos en futuras aperturas.
+        if ((cacheada.imagen || cacheada.video) && idArticulo) {
+          await persistirMediaArticulo(idArticulo, userId, cacheada).catch(() => {});
         }
-        return NextResponse.json({ imagen: cacheada });
+        return NextResponse.json({ imagen: cacheada.imagen || null, video: cacheada.video || null });
       }
       const encontrada = await extraerImagenDePagina(verificada);
-      imagenPaginaCache.set(verificada, encontrada);
+      // Video de la página (og:video) solo cuando no hay imagen directa:
+      // evita una segunda descarga cuando la imagen ya resolvió.
+      const video = encontrada ? "" : await extraerVideoDePagina(verificada);
+      const medios = { imagen: encontrada || null, video: video || null };
+      imagenPaginaCache.set(verificada, medios);
       if (imagenPaginaCache.size > 500) {
         imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);
       }
-      if (encontrada && idArticulo) {
-        await persistirImagenArticulo(idArticulo, userId, encontrada).catch(() => {});
+      if ((medios.imagen || medios.video) && idArticulo) {
+        await persistirMediaArticulo(idArticulo, userId, medios).catch(() => {});
       }
-      return NextResponse.json({ imagen: encontrada });
+      return NextResponse.json(medios);
     }
 
     // Conteos globales para las tarjetas (pendientes / leídas / guardadas).
@@ -1045,14 +1158,15 @@ export async function GET(req) {
           a.clasificacion_metodo,
           a.clasificacion_confianza,
           a.imagen_url,
+          a.video_url,
           a.fuente_id,
           f.titulo AS fuente_nombre,
           f.url_feed AS fuente_url
          FROM articulos_publicados a
-         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-         WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
-         ORDER BY a.fecha_publicacion DESC, a.id DESC
-         LIMIT 1000000 OFFSET 0`,
+          INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+          WHERE f.usuario_id = ? AND (a.descartado = 0 OR a.descartado IS NULL)
+          ORDER BY a.fecha_publicacion DESC, a.id DESC
+          LIMIT 1000000 OFFSET 0`,
         [userId]
       );
       return NextResponse.json(rowsLegacy.map(repararFilaArticulo));
@@ -1080,14 +1194,15 @@ export async function GET(req) {
         a.clasificacion_metodo,
         a.clasificacion_confianza,
         a.imagen_url,
+        a.video_url,
         a.fuente_id,
         f.titulo AS fuente_nombre,
         f.url_feed AS fuente_url
        FROM articulos_publicados a
-       INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-       ${where}
-       ${orderBy}
-       LIMIT ? OFFSET ?`,
+        INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+        ${where}
+        ${orderBy}
+        LIMIT ? OFFSET ?`,
       [...params, limite, desplazamiento]
     );
     const articulos = rows.map(repararFilaArticulo);
@@ -1581,7 +1696,7 @@ async function obtenerClasificacionesExistentes(fuenteIds = []) {
   const ids = [...new Set(fuenteIds.filter((id) => id !== undefined && id !== null))];
   if (ids.length === 0) return mapa;
   const [filas] = await db.query(
-    `SELECT fuente_id, url_original, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url
+    `SELECT fuente_id, url_original, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url, video_url
      FROM articulos_publicados WHERE fuente_id IN (?)`,
     [ids]
   );
@@ -1591,6 +1706,7 @@ async function obtenerClasificacionesExistentes(fuenteIds = []) {
       categoria: fila.categoria || "General",
       metodo: fila.clasificacion_metodo || "sin-ia",
       confianza: Number.isFinite(confianza) ? confianza : 0.5,
+      video: fila.video_url || "",
     });
   }
   return mapa;
@@ -1639,6 +1755,7 @@ function normalizarItemNoticia(item = {}) {
     titulo: item.title || "Sin título",
     resumen: rawResumen.replace(/<[^>]*>?/gm, "").substring(0, 300),
     imagen: extraerImagenUrl(item),
+    video: extraerVideoUrl(item),
   };
 }
 
@@ -1650,7 +1767,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
     if (!normalizado) return;
     const previo = existentes.get(`${fuenteId}\u0000${normalizado.link}`);
     if (previo && previo.metodo !== "sin-ia") {
-      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen, imagen: normalizado.imagen, esNuevo: false };
+      resultados[posicion] = { ...previo, link: normalizado.link, titulo: normalizado.titulo, resumen: normalizado.resumen, imagen: normalizado.imagen, video: normalizado.video || previo.video || "", esNuevo: false };
     } else {
       nuevos.push({ posicion, ...normalizado });
     }
@@ -1671,6 +1788,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
       titulo: nuevo.titulo,
       resumen: nuevo.resumen,
       imagen: nuevo.imagen,
+      video: nuevo.video || "",
       esNuevo: true,
     };
   });
@@ -1708,7 +1826,9 @@ async function bulkUpdateArticulos(fuenteId, filas, { conCategoria = false } = {
     asignaciones.push(
       `categoria = ${agregarCasos((fila) => fila.categoria)}`,
       `clasificacion_metodo = ${agregarCasos((fila) => fila.metodo)}`,
-      `clasificacion_confianza = ${agregarCasos((fila) => fila.confianza)}`
+      `clasificacion_confianza = ${agregarCasos((fila) => fila.confianza)}`,
+      // Solo en filas nuevas: no pisar videos persistidos bajo demanda.
+      `video_url = ${agregarCasos((fila) => fila.video || null)}`
     );
   }
   asignaciones.push("descartado = 0");
@@ -1729,9 +1849,9 @@ async function persistirArticulos(fuenteId, items = [], clasificaciones = [], li
 
   const [insertRes] = await db.query(
     `INSERT IGNORE INTO articulos_publicados
-     (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url, leido, guardado, descartado)
-     VALUES ${filas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)").join(", ")}`,
-    filas.flatMap((fila) => [fuenteId, fila.titulo, fila.resumen, fila.link, fila.fechaPub, fila.categoria, fila.metodo, fila.confianza, fila.imagen || null])
+     (fuente_id, titulo, resumen, url_original, fecha_publicacion, categoria, clasificacion_metodo, clasificacion_confianza, imagen_url, video_url, leido, guardado, descartado)
+     VALUES ${filas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)").join(", ")}`,
+    filas.flatMap((fila) => [fuenteId, fila.titulo, fila.resumen, fila.link, fila.fechaPub, fila.categoria, fila.metodo, fila.confianza, fila.imagen || null, fila.video || null])
   );
 
   if (!soloInsertar) {

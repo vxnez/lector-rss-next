@@ -59,6 +59,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setImagenOculta(siguiente);
   };
   const [imagenRemota, setImagenRemota] = useState(null);
+  const [videoRemoto, setVideoRemoto] = useState(null);
+  const [videoRoto, setVideoRoto] = useState(false);
   // Tamaño de letra del cuerpo (persistido por navegador).
   const [tamanoLectura, setTamanoLectura] = useState(() => {
     try {
@@ -78,7 +80,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     setTamanoLectura(siguiente);
   };
   const [cargandoImagen, setCargandoImagen] = useState(
-    () => Boolean(article?.url_original) && !article?.imagen_url
+    () => Boolean(article?.url_original) && !article?.imagen_url && !article?.video_url
   );
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
@@ -239,7 +241,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   }, [article, mostrarAyudaDeslizar, posicion]);
 
   useEffect(() => {
-    if (!article || article.imagen_url || !article.url_original) return undefined;
+    // Solo se descubre bajo demanda cuando el artículo no trae medios:
+    // lo hallado (imagen y/o video og:video) se persiste en el servidor.
+    if (!article || !article.url_original || article.imagen_url || article.video_url) return undefined;
     let vivo = true;
     // Se envía el id para que el servidor persista la imagen hallada en el
     // artículo y no haya que re-extraerla en futuras aperturas.
@@ -250,6 +254,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         const data = await res.json().catch(() => ({}));
         if (!vivo) return;
         if (data.imagen) setImagenRemota(data.imagen);
+        if (data.video) setVideoRemoto(data.video);
       })
       .catch(() => {})
       .finally(() => {
@@ -263,6 +268,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   if (!article) return null;
 
   const imagenVisible = article.imagen_url || imagenRemota;
+  // El video (del feed o de og:video) tiene prioridad como fondo: se
+  // reproduce solo, muteado y en bucle, sin controles para el usuario.
+  const videoVisible = !videoRoto && (article.video_url || videoRemoto);
+  const medioVisible = (imagenVisible || videoVisible || cargandoImagen) && !imagenOculta && (!imagenRota || videoVisible);
 
   const categoriaMostrada = vistaLocal?.categoria ?? article.categoria;
   const metodoMostrado = vistaLocal?.metodo ?? article.clasificacion_metodo;
@@ -465,7 +474,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               >
                 <Type size={16} />
               </button>
-              {imagenVisible && !imagenRota && (
+              {((imagenVisible && !imagenRota) || videoVisible) && (
                 <button
                   onClick={alternarImagen}
                   title={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
@@ -542,9 +551,27 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
       </div>
-      {(imagenVisible || cargandoImagen) && !imagenRota && !imagenOculta && (
+      {medioVisible && (
         <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden rounded-t-2xl sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:h-auto sm:w-1/2 sm:rounded-none sm:rounded-r-2xl" aria-hidden="true">
-          {imagenVisible ? (
+          {videoVisible ? (
+            <>
+              {/* Video de fondo: autoplay muteado (única forma permitida por
+                  el navegador), en bucle y sin controles. */}
+              <video
+                src={videoVisible}
+                className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                autoPlay
+                muted
+                loop
+                playsInline
+                disablePictureInPicture
+                preload="metadata"
+                poster={imagenVisible || undefined}
+                onError={() => setVideoRoto(true)}
+              />
+              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900 sm:bg-linear-to-r sm:from-gray-900 sm:via-gray-900/70 sm:to-transparent" />
+            </>
+          ) : imagenVisible ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
