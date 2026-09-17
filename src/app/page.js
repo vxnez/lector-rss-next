@@ -40,6 +40,7 @@ import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
 import { useIdioma } from "@/lib/i18n";
 import { dominioDeUrl } from "@/lib/formato";
 import { paramsFeed, urlBase64ToUint8Array } from "@/lib/feed-utils";
+import { bumpCacheVersion, fetchJson, leerCache, prefetchJson } from "@/lib/fetchCache";
 import AppHeader from "./components/dashboard/AppHeader";
 import StatsCards from "./components/dashboard/StatsCards";
 import Paginacion from "./components/dashboard/Paginacion";
@@ -180,6 +181,14 @@ export default function HomePage() {
     window.setTimeout(() => setToast(null), 4200);
   }, []);
 
+  // Recarga estructural (mutación): invalida la caché client-side y pide
+  // datos frescos. La navegación (página/filtros) NO la usa: ahí la caché
+  // sirve instantáneo a propósito.
+  const recargarDatos = useCallback(() => {
+    bumpCacheVersion();
+    setNonceRecarga((n) => n + 1);
+  }, []);
+
   // Modo invitado: usuario temporal en la BD con cookie de sesión (muere al
   // cerrar el navegador). Puede usar todo; al salir se elimina su información.
   const esInvitado = Boolean(session?.user?.invitado);
@@ -192,6 +201,7 @@ export default function HomePage() {
     }
     setSession(null);
     setArticulos([]);
+    bumpCacheVersion();
     setPagina(1);
     setTotalNoticias(0);
     setConteos({ pendientes: 0, leidas: 0, guardadas: 0 });
@@ -201,6 +211,10 @@ export default function HomePage() {
 
 
   const filtroFuenteRef = useRef(null);
+
+  // Clave de la vista de feed en curso: evita que una respuesta tardía
+  // pise una navegación más reciente (carreras entre revalidaciones).
+  const claveFeedActualRef = useRef("");
 
   // La tarjeta "Fuentes activas" abre Gestionar Fuentes RSS para una
   // gestión más rápida (editar, refrescar o eliminar en un solo lugar).
@@ -222,9 +236,10 @@ export default function HomePage() {
 
   const fetchSources = useCallback(async (signal) => {
     try {
-      const res = await fetch("/api/sources", { cache: "no-store", signal });
-      if (res.ok) {
-        const data = await res.json();
+      // TTL 90s + dedupe: la lista cambia poco; las mutaciones suben la
+      // versión de caché (bumpCacheVersion) y fuerzan un fetch fresco.
+      const data = await fetchJson("/api/sources", { ttlMs: 90000, signal });
+      if (data) {
         const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
         
         const formattedSources = sourcesArr.map((s) => ({
@@ -247,11 +262,12 @@ export default function HomePage() {
   }, []);
 
   // Conteos globales para las tarjetas (no dependen de la página visible).
+  // Sin TTL (siempre frescos tras mutar) pero con dedupe: el refetch
+  // imperativo de los toggles colapsa con el del efecto en un solo vuelo.
   const fetchConteos = useCallback(async (signal) => {
     try {
-      const res = await fetch("/api/rss?tipo=conteos", { cache: "no-store", signal });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchJson("/api/rss?tipo=conteos", { signal });
+      if (data) {
         setConteos({
           pendientes: Number(data.pendientes) || 0,
           leidas: Number(data.leidas) || 0,
@@ -281,11 +297,11 @@ export default function HomePage() {
         break;
       }
       // Refresca la página visible (vía nonce) con las categorías ya clasificadas.
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       if (restantes === 0) break;
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
-  }, []);
+  }, [recargarDatos]);
 
   // Service worker de push + estado de suscripción (solo navegadores compatibles).
   // Microinteracciones Anime.js en `.btn-press` (solo transform, GPU):
@@ -464,6 +480,11 @@ export default function HomePage() {
   }, []);
 
   // Fuentes + conteos: al iniciar sesión y tras cambios estructurales.
+  // Al cambiar de cuenta se invalida la caché (no filtrar datos entre usuarios).
+  const idSesion = session?.user?.id;
+  useEffect(() => {
+    bumpCacheVersion();
+  }, [idSesion]);
   useEffect(() => {
     if (!session?.user) return undefined;
     const controller = new AbortController();
@@ -491,46 +512,74 @@ export default function HomePage() {
   }, [searchQuery]);
 
   // Feed paginado + facetas: página, pestaña, orden, búsqueda, filtros.
+  // SWR por página: si la vista está en caché pinta instantáneo (sin
+  // esqueleto) y revalida en segundo plano; además precarga las páginas
+  // vecinas. El paginador y los estados no cambian, solo hay menos espera.
   useEffect(() => {
     if (!session?.user) return undefined;
     const controller = new AbortController();
     const { signal } = controller;
 
     async function cargarFeed() {
-      setCargandoFeed(true);
+      const feedParams = paramsFeed({
+        page: pagina,
+        limit: tamanoPagina,
+        tab: activeTab,
+        orden,
+        q: busquedaAplicada,
+        categorias: categoriasSeleccionadas,
+        fuentes: fuentesSeleccionadas,
+      });
+      const urlFeed = `/api/rss?${feedParams}`;
+      const facetaParams = new URLSearchParams({ tipo: "facetas", tab: activeTab });
+      if (busquedaAplicada.trim()) facetaParams.set("q", busquedaAplicada.trim());
+      if (fuentesSeleccionadas.length > 0) facetaParams.set("fuentes", fuentesSeleccionadas.join(","));
+      const urlFacetas = `/api/rss?${facetaParams}`;
+      claveFeedActualRef.current = urlFeed;
+
+      const instantanea = leerCache(urlFeed);
+      if (instantanea) {
+        const arts = Array.isArray(instantanea) ? instantanea : (instantanea.articles || []);
+        setArticulos(arts);
+        setTotalNoticias(Array.isArray(instantanea) ? arts.length : (Number(instantanea.total) || 0));
+        setLastUpdated(new Date());
+      }
+      setCargandoFeed(!instantanea);
       try {
-        const feedParams = paramsFeed({
-          page: pagina,
-          limit: tamanoPagina,
-          tab: activeTab,
-          orden,
-          q: busquedaAplicada,
-          categorias: categoriasSeleccionadas,
-          fuentes: fuentesSeleccionadas,
-        });
-        const facetaParams = new URLSearchParams({ tipo: "facetas", tab: activeTab });
-        if (busquedaAplicada.trim()) facetaParams.set("q", busquedaAplicada.trim());
-        if (fuentesSeleccionadas.length > 0) facetaParams.set("fuentes", fuentesSeleccionadas.join(","));
-
-        const [resFeed, resFacetas] = await Promise.all([
-          fetch(`/api/rss?${feedParams}`, { cache: "no-store", signal }),
-          fetch(`/api/rss?${facetaParams}`, { cache: "no-store", signal }),
+        const [data, facetas] = await Promise.all([
+          fetchJson(urlFeed, { ttlMs: 30000, signal }),
+          fetchJson(urlFacetas, { ttlMs: 60000, signal }),
         ]);
-        if (signal.aborted) return;
+        if (signal.aborted || claveFeedActualRef.current !== urlFeed) return;
 
-        if (resFeed.ok) {
-          const data = await resFeed.json();
+        if (data) {
           const articles = Array.isArray(data) ? data : (data.articles || []);
+          const total = Array.isArray(data) ? articles.length : (Number(data.total) || 0);
           setArticulos(articles);
-          setTotalNoticias(Array.isArray(data) ? articles.length : (Number(data.total) || 0));
+          setTotalNoticias(total);
           // Si la página quedó vacía por borrados y no es la primera, retrocede.
-          if (!Array.isArray(data) && articles.length === 0 && (Number(data.total) || 0) > 0 && pagina > 1) {
+          if (!Array.isArray(data) && articles.length === 0 && total > 0 && pagina > 1) {
             setPagina((p) => Math.max(p - 1, 1));
           }
           setLastUpdated(new Date());
+          // Prefetch de vecinas en fondo (respeta límites): la caché las
+          // sirve instantáneas al paginar.
+          const totalPags = Math.max(Math.ceil(total / tamanoPagina), 1);
+          for (const vecina of [pagina - 1, pagina + 1]) {
+            if (vecina < 1 || vecina > totalPags) continue;
+            const paramsVecina = paramsFeed({
+              page: vecina,
+              limit: tamanoPagina,
+              tab: activeTab,
+              orden,
+              q: busquedaAplicada,
+              categorias: categoriasSeleccionadas,
+              fuentes: fuentesSeleccionadas,
+            });
+            prefetchJson(`/api/rss?${paramsVecina}`, { ttlMs: 30000 });
+          }
         }
-        if (resFacetas.ok) {
-          const facetas = await resFacetas.json();
+        if (facetas) {
           const lista = (Array.isArray(facetas) ? facetas : []).map((f) => f.categoria).filter(Boolean);
           setCategoriasDisponibles(lista);
           // Purga en el mismo manejador (sin efecto separado): si una categoría
@@ -596,7 +645,7 @@ export default function HomePage() {
       if (!res.ok && res.status !== 409) throw new Error(data.error || t("fuentes.err_conexion"));
       // Recargar fuentes, conteos y feed con las noticias recién descargadas.
       setPagina(1);
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       fetchSources();
       fetchConteos();
       if (Number(data?.pendientes) > 0) {
@@ -608,10 +657,11 @@ export default function HomePage() {
       console.error("Error agregando fuente desde onboarding:", err);
       throw err;
     }
-  }, [fetchSources, fetchConteos, notify, procesarColaClasificacion, t]);
+  }, [fetchSources, fetchConteos, notify, procesarColaClasificacion, recargarDatos, t]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    bumpCacheVersion();
     try {
       const response = await fetch("/api/rss", {
         method: "POST",
@@ -623,7 +673,7 @@ export default function HomePage() {
       const data = await response.json().catch(() => ({}));
 
       // Vuelve a la primera página (o recarga si ya está en ella) y actualiza fuentes/conteos.
-      if (pagina === 1) setNonceRecarga((n) => n + 1);
+      if (pagina === 1) recargarDatos();
       else setPagina(1);
       fetchSources();
       fetchConteos();
@@ -655,6 +705,7 @@ export default function HomePage() {
 
   const confirmarEliminarTodas = async () => {
     setConfirmarEliminar(false);
+    bumpCacheVersion();
     const backupArticulos = [...articulos];
     setArticulos([]);
     setTotalNoticias(0);
@@ -668,7 +719,7 @@ export default function HomePage() {
     } catch (err) {
       console.error("Error al eliminar todas las noticias:", err);
       setArticulos(backupArticulos);
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       notify(err.message || t("avisos.eliminar_feed"), "error");
     }
   };
@@ -690,7 +741,7 @@ export default function HomePage() {
         throw new Error(data.error || "No se pudo actualizar el estado de lectura.");
       }
       // La noticia puede salir de la pestaña actual: recarga página + conteos.
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       fetchConteos();
       return true;
     } catch {
@@ -717,7 +768,7 @@ export default function HomePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo actualizar el estado guardado.");
       }
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       fetchConteos();
       return true;
     } catch {
@@ -746,7 +797,7 @@ export default function HomePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo actualizar la categoría.");
       }
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       return true;
     } catch {
       if (articuloCopia) {
@@ -764,7 +815,7 @@ export default function HomePage() {
       const res = await fetch(`/api/rss?id=${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(t("avisos.eliminar_feed"));
       // Rellena la página desde el servidor y actualiza conteos.
-      setNonceRecarga((n) => n + 1);
+      recargarDatos();
       fetchConteos();
     } catch {
       if (articuloCopia) {
@@ -1478,7 +1529,7 @@ export default function HomePage() {
         }}
         onSuccess={async (data) => {
           setPagina(1);
-          setNonceRecarga((n) => n + 1);
+          recargarDatos();
           fetchSources();
           fetchConteos();
           if (data?.convertida) {
@@ -1499,7 +1550,7 @@ export default function HomePage() {
         }}
         onChange={() => {
           setPagina(1);
-          setNonceRecarga((n) => n + 1);
+          recargarDatos();
           fetchSources();
           fetchConteos();
         }}
