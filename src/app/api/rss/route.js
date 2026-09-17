@@ -341,6 +341,10 @@ async function extraerImagenDirecta(url) {
       '.post-thumb img',
       '[class*="post-thumb"] img',
       '.attachment-full',
+      // Figcaption de adjunto WordPress (Astra/autofácil: figure.wp-caption
+      // con img.wp-image-* y data-src lazy).
+      '.wp-caption img',
+      'figure[class*="wp-"] img',
       // Clases comunes de temas
       '.td-post-content img',
       '.post-body img',
