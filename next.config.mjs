@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    // Los feeds apuntan a cualquier host: se permite remoto global y se
+    // sirve AVIF/WebP con caché. Si un CDN bloquea al optimizador, el
+    // reader reintenta con <img> directo al origen (sinOptimizar).
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
+    ],
+    formats: ["image/avif", "image/webp"],
+  },
   async headers() {
     return [
       {

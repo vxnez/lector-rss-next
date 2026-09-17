@@ -2,6 +2,7 @@
 "use client";
 
 import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type } from "lucide-react";
+import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { getCategoryStyle } from "@/lib/categoryStyles";
@@ -61,6 +62,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [imagenRemota, setImagenRemota] = useState(null);
   const [videoRemoto, setVideoRemoto] = useState(null);
   const [videoRoto, setVideoRoto] = useState(false);
+  // Si la optimización next/image falla (CDN que bloquea al servidor),
+  // se reintenta con <img> directo al origen antes de darla por rota.
+  const [sinOptimizar, setSinOptimizar] = useState(false);
   // Tamaño de letra del cuerpo (persistido por navegador).
   const [tamanoLectura, setTamanoLectura] = useState(() => {
     try {
@@ -573,16 +577,30 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             </>
           ) : imagenVisible ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imagenVisible}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                onError={() => setImagenRota(true)}
-                className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
-              />
+              {sinOptimizar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imagenVisible}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={() => setImagenRota(true)}
+                  className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                />
+              ) : (
+                <Image
+                  src={imagenVisible}
+                  alt=""
+                  aria-hidden="true"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 384px"
+                  quality={75}
+                  loading="lazy"
+                  onError={() => setSinOptimizar(true)}
+                  className="object-cover opacity-50 sm:opacity-60 rounded-t-2xl sm:rounded-none [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] sm:[mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)] sm:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_40%,black_100%)]"
+                />
+              )}
               <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900 sm:bg-linear-to-r sm:from-gray-900 sm:via-gray-900/70 sm:to-transparent" />
             </>
           ) : (
