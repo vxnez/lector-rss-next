@@ -1182,10 +1182,10 @@ async function clasificarPendientesResponse(userId, body = {}) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ clasificados: 0, restantes: pendientes.length });
+    return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave" });
   }
 
-  const { resultados, esperaMs } = await clasificarLoteConIA(apiKey, pendientes);
+  const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes);
   const filas = [];
   pendientes.forEach((pendiente, indice) => {
     const resultado = resultados[indice];
@@ -1210,7 +1210,14 @@ async function clasificarPendientesResponse(userId, body = {}) {
   const reintentarEn = esperaMs > 0
     ? Math.min(Math.max(Math.ceil(esperaMs / 1000), 1), 120)
     : todosFallaron ? 30 : 0;
-  return NextResponse.json({ clasificados, restantes: Number(conteo?.restantes) || 0, reintentarEn });
+  // diag orienta al cliente cuando nada se clasificó ('sin_clave' | 'auth' |
+  // 'cuota' | 'red' | 'respuesta'); null si hubo al menos un éxito.
+  return NextResponse.json({
+    clasificados,
+    restantes: Number(conteo?.restantes) || 0,
+    reintentarEn,
+    diag: todosFallaron ? (fallo || "respuesta") : null,
+  });
 }
 
 export async function POST(req) {
@@ -1992,8 +1999,6 @@ function extraerEsperaReintento(texto = "") {
   return Math.min(Math.max(segundos * 1000, 1000), 60000);
 }
 
-const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 // Concurrencia acotada estilo p-limit sin dependencias: N workers consumen la cola.
 async function mapWithConcurrency(items = [], limite = 4, fn) {
   const cola = [...items];
@@ -2121,11 +2126,11 @@ async function llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeou
     );
 
     if ([400, 401, 403].includes(response.status)) {
-      throw new Error(`Gemini rechazó la solicitud (HTTP ${response.status}); se aborta la cadena de modelos`, { cause: "fatal" });
+      throw new Error(`Gemini rechazó la solicitud (HTTP ${response.status}); se aborta la cadena de modelos`, { cause: { fatal: true, codigo: "auth" } });
     }
     if (response.status === 429) {
       const cuerpo = await response.text().catch(() => "");
-      throw new Error(`Gemini sin cuota en ${modelo} (HTTP 429)`, { cause: { esperaMs: extraerEsperaReintento(cuerpo) } });
+      throw new Error(`Gemini sin cuota en ${modelo} (HTTP 429)`, { cause: { esperaMs: extraerEsperaReintento(cuerpo), codigo: "cuota" } });
     }
     if (!response.ok) throw new Error(`Gemini respondió HTTP ${response.status} con ${modelo}`);
     const data = await response.json();
@@ -2144,7 +2149,7 @@ async function ejecutarCadenaGemini(apiKey, textoPrompt, maxTokens, timeoutMs) {
       return await llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs);
     } catch (error) {
       ultimoError = error;
-      if (error?.cause === "fatal") break;
+      if (error?.cause?.fatal) break;
       // Sin espera ni reintento dentro de la petición: la cuota es por
       // proyecto (no por modelo) y dormir aquí agota el maxDuration del
       // serverless. Se propaga el hint y el cliente espera entre lotes.
@@ -2172,6 +2177,10 @@ function validarPropuestaCategoria(propuesta) {
 async function clasificarLoteConIA(apiKey, noticias) {
   const resultados = new Array(noticias.length);
   let esperaSugeridaMs = 0;
+  // Primer código de fallo del lote para diagnóstico ('auth' | 'cuota' |
+  // 'red' | 'respuesta'). Permite al cliente explicar por qué nada se
+  // clasificó en vez de mostrar un genérico.
+  let falloCodigo = null;
   const grupos = new Map();
   noticias.forEach((noticia, indice) => {
     const key = `${(noticia.titulo || "").trim()}\u0000${(noticia.resumen || "").trim()}`;
@@ -2209,6 +2218,20 @@ async function clasificarLoteConIA(apiKey, noticias) {
       if (error?.cause?.esperaMs) {
         esperaSugeridaMs = Math.max(esperaSugeridaMs, error.cause.esperaMs);
       }
+      if (!falloCodigo) {
+        const codigo = error?.cause?.codigo;
+        if (codigo === "auth" || codigo === "cuota") {
+          falloCodigo = codigo;
+        } else if (error?.name === "AbortError") {
+          falloCodigo = "red";
+        } else if (/HTTP 40[013]/.test(error?.message || "")) {
+          falloCodigo = "auth";
+        } else if (/429|cuota/i.test(error?.message || "")) {
+          falloCodigo = "cuota";
+        } else {
+          falloCodigo = "respuesta";
+        }
+      }
       lote.forEach((item) => {
         item.indices.forEach((indice) => {
           resultados[indice] = { ...SIN_CLASIFICACION };
@@ -2216,7 +2239,7 @@ async function clasificarLoteConIA(apiKey, noticias) {
       });
     }
   }
-  return { resultados, esperaMs: esperaSugeridaMs };
+  return { resultados, esperaMs: esperaSugeridaMs, fallo: falloCodigo };
 }
 
 async function obtenerClasificacionesExistentes(fuenteIds = []) {

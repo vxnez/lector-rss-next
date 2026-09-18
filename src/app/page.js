@@ -346,6 +346,7 @@ export default function HomePage() {
         clasificados: Number(data.clasificados) || 0,
         restantes: Number(data.restantes) || 0,
         esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 500,
+        diag: typeof data.diag === "string" && data.diag ? data.diag : null,
       };
     };
 
@@ -353,6 +354,7 @@ export default function HomePage() {
       let total = null;
       let procesadas = 0;
       let falloTransporte = false;
+      let diagFinal = null;
       try {
         for (let intento = 0; intento < 12; intento++) {
           let lote;
@@ -365,23 +367,31 @@ export default function HomePage() {
           // El total se fija con la primera respuesta (foto al lanzar).
           if (total === null) total = lote.clasificados + lote.restantes;
           procesadas += lote.clasificados;
+          if (lote.diag && !diagFinal) diagFinal = lote.diag;
+          // Clave rechazada o ausente: reintentar es inútil, se corta aquí
+          // con el diagnóstico específico en vez de quemar 12 intentos.
+          if ((diagFinal === "auth" || diagFinal === "sin_clave") && procesadas === 0) break;
           // Refresco progresivo: lo ya categorizado se ve sin esperar al final.
           recargarDatos();
           if (lote.restantes === 0) break;
           setIaProgreso({ total, procesadas, pendientes: lote.restantes, estado: "en_curso" });
           await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
         }
-        if (procesadas > 0 || !falloTransporte) {
+        if (procesadas > 0) {
           setIaProgreso({ total: total ?? procesadas, procesadas, pendientes: 0, estado: "ok" });
+        } else if (falloTransporte && !diagFinal) {
+          setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
+        } else if (diagFinal) {
+          setIaProgreso({ total, procesadas: 0, pendientes: null, estado: "error", diag: diagFinal });
         } else {
-          setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error" });
+          setIaProgreso({ total: total ?? 0, procesadas: 0, pendientes: 0, estado: "ok" });
         }
       } finally {
         iaEnCursoRef.current = false;
       }
     })().catch(() => {
       iaEnCursoRef.current = false;
-      setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error" });
+      setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
     });
   }, [iaProgreso, notify, recargarDatos, t]);
 

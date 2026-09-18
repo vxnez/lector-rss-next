@@ -562,6 +562,11 @@ const TEXTOS = {
       ia_lanzada: "Categorización lanzada en segundo plano...",
       ia_en_curso: "La categorización sigue en curso ({n} pendientes).",
       ia_err: "No se pudo completar la categorización con IA.",
+      ia_err_sin_clave: "Falta la clave de Gemini en el servidor (GEMINI_API_KEY).",
+      ia_err_auth: "La clave de Gemini fue rechazada (401/403). Revisa GEMINI_API_KEY en Vercel.",
+      ia_err_cuota: "Cuota de la API de Gemini agotada (429). Reintenta más tarde.",
+      ia_err_red: "Gemini tardó demasiado en responder. Reintenta más tarde.",
+      ia_err_respuesta: "Gemini respondió con un formato inesperado.",
       sin_cambios: " {n} fuentes sin cambios.",
       purgadas: " Se liberaron {n} noticias antiguas.",
       completando: " Completando {n} categorías en segundo plano...",
@@ -592,6 +597,8 @@ const TEXTOS = {
       avance: "{a} de {total} procesadas ({p} pendientes)",
       ok: "¡Categorización completada con éxito!",
       cerrar: "Cerrar aviso",
+      minimizar: "Minimizar aviso",
+      expandir: "Ampliar aviso",
     },
 };
 

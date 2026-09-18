@@ -1,24 +1,65 @@
 // src/app/components/dashboard/IAProgressCard.js — Notificación persistente del
 // progreso de categorización IA en segundo plano: contador en vivo
 // (procesadas de total + pendientes), barra proporcional y cierre automático
-// al finalizar con éxito. Los errores quedan fijos hasta descartarlos.
+// al finalizar con éxito. Los errores quedan fijos hasta descartarlos. Se
+// puede minimizar a un badge compacto (con pulso mientras hay actividad) y
+// re-expandir con un clic.
 "use client";
 
-import { useEffect } from "react";
-import { X, Sparkles, CheckCheck, AlertCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Sparkles, CheckCheck, AlertCircle, Minus } from "lucide-react";
+
+const DIAG_VALIDOS = new Set(["sin_clave", "auth", "cuota", "red", "respuesta"]);
 
 export default function IAProgressCard({ progreso, onCerrar, t }) {
-  const terminada = progreso?.estado === "ok";
-  const fallida = progreso?.estado === "error";
+  const [minimizada, setMinimizada] = useState(false);
+  const estadoPrevio = useRef(progreso?.estado);
 
   // Desvanecido automático solo en éxito; el error persiste hasta cerrarlo.
+  const terminada = progreso?.estado === "ok";
   useEffect(() => {
     if (!terminada) return undefined;
     const temporizador = setTimeout(() => onCerrar?.(), 6000);
     return () => clearTimeout(temporizador);
   }, [terminada, onCerrar]);
 
+  // Una ejecución nueva re-expande la tarjeta.
+  useEffect(() => {
+    if (progreso?.estado === "en_curso" && estadoPrevio.current !== "en_curso") {
+      setMinimizada(false);
+    }
+    estadoPrevio.current = progreso?.estado;
+  }, [progreso?.estado]);
+
   if (!progreso) return null;
+
+  const fallida = progreso.estado === "error";
+  const enCurso = progreso.estado === "en_curso";
+  const diag = DIAG_VALIDOS.has(progreso.diag) ? progreso.diag : null;
+
+  if (minimizada) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMinimizada(false)}
+        title={t("ia_bar.expandir")}
+        aria-label={`${t("ia_bar.expandir")}: ${t("ia_bar.titulo")}`}
+        className="anim-toast fixed top-5 right-5 z-[70] grid h-11 w-11 place-content-center rounded-full border shadow-2xl toast-app"
+      >
+        <span className="relative" aria-hidden="true">
+          <span className="text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700">
+            {fallida ? <AlertCircle size={18} /> : terminada ? <CheckCheck size={18} /> : <Sparkles size={18} />}
+          </span>
+          {enCurso && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" />
+            </span>
+          )}
+        </span>
+      </button>
+    );
+  }
 
   const total = Number(progreso.total) || 0;
   const procesadas = Number(progreso.procesadas) || 0;
@@ -29,7 +70,7 @@ export default function IAProgressCard({ progreso, onCerrar, t }) {
   const indeterminado = total <= 0;
 
   const detalle = fallida
-    ? t("avisos.ia_err")
+    ? (diag ? t(`avisos.ia_err_${diag}`) : t("avisos.ia_err"))
     : terminada
       ? (procesadas > 0 ? t("avisos.ia_ok", { n: procesadas }) : t("avisos.ia_sin_pendientes"))
       : pendientes === null
@@ -66,16 +107,27 @@ export default function IAProgressCard({ progreso, onCerrar, t }) {
             />
           </div>
         </div>
-        {(terminada || fallida) && (
+        <div className="flex shrink-0 flex-col gap-1">
           <button
             type="button"
-            onClick={onCerrar}
-            aria-label={t("ia_bar.cerrar")}
-            className="btn-press shrink-0 rounded-lg p-1 opacity-70 hover:opacity-100"
+            onClick={() => setMinimizada(true)}
+            title={t("ia_bar.minimizar")}
+            aria-label={t("ia_bar.minimizar")}
+            className="btn-press rounded-lg p-1 opacity-70 hover:opacity-100"
           >
-            <X size={14} />
+            <Minus size={14} />
           </button>
-        )}
+          {(terminada || fallida) && (
+            <button
+              type="button"
+              onClick={onCerrar}
+              aria-label={t("ia_bar.cerrar")}
+              className="btn-press rounded-lg p-1 opacity-70 hover:opacity-100"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
