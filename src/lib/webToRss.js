@@ -729,8 +729,8 @@ function etiquetaSeccion($, sitio) {
   return "";
 }
 
-// Título de la fuente convertida con la sección calificada por el sitio
-// ("The GitHub Blog - Engineering") en vez del nombre global idéntico para
+// Título de la fuente convertida con la sección primero y el sitio después
+// ("Engineering - The GitHub Blog") en vez del nombre global idéntico para
 // todas las secciones. Si la sección ya menciona al sitio ("The GitHub
 // Engineering Blog") no se duplica; si el combinado es muy largo se queda
 // con la parte más descriptiva.
@@ -750,7 +750,7 @@ function tituloSitioSeccion($, sitio, baseHost) {
   ) {
     return seccion.length <= 60 ? seccion : sitio;
   }
-  const combinado = `${sitio} - ${seccion}`;
+  const combinado = `${seccion} - ${sitio}`;
   if (combinado.length <= 44) return combinado;
   return seccion.length <= 60 ? seccion : sitio;
 }
