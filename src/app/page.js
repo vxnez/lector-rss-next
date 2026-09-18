@@ -315,15 +315,21 @@ export default function HomePage() {
   // en segundo plano sin bloquear el botón ni re-descargar fuentes. Cada
   // lote refresca la vista (las noticias categorizadas aparecen progresiva-
   // mente) y el aviso muestra los pendientes restantes hasta finalizar.
+  // Los fallos de transporte (timeout del serverless, red) no se disfrazan
+  // de "sin pendientes": si no se clasificó nada y hubo fallo, es error.
   const handleCategorizarIA = useCallback(() => {
     if (iaEnCursoRef.current) {
       notify(
-        t("avisos.ia_en_curso", { n: iaPendientes ?? 0 }),
+        iaPendientes === null
+          ? t("avisos.ia_lanzada")
+          : t("avisos.ia_en_curso", { n: iaPendientes }),
         "info"
       );
       return;
     }
     iaEnCursoRef.current = true;
+    // Feedback inmediato: el primer lote (llamada a Gemini) tarda segundos.
+    notify(t("avisos.ia_lanzada"), "info");
 
     const pedirLote = async () => {
       const res = await fetch("/api/rss", {
@@ -342,12 +348,14 @@ export default function HomePage() {
 
     (async () => {
       let totalClasificados = 0;
+      let falloTransporte = false;
       try {
         for (let intento = 0; intento < 12; intento++) {
           let lote;
           try {
             lote = await pedirLote();
           } catch {
+            falloTransporte = true;
             break;
           }
           totalClasificados += lote.clasificados;
@@ -358,12 +366,13 @@ export default function HomePage() {
           notify(t("avisos.ia_fondo", { n: lote.restantes }), "info");
           await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
         }
-        notify(
-          totalClasificados > 0
-            ? t("avisos.ia_ok", { n: totalClasificados })
-            : t("avisos.ia_sin_pendientes"),
-          totalClasificados > 0 ? "success" : "info"
-        );
+        if (totalClasificados > 0) {
+          notify(t("avisos.ia_ok", { n: totalClasificados }), "success");
+        } else if (falloTransporte) {
+          notify(t("avisos.ia_err"), "error");
+        } else {
+          notify(t("avisos.ia_sin_pendientes"), "info");
+        }
       } finally {
         iaEnCursoRef.current = false;
         setIaPendientes(null);

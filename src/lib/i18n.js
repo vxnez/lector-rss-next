@@ -557,6 +557,7 @@ const TEXTOS = {
       ia_ok: "{n} noticias categorizadas con IA.",
       ia_sin_pendientes: "No hay noticias pendientes de categorización.",
       ia_fondo: "Categorizando en segundo plano... {n} pendientes.",
+      ia_lanzada: "Categorización lanzada en segundo plano...",
       ia_en_curso: "La categorización sigue en curso ({n} pendientes).",
       ia_err: "No se pudo completar la categorización con IA.",
       sin_cambios: " {n} fuentes sin cambios.",
