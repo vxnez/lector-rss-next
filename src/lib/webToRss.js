@@ -697,6 +697,64 @@ function siguienteUrlMismoEstilo(urlActual) {
   return "";
 }
 
+// Títulos de portada sin valor de sección ("Home", "Inicio"...): en esos
+// casos el título de la fuente es solo el nombre del sitio.
+const TITULO_SECCION_GENERICO = /^(home|inicio|homepage|portada|welcome|bienvenido|blog)$/i;
+
+// Etiqueta específica de la sección/listado: primer h1 con contenido real
+// (suele ser el nombre de la sección), luego og:title y por último <title>
+// sin el sufijo del sitio ("Sección - Sitio"). Devuelve "" si no hay nada
+// aprovechable.
+function etiquetaSeccion($, sitio) {
+  const candidatos = [];
+  $("h1").each((_, el) => {
+    const t = textoLimpio($, el).slice(0, 80);
+    if (t.length >= 2 && t.length <= 60 && !TEXTO_NAV.test(t) && !candidatos.includes(t)) {
+      candidatos.push(t);
+    }
+  });
+  // Un h1 con el nombre del sitio (logo/cabecera) no describe la sección:
+  // se prefiere otro h1 distinto antes de caer al primero.
+  const distinto = candidatos.find((t) => t.toLowerCase() !== sitio.toLowerCase());
+  if (distinto) return distinto;
+  if (candidatos.length > 0) return candidatos[0];
+  const og = meta($, "og:title");
+  if (og && og.length >= 2 && og.length <= 80) return og.slice(0, 80);
+  let titulo = $("title").first().text().replace(/\s+/g, " ").trim();
+  if (sitio) {
+    const esc = sitio.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    titulo = titulo.replace(new RegExp(`\\s*[|•·–—/-]\\s*${esc}\\s*$`, "i"), "").trim();
+  }
+  if (titulo.length >= 2 && titulo.length <= 80) return titulo;
+  return "";
+}
+
+// Título de la fuente convertida con la sección calificada por el sitio
+// ("The GitHub Blog - Engineering") en vez del nombre global idéntico para
+// todas las secciones. Si la sección ya menciona al sitio ("The GitHub
+// Engineering Blog") no se duplica; si el combinado es muy largo se queda
+// con la parte más descriptiva.
+function tituloSitioSeccion($, sitio, baseHost) {
+  const seccion = etiquetaSeccion($, sitio);
+  if (
+    !seccion ||
+    TITULO_SECCION_GENERICO.test(seccion) ||
+    seccion.toLowerCase() === sitio.toLowerCase()
+  ) {
+    return sitio;
+  }
+  const nucleo = baseHost.replace(/^www\./i, "").split(".")[0].toLowerCase();
+  if (
+    seccion.toLowerCase().includes(sitio.toLowerCase()) ||
+    (nucleo.length >= 3 && seccion.toLowerCase().includes(nucleo))
+  ) {
+    return seccion.length <= 60 ? seccion : sitio;
+  }
+  const combinado = `${sitio} - ${seccion}`;
+  if (combinado.length <= 44) return combinado;
+  return seccion.length <= 60 ? seccion : sitio;
+}
+
 // ---- Extracción de una página HTML a { tituloSitio, items, esArticuloUnico } ----
 
 export function extraerFeedDeHtml(html, baseFinal) {
@@ -717,10 +775,13 @@ export function extraerFeedDeHtml(html, baseFinal) {
     throw errorWeb("La URL ingresada no tiene un formato válido.", "WEB_URL");
   }
 
-  const tituloSitio =
+  const nombreSitio =
     meta($, "og:site_name") ||
     $("title").first().text().replace(/\s+/g, " ").trim().slice(0, 120) ||
     baseHost.replace(/^www\./i, "");
+  // Título por sección (h1 → og:title → <title>), calificado con el sitio:
+  // cada subsección convertida queda con nombre diferenciado y persistible.
+  const tituloSitio = tituloSitioSeccion($, nombreSitio, baseHost);
 
   const nodosJsonLd = extraerJsonLd($);
   let items = itemsDesdeJsonLd(nodosJsonLd, base, baseHost);
