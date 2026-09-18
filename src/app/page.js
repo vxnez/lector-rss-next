@@ -1190,12 +1190,12 @@ export default function HomePage() {
                         disabled={categorizandoIA}
                         title={t("controles.ia_titulo")}
                         aria-label={t("controles.ia_titulo")}
-                        className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 disabled:opacity-50"
+                        className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 disabled:opacity-50 [html[data-tema-claro='1']_&]:border-violet-600/50 [html[data-tema-claro='1']_&]:bg-violet-600/10 [html[data-tema-claro='1']_&]:text-violet-800 [html[data-tema-claro='1']_&]:hover:bg-violet-600/15"
                       >
                         <MorphIcon
                           icon={categorizandoIA ? LoaderCircleData : SparklesData}
                           size={14}
-                          className={categorizandoIA ? "animate-spin text-violet-300" : ""}
+                          className={categorizandoIA ? "animate-spin text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" : ""}
                         />
                         <span className="truncate">{categorizandoIA ? t("controles.ia_categorizando") : t("controles.ia_categorizar")}</span>
                       </button>
@@ -1392,7 +1392,7 @@ export default function HomePage() {
                         onClick={() => cambiarFiltroIA(opcion.valor)}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                           activo
-                            ? "border-violet-500 bg-violet-500/15 text-violet-300"
+                            ? "border-violet-500 bg-violet-500/15 text-violet-300 [html[data-tema-claro='1']_&]:border-violet-600 [html[data-tema-claro='1']_&]:bg-violet-600/10 [html[data-tema-claro='1']_&]:text-violet-800"
                             : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >
