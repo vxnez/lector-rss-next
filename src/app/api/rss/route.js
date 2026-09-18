@@ -1180,7 +1180,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
     return NextResponse.json({ clasificados: 0, restantes: 0 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = configIA().apiKey;
   if (!apiKey) {
     return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave" });
   }
@@ -1950,6 +1950,37 @@ const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0
 
 // Modelos probados en orden: el lite primero por ser el más rápido, luego el alterno.
 const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash"];
+// Groq (contrato OpenAI-compatible): alto throughput en tier gratuito, ideal
+// para clasificación por lotes. Modelos sobreescribibles con IA_MODELOS.
+const MODELOS_GROQ = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+
+// Proveedor de IA para clasificación (variables de entorno):
+// IA_PROVEEDOR=groq usa GROQ_API_KEY; cualquier otro valor (o ausente) usa
+// Gemini con GEMINI_API_KEY. IA_API_KEY genérica tiene prioridad sobre ambas
+// e IA_MODELOS ("a,b,c") sustituye la lista por defecto del proveedor.
+function configIA() {
+  const proveedor = String(process.env.IA_PROVEEDOR || "gemini").trim().toLowerCase();
+  const modelosPropios = String(process.env.IA_MODELOS || "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  if (proveedor === "groq") {
+    return {
+      proveedor: "groq",
+      etiqueta: "Groq",
+      apiKey: process.env.IA_API_KEY || process.env.GROQ_API_KEY || "",
+      modelos: modelosPropios.length > 0 ? modelosPropios : MODELOS_GROQ,
+      baseUrl: "https://api.groq.com/openai/v1",
+    };
+  }
+  return {
+    proveedor: "gemini",
+    etiqueta: "Gemini",
+    apiKey: process.env.IA_API_KEY || process.env.GEMINI_API_KEY || "",
+    modelos: modelosPropios.length > 0 ? modelosPropios : MODELOS_GEMINI,
+    baseUrl: null,
+  };
+}
 const GEMINI_LOTE_TAMANO = 12;
 const GEMINI_LOTE_MAX_TOKENS = 1200;
 // Tope por llamada a Gemini: con el fail-fast ante 429, el peor caso por
@@ -1980,7 +2011,7 @@ function extraerArregloPropuesta(texto = "") {
   const limpio = texto.replace(/^```json\s*|\s*```$/g, "").trim();
   const validar = (fragmento) => {
     const arreglo = JSON.parse(fragmento);
-    if (!Array.isArray(arreglo)) throw new Error("Gemini no devolvió un arreglo JSON válido");
+    if (!Array.isArray(arreglo)) throw new Error("La IA no devolvió un arreglo JSON válido");
     return arreglo;
   };
   try {
@@ -1988,7 +2019,7 @@ function extraerArregloPropuesta(texto = "") {
   } catch {
     const coincidencia = limpio.match(/\[[\s\S]*\]/);
     if (coincidencia) return validar(coincidencia[0]);
-    throw new Error("Gemini no devolvió un arreglo JSON válido");
+    throw new Error("La IA no devolvió un arreglo JSON válido");
   }
 }
 
@@ -2142,11 +2173,55 @@ async function llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeou
   }
 }
 
-async function ejecutarCadenaGemini(apiKey, textoPrompt, maxTokens, timeoutMs) {
-  let ultimoError = new Error("Gemini no respondió correctamente");
-  for (const modelo of MODELOS_GEMINI) {
+// Llamada OpenAI-compatible (/chat/completions): Groq y cualquier nube con
+// el mismo contrato. 401/403 = clave rechazada (fatal); 429 = cuota con
+// Retry-After; otros 4xx (p. ej. modelo retirado) prueban el siguiente.
+async function llamarModeloChat(cfg, apiKey, modelo, textoPrompt, maxTokens, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: modelo,
+        messages: [{ role: "user", content: textoPrompt }],
+        temperature: 0,
+        max_tokens: maxTokens,
+      }),
+    });
+    if ([401, 403].includes(response.status)) {
+      throw new Error(`${cfg.etiqueta} rechazó la clave (HTTP ${response.status}); se aborta la cadena de modelos`, { cause: { fatal: true, codigo: "auth" } });
+    }
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const cuerpo = await response.text().catch(() => "");
+      const esperaMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(Math.max(retryAfter * 1000, 1000), 120000)
+        : extraerEsperaReintento(cuerpo);
+      throw new Error(`${cfg.etiqueta} sin cuota en ${modelo} (HTTP 429)`, { cause: { esperaMs, codigo: "cuota" } });
+    }
+    if (!response.ok) throw new Error(`${cfg.etiqueta} respondió HTTP ${response.status} con ${modelo}`);
+    const data = await response.json().catch(() => null);
+    const textoRespuesta = data?.choices?.[0]?.message?.content?.trim();
+    if (!textoRespuesta) throw new Error(`${cfg.etiqueta} no devolvió contenido con ${modelo}`);
+    return textoRespuesta;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function ejecutarCadenaIA(apiKey, textoPrompt, maxTokens, timeoutMs) {
+  const cfg = configIA();
+  const clave = cfg.apiKey || apiKey;
+  let ultimoError = new Error(`${cfg.etiqueta} no respondió correctamente`);
+  for (const modelo of cfg.modelos) {
     try {
-      return await llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs);
+      if (cfg.proveedor === "groq") {
+        return await llamarModeloChat(cfg, clave, modelo, textoPrompt, maxTokens, timeoutMs);
+      }
+      return await llamarModeloGemini(clave, modelo, textoPrompt, maxTokens, timeoutMs);
     } catch (error) {
       ultimoError = error;
       if (error?.cause?.fatal) break;
@@ -2199,7 +2274,7 @@ async function clasificarLoteConIA(apiKey, noticias) {
   for (let inicio = 0; inicio < unicos.length; inicio += GEMINI_LOTE_TAMANO) {
     const lote = unicos.slice(inicio, inicio + GEMINI_LOTE_TAMANO);
     try {
-      const texto = await ejecutarCadenaGemini(apiKey, construirInstruccionLote(lote), GEMINI_LOTE_MAX_TOKENS, GEMINI_LOTE_TIMEOUT_MS);
+      const texto = await ejecutarCadenaIA(apiKey, construirInstruccionLote(lote), GEMINI_LOTE_MAX_TOKENS, GEMINI_LOTE_TIMEOUT_MS);
       const propuestas = extraerArregloPropuesta(texto);
       const porIndice = new Map();
       for (const propuesta of propuestas) {
@@ -2324,7 +2399,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
     }
   });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = configIA().apiKey;
   let resultadosIA = nuevos.map(() => ({ ...SIN_CLASIFICACION }));
   if (apiKey && nuevos.length > 0 && !omitirIA) {
     resultadosIA = (await clasificarLoteConIA(apiKey, nuevos)).resultados;
