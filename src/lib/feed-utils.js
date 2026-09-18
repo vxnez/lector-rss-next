@@ -2,7 +2,7 @@
 // Extraídas de page.js para que la página componga en vez de implementarlo todo.
 
 // Construye los query params del feed (página + filtros server-side).
-export function paramsFeed({ page, limit, tab, orden, q, categorias, fuentes }) {
+export function paramsFeed({ page, limit, tab, orden, q, categorias, fuentes, ia }) {
   const params = new URLSearchParams({
     limit: String(limit),
     page: String(page),
@@ -12,6 +12,7 @@ export function paramsFeed({ page, limit, tab, orden, q, categorias, fuentes }) 
   if (String(q || "").trim()) params.set("q", String(q).trim());
   if (Array.isArray(categorias) && categorias.length > 0) params.set("categorias", categorias.join(","));
   if (Array.isArray(fuentes) && fuentes.length > 0) params.set("fuentes", fuentes.join(","));
+  if (ia === "con_ia" || ia === "sin_ia") params.set("ia", ia);
   return params.toString();
 }
 

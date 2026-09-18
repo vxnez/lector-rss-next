@@ -31,6 +31,7 @@ import {
   LoaderCircle as LoaderCircleData,
   RotateCw as RotateCwData,
   Settings as SettingsData,
+  Sparkles as SparklesData,
   X as XData,
   ChevronDown as ChevronDownData,
   ChevronUp as ChevronUpData,
@@ -111,6 +112,10 @@ export default function HomePage() {
 
   const [activeTab, setActiveTab] = useState("todas"); // "todas" | "guardadas" | "leidas"
   const [orden, setOrden] = useState("recientes");
+  // Filtro por estado de categorización IA: "todas" | "con_ia" | "sin_ia".
+  const [filtroIA, setFiltroIA] = useState("todas");
+  // Categorización manual con IA (botón aislado: no re-descarga fuentes).
+  const [categorizandoIA, setCategorizandoIA] = useState(false);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const [fuentesExpandidas, setFuentesExpandidas] = useState(false);
@@ -302,6 +307,47 @@ export default function HomePage() {
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
   }, [recargarDatos]);
+
+  // Botón aislado de IA: clasifica la cola de pendientes por lotes sin
+  // tocar fuentes, imágenes ni re-descargas (a diferencia de Refrescar).
+  const handleCategorizarIA = useCallback(async () => {
+    if (categorizandoIA) return;
+    setCategorizandoIA(true);
+    let totalClasificados = 0;
+    try {
+      for (let intento = 0; intento < 12; intento++) {
+        let esperaMs = 500;
+        let clasificados = 0;
+        let restantes = 0;
+        try {
+          const res = await fetch("/api/rss", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+          });
+          if (!res.ok) throw new Error(t("avisos.ia_err"));
+          const data = await res.json().catch(() => ({}));
+          clasificados = Number(data.clasificados) || 0;
+          restantes = Number(data.restantes) || 0;
+          if (Number(data.reintentarEn) > 0) esperaMs = Number(data.reintentarEn) * 1000;
+        } catch {
+          break;
+        }
+        totalClasificados += clasificados;
+        recargarDatos();
+        if (restantes === 0) break;
+        await new Promise((resolve) => setTimeout(resolve, esperaMs));
+      }
+      notify(
+        totalClasificados > 0
+          ? t("avisos.ia_ok", { n: totalClasificados })
+          : t("avisos.ia_sin_pendientes"),
+        totalClasificados > 0 ? "success" : "info"
+      );
+    } finally {
+      setCategorizandoIA(false);
+    }
+  }, [categorizandoIA, notify, recargarDatos, t]);
 
   // Service worker de push + estado de suscripción (solo navegadores compatibles).
   // Microinteracciones Anime.js en `.btn-press` (solo transform, GPU):
@@ -529,11 +575,13 @@ export default function HomePage() {
         q: busquedaAplicada,
         categorias: categoriasSeleccionadas,
         fuentes: fuentesSeleccionadas,
+        ia: filtroIA,
       });
       const urlFeed = `/api/rss?${feedParams}`;
       const facetaParams = new URLSearchParams({ tipo: "facetas", tab: activeTab });
       if (busquedaAplicada.trim()) facetaParams.set("q", busquedaAplicada.trim());
       if (fuentesSeleccionadas.length > 0) facetaParams.set("fuentes", fuentesSeleccionadas.join(","));
+      if (filtroIA === "con_ia" || filtroIA === "sin_ia") facetaParams.set("ia", filtroIA);
       const urlFacetas = `/api/rss?${facetaParams}`;
       claveFeedActualRef.current = urlFeed;
 
@@ -575,6 +623,7 @@ export default function HomePage() {
               q: busquedaAplicada,
               categorias: categoriasSeleccionadas,
               fuentes: fuentesSeleccionadas,
+              ia: filtroIA,
             });
             prefetchJson(`/api/rss?${paramsVecina}`, { ttlMs: 30000 });
           }
@@ -600,7 +649,7 @@ export default function HomePage() {
 
     cargarFeed();
     return () => controller.abort();
-  }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, nonceRecarga]);
+  }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, filtroIA, nonceRecarga]);
 
   const closeOnboardingSurvey = () => {
     // La guía se marca como vista al cerrarla por cualquier vía (completar,
@@ -842,6 +891,11 @@ export default function HomePage() {
     setPagina(1);
   };
 
+  const cambiarFiltroIA = (valor) => {
+    setFiltroIA(valor === "con_ia" || valor === "sin_ia" ? valor : "todas");
+    setPagina(1);
+  };
+
   const cambiarPagina = (nueva) => {
     setPagina(nueva);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -882,15 +936,16 @@ export default function HomePage() {
     busquedaRef.current = "";
     setCategoriasSeleccionadas([]);
     setFuentesSeleccionadas([]);
+    setFiltroIA("todas");
     setPagina(1);
   };
 
   const hayFiltrosActivos = Boolean(
-    searchQuery.trim() || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0
+    searchQuery.trim() || categoriasSeleccionadas.length > 0 || fuentesSeleccionadas.length > 0 || filtroIA !== "todas"
   );
 
   const numFiltrosActivos =
-    (searchQuery.trim() ? 1 : 0) + categoriasSeleccionadas.length + fuentesSeleccionadas.length;
+    (searchQuery.trim() ? 1 : 0) + categoriasSeleccionadas.length + fuentesSeleccionadas.length + (filtroIA !== "todas" ? 1 : 0);
 
   const abrirPanelMovil = useCallback(() => {
     setControlsOpen(true);
@@ -1130,6 +1185,20 @@ export default function HomePage() {
                     <span className="truncate">{t("controles.agregar")}</span>
                       </button>
                       </div>
+                      <button
+                        onClick={handleCategorizarIA}
+                        disabled={categorizandoIA}
+                        title={t("controles.ia_titulo")}
+                        aria-label={t("controles.ia_titulo")}
+                        className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 disabled:opacity-50"
+                      >
+                        <MorphIcon
+                          icon={categorizandoIA ? LoaderCircleData : SparklesData}
+                          size={14}
+                          className={categorizandoIA ? "animate-spin text-violet-300" : ""}
+                        />
+                        <span className="truncate">{categorizandoIA ? t("controles.ia_categorizando") : t("controles.ia_categorizar")}</span>
+                      </button>
                     </section>
 
                     <section className="space-y-3 border-t border-app-line/70 pt-4">
@@ -1289,6 +1358,41 @@ export default function HomePage() {
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                           activo
                             ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        <MorphIcon
+                          icon={activo ? CheckData : CircleData}
+                          size={13}
+                          strokeWidth={2.5}
+                          className="shrink-0"
+                        />
+                        {opcion.etiqueta}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-gray-400">{t("filtros.ia_estado")}</span>
+                <div className="flex flex-wrap gap-1.5 rounded-xl border border-app-line/50 bg-app-surface/40 p-2" role="radiogroup" aria-label={t("filtros.ia_estado")}>
+                  {[
+                    { valor: "todas", etiqueta: t("filtros.ia_todas") },
+                    { valor: "con_ia", etiqueta: t("filtros.ia_con_ia") },
+                    { valor: "sin_ia", etiqueta: t("filtros.ia_sin_ia") },
+                  ].map((opcion) => {
+                    const activo = filtroIA === opcion.valor;
+                    return (
+                      <button
+                        key={opcion.valor}
+                        type="button"
+                        role="radio"
+                        aria-checked={activo}
+                        onClick={() => cambiarFiltroIA(opcion.valor)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
+                          activo
+                            ? "border-violet-500 bg-violet-500/15 text-violet-300"
                             : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >

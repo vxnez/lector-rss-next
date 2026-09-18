@@ -1587,7 +1587,7 @@ export async function GET(req) {
     }
 
     // Feed paginado con filtros en servidor:
-    // ?page=2&limit=30&tab=todas&q=&categorias=A,B&fuentes=1,2&orden=recientes
+    // ?page=2&limit=30&tab=todas&q=&categorias=A,B&fuentes=1,2&orden=recientes&ia=todas
     // Sin ?limit ni ?page se mantiene respuesta legacy (arreglo) por compatibilidad.
     const limiteParam = searchParams.get("limit");
     const paginaParam = searchParams.get("page");
@@ -1843,8 +1843,9 @@ function escaparLike(valor = "") {
 }
 
 // Construye WHERE/params/ORDER para el feed con filtros de pestaña,
-// búsqueda, categorías, fuentes y orden. Todo parametrizado; el orden
-// va por lista blanca para no interpolar input crudo en SQL.
+// búsqueda, categorías, fuentes, estado IA y orden. Todo parametrizado;
+// el orden y el estado IA van por lista blanca para no interpolar input
+// crudo en SQL.
 function construirFiltros(searchParams, userId, { ignorarCategorias = false } = {}) {
   const condiciones = ["f.usuario_id = ?", "(a.descartado = 0 OR a.descartado IS NULL)"];
   const params = [userId];
@@ -1883,6 +1884,16 @@ function construirFiltros(searchParams, userId, { ignorarCategorias = false } = 
       condiciones.push(`a.categoria IN (${categorias.map(() => "?").join(",")})`);
       params.push(...categorias);
     }
+  }
+
+  // Estado de categorización por IA (lista blanca): 'con_ia' solo Gemini,
+  // 'sin_ia' solo pendientes de IA. 'manual' (corregida por el usuario) solo
+  // aparece en 'todas': no fue procesada por IA ni está pendiente de ella.
+  const estadoIA = searchParams.get("ia") || "todas";
+  if (estadoIA === "con_ia") {
+    condiciones.push("a.clasificacion_metodo = 'gemini'");
+  } else if (estadoIA === "sin_ia") {
+    condiciones.push("a.clasificacion_metodo = 'sin-ia'");
   }
 
   const orden = searchParams.get("orden") || "recientes";
