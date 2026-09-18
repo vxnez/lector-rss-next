@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Trash2, Rss, Pencil, Save, Plus, Upload, Download, ChevronLeft } from "lucide-react";
+import { X, Trash2, Rss, Pencil, Save, Plus, Upload, Download, ChevronLeft, Search, Copy, ClipboardPaste } from "lucide-react";
 import {
   LoaderCircle as LoaderCircleData,
   RefreshCcw as RefreshCcwData,
@@ -33,6 +33,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const [confirmarLote, setConfirmarLote] = useState(false);
   const [eliminandoLote, setEliminandoLote] = useState(false);
   const [editForm, setEditForm] = useState({ titulo: "", url_feed: "", categoria: "General", convertFullPage: false });
+  // Búsqueda en tiempo real por título o URL (case-insensitive).
+  const [busqueda, setBusqueda] = useState("");
   // Sub-vista OPML: importar (archivo → selección → alta) y exportar.
   const [vistaOpml, setVistaOpml] = useState(false);
   const [opmlItems, setOpmlItems] = useState([]);
@@ -70,6 +72,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           setSources(sourcesArr);
           setSeleccionadas([]);
           setConfirmarLote(false);
+          setBusqueda("");
           setLoading(false);
         }
       });
@@ -84,6 +87,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     setConfirmarEliminarId(null);
     setConfirmarLote(false);
     setSeleccionadas([]);
+    setBusqueda("");
     setVistaOpml(false);
     setOpmlItems([]);
     setOpmlError("");
@@ -366,12 +370,24 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     ));
   };
 
-  const todasSeleccionadas = sources.length > 0 && seleccionadas.length === sources.length;
+  // Filtrado en tiempo real por título o URL (case-insensitive). Con la
+  // búsqueda activa, la selección en lote opera sobre las visibles.
+  const consulta = busqueda.trim().toLowerCase();
+  const visibleSources = consulta
+    ? sources.filter((s) => (
+      `${s.titulo || s.nombre || ""} ${s.url_feed || s.url || ""}`.toLowerCase().includes(consulta)
+    ))
+    : sources;
+
+  const todasSeleccionadas = visibleSources.length > 0 && visibleSources.every((s) => seleccionadas.includes(s.id));
 
   const alternarTodas = () => {
-    setSeleccionadas((prev) => (
-      prev.length === sources.length && sources.length > 0 ? [] : sources.map((s) => s.id)
-    ));
+    setSeleccionadas((prev) => {
+      const visiblesIds = visibleSources.map((s) => s.id);
+      const todasMarcadas = visiblesIds.length > 0 && visiblesIds.every((id) => prev.includes(id));
+      if (todasMarcadas) return prev.filter((id) => !visiblesIds.includes(id));
+      return [...new Set([...prev, ...visiblesIds])];
+    });
   };
 
   const confirmarEliminacionLote = async () => {
@@ -431,9 +447,47 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   };
 
-  if (!isOpen) return null;
+  // Acciones rápidas del portapapeles sobre la URL en edición, con
+  // fallback para navegadores sin Clipboard API (contextos no seguros).
+  const copiarUrlEdicion = async () => {
+    const valor = (editForm.url_feed || "").trim();
+    if (!valor) {
+      onNotify?.(t("fuentes.url_ph"), "error");
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(valor);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = valor;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        document.body.removeChild(area);
+      }
+      onNotify?.(t("fuentes.url_copiada"), "success");
+    } catch {
+      onNotify?.(t("fuentes.portapapeles_err"), "error");
+    }
+  };
 
-  const visibleSources = sources;
+  const pegarUrlEdicion = async () => {
+    try {
+      if (!navigator.clipboard?.readText) throw new Error("clipboard");
+      const texto = (await navigator.clipboard.readText() || "").trim();
+      if (!texto) {
+        onNotify?.(t("fuentes.portapapeles_vacio"), "error");
+        return;
+      }
+      setEditForm((form) => ({ ...form, url_feed: texto }));
+      onNotify?.(t("fuentes.url_pegada"), "success");
+    } catch {
+      onNotify?.(t("fuentes.portapapeles_err"), "error");
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -503,6 +557,32 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               <span className="hidden sm:inline">{refreshingAll ? t("fuentes.actualizando_todo") : t("fuentes.refrescar_todo")}</span>
             </button>
           </div>
+
+          {/* Buscador de fuentes por título o URL (filtrado en tiempo real). */}
+          {!vistaOpml && (
+            <label className="relative flex items-center rounded-xl border border-gray-800 bg-gray-950/60 transition focus-within:border-sky-500/60 focus-within:shadow-[0_0_0_3px_rgba(14,165,233,0.15)]">
+              <Search size={15} className="absolute left-3 shrink-0 text-gray-500" aria-hidden="true" />
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(event) => setBusqueda(event.target.value)}
+                placeholder={t("fuentes.buscar_ph")}
+                aria-label={t("fuentes.buscar_aria")}
+                className="w-full bg-transparent rounded-xl pl-9 pr-9 py-2 text-sm text-white placeholder-gray-500 focus:outline-none"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  title={t("fuentes.buscar_limpiar")}
+                  aria-label={t("fuentes.buscar_limpiar")}
+                  className="btn-press absolute right-2 shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </label>
+          )}
         </div>
 
         {/* Barra de selección múltiple: seleccionar todo (reversible),
@@ -695,7 +775,20 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               <span className="text-sm">{t("fuentes.cargando")}</span>
             </div>
           ) : visibleSources.length === 0 ? (
-            <p className="text-center text-gray-500 py-10 text-sm">{t("fuentes.vacio")}</p>
+            consulta ? (
+              <div className="py-10 text-center space-y-3">
+                <p className="text-sm text-gray-400">{t("fuentes.sin_resultados")}</p>
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  className="btn-press rounded-xl border border-gray-700 bg-gray-800 px-4 py-2 text-xs font-medium text-gray-200 hover:border-gray-500 hover:text-white"
+                >
+                  {t("fuentes.buscar_limpiar")}
+                </button>
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-10 text-sm">{t("fuentes.vacio")}</p>
+            )
           ) : (
             visibleSources.map((source, indice) => {
               const sId = source.id;
@@ -743,13 +836,33 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         aria-label={t("fuentes.nombre_ph")}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
                       />
-                      <input
-                        value={editForm.url_feed}
-                        onChange={(event) => setEditForm((form) => ({ ...form, url_feed: event.target.value }))}
-                        placeholder={t("fuentes.url_ph")}
-                        aria-label={t("fuentes.url_ph")}
-                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={editForm.url_feed}
+                          onChange={(event) => setEditForm((form) => ({ ...form, url_feed: event.target.value }))}
+                          placeholder={t("fuentes.url_ph")}
+                          aria-label={t("fuentes.url_ph")}
+                          className="min-w-0 flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={copiarUrlEdicion}
+                          title={t("fuentes.copiar_url")}
+                          aria-label={t("fuentes.copiar_url")}
+                          className="btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={pegarUrlEdicion}
+                          title={t("fuentes.pegar_url")}
+                          aria-label={t("fuentes.pegar_url")}
+                          className="btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
+                        >
+                          <ClipboardPaste size={14} />
+                        </button>
+                      </div>
                       <input
                         value={editForm.categoria}
                         onChange={(event) => setEditForm((form) => ({ ...form, categoria: event.target.value }))}

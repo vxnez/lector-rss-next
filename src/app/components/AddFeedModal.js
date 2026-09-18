@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus } from "lucide-react";
+import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus, ClipboardPaste } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
 
 // initialUrl llega por prop y el padre fuerza remontaje con `key` al abrir,
@@ -79,7 +79,7 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
             <label className="block text-sm font-medium mb-1 text-gray-300">
               {t("addfeed.url")}
             </label>
-            <div className="relative flex items-center">
+            <div className="relative flex items-center gap-1.5">
               <LinkIcon size={16} className="absolute left-3 text-gray-500" />
               <input
                 type="url"
@@ -87,8 +87,27 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="field-focus w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
+                className="field-focus min-w-0 flex-1 bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
               />
+              <button
+                type="button"
+                title={t("addfeed.pegar_url")}
+                aria-label={t("addfeed.pegar_url")}
+                onClick={async () => {
+                  try {
+                    if (!navigator.clipboard?.readText) throw new Error("clipboard");
+                    const texto = (await navigator.clipboard.readText() || "").trim();
+                    if (!texto) throw new Error("vacio");
+                    setUrl(texto);
+                    setError("");
+                  } catch {
+                    setError(t("fuentes.portapapeles_err"));
+                  }
+                }}
+                className="btn-press shrink-0 rounded-xl border border-gray-700 bg-gray-800 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
+              >
+                <ClipboardPaste size={16} />
+              </button>
             </div>
             <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
               {t("addfeed.web_hint")}
