@@ -355,6 +355,9 @@ export default function HomePage() {
       let procesadas = 0;
       let falloTransporte = false;
       let diagFinal = null;
+      // Racha de lotes en cuota sin clasificar nada: cortar antes de quemar
+      // los 12 intentos (~9 min de esperas) cuando la cuota no se libera.
+      let rachaCuota = 0;
       try {
         for (let intento = 0; intento < 12; intento++) {
           let lote;
@@ -371,6 +374,11 @@ export default function HomePage() {
           // Clave rechazada o ausente: reintentar es inútil, se corta aquí
           // con el diagnóstico específico en vez de quemar 12 intentos.
           if ((diagFinal === "auth" || diagFinal === "sin_clave") && procesadas === 0) break;
+          if (lote.clasificados > 0 || lote.diag !== "cuota") {
+            rachaCuota = 0;
+          } else if (++rachaCuota >= 3) {
+            break;
+          }
           // Refresco progresivo: lo ya categorizado se ve sin esperar al final.
           recargarDatos();
           if (lote.restantes === 0) break;
