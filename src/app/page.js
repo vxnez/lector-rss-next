@@ -613,13 +613,28 @@ export default function HomePage() {
   }, [searchQuery]);
 
   // Feed paginado + facetas: página, pestaña, orden, búsqueda, filtros.
-  // SWR por página: si la vista está en caché pinta instantáneo (sin
-  // esqueleto) y revalida en segundo plano; además precarga las páginas
-  // vecinas. El paginador y los estados no cambian, solo hay menos espera.
+  // Renderizado progresivo: la carga inicial pide solo el primer bloque
+  // (limit = preferencia 15/30/60) y pinta instantáneo si está en caché
+  // (SWR); las vecinas se precargan en fondo y las siguientes (+2/+3) en
+  // tiempo ocioso. El paginador y los estados no cambian, solo hay menos
+  // espera al navegar.
   useEffect(() => {
     if (!session?.user) return undefined;
     const controller = new AbortController();
     const { signal } = controller;
+    // Precarga ociosa programada (se cancela al navegar/desmontar).
+    let idleId = null;
+    const cancelarIdle = () => {
+      try {
+        if (idleId === null || typeof window === "undefined") return;
+        if (window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+        else window.clearTimeout(idleId);
+      } catch {
+        // Sin API de idle: no hay nada que cancelar.
+      } finally {
+        idleId = null;
+      }
+    };
 
     async function cargarFeed() {
       const feedParams = paramsFeed({
@@ -668,19 +683,41 @@ export default function HomePage() {
           // Prefetch de vecinas en fondo (respeta límites): la caché las
           // sirve instantáneas al paginar.
           const totalPags = Math.max(Math.ceil(total / tamanoPagina), 1);
+          const armarParams = (paginaObjetivo) => paramsFeed({
+            page: paginaObjetivo,
+            limit: tamanoPagina,
+            tab: activeTab,
+            orden,
+            q: busquedaAplicada,
+            categorias: categoriasSeleccionadas,
+            fuentes: fuentesSeleccionadas,
+            ia: filtroIA,
+          });
           for (const vecina of [pagina - 1, pagina + 1]) {
             if (vecina < 1 || vecina > totalPags) continue;
-            const paramsVecina = paramsFeed({
-              page: vecina,
-              limit: tamanoPagina,
-              tab: activeTab,
-              orden,
-              q: busquedaAplicada,
-              categorias: categoriasSeleccionadas,
-              fuentes: fuentesSeleccionadas,
-              ia: filtroIA,
-            });
-            prefetchJson(`/api/rss?${paramsVecina}`, { ttlMs: 30000 });
+            prefetchJson(`/api/rss?${armarParams(vecina)}`, { ttlMs: 30000 });
+          }
+          // Precarga profunda en tiempo ocioso (+2/+3): no bloquea el hilo
+          // principal; se aborta si el usuario navega o cambian los filtros
+          // (clave de vista) y respeta el total de páginas conocido.
+          const profundas = [pagina + 2, pagina + 3].filter((p) => p >= 1 && p <= totalPags);
+          if (profundas.length > 0 && typeof window !== "undefined") {
+            const vista = urlFeed;
+            const correrCadena = () => {
+              (async () => {
+                for (const profunda of profundas) {
+                  if (signal.aborted || claveFeedActualRef.current !== vista) return;
+                  await prefetchJson(`/api/rss?${armarParams(profunda)}`, { ttlMs: 30000 });
+                }
+              })().catch(() => {});
+            };
+            try {
+              idleId = window.requestIdleCallback
+                ? window.requestIdleCallback(correrCadena, { timeout: 4000 })
+                : window.setTimeout(correrCadena, 1200);
+            } catch {
+              // Sin temporizadores disponibles: se omite la precarga profunda.
+            }
           }
         }
         if (facetas) {
@@ -703,7 +740,10 @@ export default function HomePage() {
     }
 
     cargarFeed();
-    return () => controller.abort();
+    return () => {
+      cancelarIdle();
+      controller.abort();
+    };
   }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, filtroIA, nonceRecarga]);
 
   const closeOnboardingSurvey = () => {
