@@ -41,7 +41,7 @@ export default function IAProgressCard({ progreso, onCerrar, t }) {
       role="status"
       aria-live="polite"
       translate="no"
-      className="anim-toast notranslate fixed bottom-24 right-5 z-[70] w-[min(22rem,calc(100vw-2.5rem))] rounded-xl border px-4 py-3 shadow-2xl toast-app"
+      className="anim-toast notranslate fixed top-5 right-5 z-[70] w-[min(22rem,calc(100vw-2.5rem))] rounded-xl border px-4 py-3 shadow-2xl toast-app"
     >
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 shrink-0 text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" aria-hidden="true">

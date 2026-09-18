@@ -1161,6 +1161,58 @@ async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
   };
 }
 
+// Cola de pendientes de IA: un lote por petición (el cliente itera). Vive
+// fuera del POST para atenderse antes del preámbulo pesado de ensures y no
+// agotar el maxDuration del serverless con cientos de filas pendientes.
+async function clasificarPendientesResponse(userId, body = {}) {
+  const limite = Math.min(Math.max(Number(body.lote) || 12, 1), 24);
+  const [pendientes] = await db.query(
+    `SELECT a.id, a.titulo, a.resumen
+     FROM articulos_publicados a
+     INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+     WHERE f.usuario_id = ? AND a.clasificacion_metodo = 'sin-ia' AND (a.descartado = 0 OR a.descartado IS NULL)
+     ORDER BY a.fecha_publicacion DESC, a.id DESC
+     LIMIT ?`,
+    [userId, limite]
+  );
+
+  if (pendientes.length === 0) {
+    return NextResponse.json({ clasificados: 0, restantes: 0 });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ clasificados: 0, restantes: pendientes.length });
+  }
+
+  const { resultados, esperaMs } = await clasificarLoteConIA(apiKey, pendientes);
+  const filas = [];
+  pendientes.forEach((pendiente, indice) => {
+    const resultado = resultados[indice];
+    if (resultado?.metodo === "gemini") {
+      filas.push({ id: pendiente.id, categoria: resultado.categoria, metodo: resultado.metodo, confianza: resultado.confianza });
+    }
+  });
+
+  let clasificados = 0;
+  if (filas.length > 0) clasificados = await bulkUpdateCategoriasPorId(filas);
+
+  const todosFallaron = resultados.every((resultado) => resultado?.metodo !== "gemini");
+  const [[conteo]] = await db.query(
+    `SELECT COUNT(*) AS restantes
+     FROM articulos_publicados a
+     INNER JOIN fuentes_rss f ON a.fuente_id = f.id
+     WHERE f.usuario_id = ? AND a.clasificacion_metodo = 'sin-ia' AND (a.descartado = 0 OR a.descartado IS NULL)`,
+    [userId]
+  );
+  // La espera de cuota la aplica el cliente entre lotes (ver reintentarEn):
+  // dormir aquí quemaría el maxDuration del serverless.
+  const reintentarEn = esperaMs > 0
+    ? Math.min(Math.max(Math.ceil(esperaMs / 1000), 1), 120)
+    : todosFallaron ? 30 : 0;
+  return NextResponse.json({ clasificados, restantes: Number(conteo?.restantes) || 0, reintentarEn });
+}
+
 export async function POST(req) {
   try {
     const session = await auth();
@@ -1170,6 +1222,15 @@ export async function POST(req) {
     }
 
     const body = await req.json().catch(() => ({}));
+
+    // Cola de IA primero: solo lee/actualiza articulos_publicados y no
+    // necesita el preámbulo pesado (ensures + normalización con locks, que
+    // con cientos de filas puede agotar el maxDuration del serverless y
+    // matar la petición antes de clasificar nada).
+    if (body.action === "clasificar_pendientes") {
+      return clasificarPendientesResponse(userId, body);
+    }
+
     await ensureClassificationSchema();
     await ensureVideoSchema();
     await ensureFuentesCacheSchema();
@@ -1188,50 +1249,6 @@ export async function POST(req) {
 
     const inicioHoy = new Date();
     inicioHoy.setHours(0, 0, 0, 0);
-
-    if (body.action === "clasificar_pendientes") {
-      const limite = Math.min(Math.max(Number(body.lote) || 12, 1), 24);
-      const [pendientes] = await db.query(
-        `SELECT a.id, a.titulo, a.resumen
-         FROM articulos_publicados a
-         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-         WHERE f.usuario_id = ? AND a.clasificacion_metodo = 'sin-ia' AND (a.descartado = 0 OR a.descartado IS NULL)
-         ORDER BY a.fecha_publicacion DESC, a.id DESC
-         LIMIT ?`,
-        [userId, limite]
-      );
-
-      if (pendientes.length === 0) {
-        return NextResponse.json({ clasificados: 0, restantes: 0 });
-      }
-
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return NextResponse.json({ clasificados: 0, restantes: pendientes.length });
-      }
-
-      const resultados = await clasificarLoteConIA(apiKey, pendientes);
-      const filas = [];
-      pendientes.forEach((pendiente, indice) => {
-        const resultado = resultados[indice];
-        if (resultado?.metodo === "gemini") {
-          filas.push({ id: pendiente.id, categoria: resultado.categoria, metodo: resultado.metodo, confianza: resultado.confianza });
-        }
-      });
-
-      let clasificados = 0;
-      if (filas.length > 0) clasificados = await bulkUpdateCategoriasPorId(filas);
-
-      const todosFallaron = resultados.every((resultado) => resultado?.metodo !== "gemini");
-      const [[conteo]] = await db.query(
-        `SELECT COUNT(*) AS restantes
-         FROM articulos_publicados a
-         INNER JOIN fuentes_rss f ON a.fuente_id = f.id
-         WHERE f.usuario_id = ? AND a.clasificacion_metodo = 'sin-ia' AND (a.descartado = 0 OR a.descartado IS NULL)`,
-        [userId]
-      );
-      return NextResponse.json({ clasificados, restantes: Number(conteo?.restantes) || 0, reintentarEn: todosFallaron ? 30 : 0 });
-    }
 
     if (body.action === "refresh_source") {
       const { source_id, url } = body;
@@ -1928,7 +1945,10 @@ const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0
 const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash"];
 const GEMINI_LOTE_TAMANO = 12;
 const GEMINI_LOTE_MAX_TOKENS = 1200;
-const GEMINI_LOTE_TIMEOUT_MS = 25000;
+// Tope por llamada a Gemini: con el fail-fast ante 429, el peor caso por
+// petición ronda 2 llamadas y debe caber holgado en el maxDuration (60 s)
+// del serverless. La espera de cuota la hace el cliente entre lotes.
+const GEMINI_LOTE_TIMEOUT_MS = 20000;
 
 function construirInstruccionLote(noticias = []) {
   const listado = noticias
@@ -2125,17 +2145,10 @@ async function ejecutarCadenaGemini(apiKey, textoPrompt, maxTokens, timeoutMs) {
     } catch (error) {
       ultimoError = error;
       if (error?.cause === "fatal") break;
-      const esperaMs = error?.cause?.esperaMs;
-      if (esperaMs) {
-        console.warn(`Cuota excedida en ${modelo}; reintentando en ${Math.round(esperaMs / 1000)}s...`);
-        await esperar(esperaMs);
-        try {
-          return await llamarModeloGemini(apiKey, modelo, textoPrompt, maxTokens, timeoutMs);
-        } catch (errorReintento) {
-          ultimoError = errorReintento;
-          if (errorReintento?.cause === "fatal") break;
-        }
-      }
+      // Sin espera ni reintento dentro de la petición: la cuota es por
+      // proyecto (no por modelo) y dormir aquí agota el maxDuration del
+      // serverless. Se propaga el hint y el cliente espera entre lotes.
+      if (error?.cause?.esperaMs) break;
       console.warn(`Clasificación con ${modelo} falló; probando siguiente modelo:`, ultimoError.message);
     }
   }
@@ -2158,6 +2171,7 @@ function validarPropuestaCategoria(propuesta) {
 
 async function clasificarLoteConIA(apiKey, noticias) {
   const resultados = new Array(noticias.length);
+  let esperaSugeridaMs = 0;
   const grupos = new Map();
   noticias.forEach((noticia, indice) => {
     const key = `${(noticia.titulo || "").trim()}\u0000${(noticia.resumen || "").trim()}`;
@@ -2192,6 +2206,9 @@ async function clasificarLoteConIA(apiKey, noticias) {
       });
     } catch (error) {
       console.warn("Clasificación por lote falló; se usará 'General':", error.message);
+      if (error?.cause?.esperaMs) {
+        esperaSugeridaMs = Math.max(esperaSugeridaMs, error.cause.esperaMs);
+      }
       lote.forEach((item) => {
         item.indices.forEach((indice) => {
           resultados[indice] = { ...SIN_CLASIFICACION };
@@ -2199,7 +2216,7 @@ async function clasificarLoteConIA(apiKey, noticias) {
       });
     }
   }
-  return resultados;
+  return { resultados, esperaMs: esperaSugeridaMs };
 }
 
 async function obtenerClasificacionesExistentes(fuenteIds = []) {
@@ -2287,7 +2304,7 @@ async function prepararClasificaciones(fuenteId, items = [], existentes = new Ma
   const apiKey = process.env.GEMINI_API_KEY;
   let resultadosIA = nuevos.map(() => ({ ...SIN_CLASIFICACION }));
   if (apiKey && nuevos.length > 0 && !omitirIA) {
-    resultadosIA = await clasificarLoteConIA(apiKey, nuevos);
+    resultadosIA = (await clasificarLoteConIA(apiKey, nuevos)).resultados;
   }
   nuevos.forEach((nuevo, k) => {
     const clasificacion = resultadosIA[k] || { ...SIN_CLASIFICACION };
