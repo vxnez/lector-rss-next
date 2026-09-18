@@ -46,6 +46,7 @@ import AppHeader from "./components/dashboard/AppHeader";
 import StatsCards from "./components/dashboard/StatsCards";
 import Paginacion from "./components/dashboard/Paginacion";
 import Toast from "./components/dashboard/Toast";
+import IAProgressCard from "./components/dashboard/IAProgressCard";
 import OnboardingSurvey from "./components/dashboard/OnboardingSurvey";
 import ConfirmDeleteModal from "./components/dashboard/ConfirmDeleteModal";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
@@ -114,10 +115,10 @@ export default function HomePage() {
   const [orden, setOrden] = useState("recientes");
   // Filtro por estado de categorización IA: "todas" | "con_ia" | "sin_ia".
   const [filtroIA, setFiltroIA] = useState("todas");
-  // Categorización en segundo plano: el botón solo lanza la petición y la
-  // cola sigue sola por lotes; `iaPendientes` (null = inactiva) alimenta el
-  // botón y los avisos con el conteo en vivo. La guarda evita duplicados.
-  const [iaPendientes, setIaPendientes] = useState(null);
+  // Progreso de la categorización en segundo plano para la tarjeta flotante:
+  // null = inactiva; { total, procesadas, pendientes, estado }. La guarda
+  // evita lanzamientos duplicados.
+  const [iaProgreso, setIaProgreso] = useState(null);
   const iaEnCursoRef = useRef(false);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
@@ -312,24 +313,26 @@ export default function HomePage() {
   }, [recargarDatos]);
 
   // Botón aislado de IA (fire-and-forget): dispara un lote y la cola sigue
-  // en segundo plano sin bloquear el botón ni re-descargar fuentes. Cada
-  // lote refresca la vista (las noticias categorizadas aparecen progresiva-
-  // mente) y el aviso muestra los pendientes restantes hasta finalizar.
-  // Los fallos de transporte (timeout del serverless, red) no se disfrazan
-  // de "sin pendientes": si no se clasificó nada y hubo fallo, es error.
+  // en segundo plano sin bloquear el botón ni re-descargar fuentes. La
+  // tarjeta flotante muestra el conteo en vivo (procesadas de total +
+  // pendientes) con barra proporcional; cada lote refresca la vista para que
+  // lo categorizado aparezca progresivamente. Los fallos de transporte
+  // (timeout del serverless, red) no se disfrazan de "sin pendientes".
   const handleCategorizarIA = useCallback(() => {
     if (iaEnCursoRef.current) {
+      const pendientes = iaProgreso?.pendientes;
       notify(
-        iaPendientes === null
+        pendientes === null || pendientes === undefined
           ? t("avisos.ia_lanzada")
-          : t("avisos.ia_en_curso", { n: iaPendientes }),
+          : t("avisos.ia_en_curso", { n: pendientes }),
         "info"
       );
       return;
     }
     iaEnCursoRef.current = true;
-    // Feedback inmediato: el primer lote (llamada a Gemini) tarda segundos.
-    notify(t("avisos.ia_lanzada"), "info");
+    // La tarjeta aparece de inmediato en modo indeterminado: el primer lote
+    // (llamada a Gemini) tarda segundos en responder.
+    setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "en_curso" });
 
     const pedirLote = async () => {
       const res = await fetch("/api/rss", {
@@ -347,7 +350,8 @@ export default function HomePage() {
     };
 
     (async () => {
-      let totalClasificados = 0;
+      let total = null;
+      let procesadas = 0;
       let falloTransporte = false;
       try {
         for (let intento = 0; intento < 12; intento++) {
@@ -358,31 +362,28 @@ export default function HomePage() {
             falloTransporte = true;
             break;
           }
-          totalClasificados += lote.clasificados;
+          // El total se fija con la primera respuesta (foto al lanzar).
+          if (total === null) total = lote.clasificados + lote.restantes;
+          procesadas += lote.clasificados;
           // Refresco progresivo: lo ya categorizado se ve sin esperar al final.
           recargarDatos();
           if (lote.restantes === 0) break;
-          setIaPendientes(lote.restantes);
-          notify(t("avisos.ia_fondo", { n: lote.restantes }), "info");
+          setIaProgreso({ total, procesadas, pendientes: lote.restantes, estado: "en_curso" });
           await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
         }
-        if (totalClasificados > 0) {
-          notify(t("avisos.ia_ok", { n: totalClasificados }), "success");
-        } else if (falloTransporte) {
-          notify(t("avisos.ia_err"), "error");
+        if (procesadas > 0 || !falloTransporte) {
+          setIaProgreso({ total: total ?? procesadas, procesadas, pendientes: 0, estado: "ok" });
         } else {
-          notify(t("avisos.ia_sin_pendientes"), "info");
+          setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error" });
         }
       } finally {
         iaEnCursoRef.current = false;
-        setIaPendientes(null);
       }
     })().catch(() => {
       iaEnCursoRef.current = false;
-      setIaPendientes(null);
-      notify(t("avisos.ia_err"), "error");
+      setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error" });
     });
-  }, [iaPendientes, notify, recargarDatos, t]);
+  }, [iaProgreso, notify, recargarDatos, t]);
 
   // Service worker de push + estado de suscripción (solo navegadores compatibles).
   // Microinteracciones Anime.js en `.btn-press` (solo transform, GPU):
@@ -794,6 +795,8 @@ export default function HomePage() {
   // Modal propio de confirmación (sin confirm() nativo): respeta el tema y es accesible.
   const handleEliminarTodas = () => setConfirmarEliminar(true);
 
+  // Borrado masivo acotado a la pestaña activa: solo descarta las noticias
+  // de la sección visible (pendientes, leídas o guardadas).
   const confirmarEliminarTodas = async () => {
     setConfirmarEliminar(false);
     bumpCacheVersion();
@@ -802,7 +805,7 @@ export default function HomePage() {
     setTotalNoticias(0);
 
     try {
-      const res = await fetch("/api/rss?delete_all=true", { method: "DELETE" });
+      const res = await fetch(`/api/rss?delete_all=true&tab=${activeTab}`, { method: "DELETE" });
       if (!res.ok) throw new Error(t("avisos.eliminar_err"));
       setPagina(1);
       fetchConteos();
@@ -1228,11 +1231,11 @@ export default function HomePage() {
                         className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 [html[data-tema-claro='1']_&]:border-violet-600/50 [html[data-tema-claro='1']_&]:bg-violet-600/10 [html[data-tema-claro='1']_&]:text-violet-800 [html[data-tema-claro='1']_&]:hover:bg-violet-600/15"
                       >
                         <MorphIcon
-                          icon={iaPendientes !== null ? LoaderCircleData : SparklesData}
+                          icon={iaProgreso?.estado === "en_curso" ? LoaderCircleData : SparklesData}
                           size={14}
-                          className={iaPendientes !== null ? "animate-spin text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" : ""}
+                          className={iaProgreso?.estado === "en_curso" ? "animate-spin text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" : ""}
                         />
-                        <span className="truncate">{iaPendientes !== null ? `${t("controles.ia_categorizando")} (${iaPendientes})` : t("controles.ia_categorizar")}</span>
+                        <span className="truncate">{iaProgreso?.estado === "en_curso" ? `${t("controles.ia_categorizando")} (${iaProgreso.pendientes ?? "…"})` : t("controles.ia_categorizar")}</span>
                       </button>
                     </section>
 
@@ -1241,7 +1244,7 @@ export default function HomePage() {
                       <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleEliminarTodas}
-                    title={t("controles.eliminar_titulo")}
+                    title={t("controles.eliminar_seccion_titulo")}
                     className="btn-press flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/15"
                   >
                     <Trash2 size={14} />
@@ -1718,8 +1721,13 @@ export default function HomePage() {
         onCancelar={() => setConfirmarEliminar(false)}
         onConfirmar={confirmarEliminarTodas}
         t={t}
+        seccion={{
+          nombre: activeTab === "guardadas" ? t("stats.guardadas") : activeTab === "leidas" ? t("stats.leidas") : t("stats.pendientes"),
+          total: activeTab === "guardadas" ? totalGuardados : activeTab === "leidas" ? totalLeidos : totalPendientes,
+        }}
       />
       <Toast toast={toast} />
+      <IAProgressCard progreso={iaProgreso} onCerrar={() => setIaProgreso(null)} t={t} />
     </div>
   );
 }

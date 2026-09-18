@@ -1750,17 +1750,30 @@ export async function DELETE(req) {
     const deleteAll = searchParams.get("delete_all");
 
     if (deleteAll === "true") {
+      // Alcance por pestaña (lista blanca): el borrado masivo solo descarta
+      // las noticias de la sección activa, nunca toda la cuenta. Sin ?tab se
+      // asume la pestaña de pendientes ("todas").
+      const alcanceTab = searchParams.get("tab") || "todas";
+      if (!["todas", "leidas", "guardadas"].includes(alcanceTab)) {
+        return NextResponse.json({ error: "Pestaña no válida" }, { status: 400 });
+      }
+      const alcanceTabCondicion =
+        alcanceTab === "guardadas"
+          ? "AND a.guardado = 1"
+          : alcanceTab === "leidas"
+            ? "AND a.leido = 1"
+            : "AND a.leido = 0 AND (a.guardado = 0 OR a.guardado IS NULL)";
       connection = await db.getConnection();
       await connection.beginTransaction();
       await connection.query(
         `UPDATE articulos_publicados a
          INNER JOIN fuentes_rss f ON a.fuente_id = f.id
          SET a.descartado = 1
-         WHERE f.usuario_id = ?`,
+         WHERE f.usuario_id = ? ${alcanceTabCondicion}`,
         [userId]
       );
       await connection.commit();
-      return NextResponse.json({ message: "Todas las publicaciones fueron descartadas" });
+      return NextResponse.json({ message: "Todas las publicaciones fueron descartadas", tab: alcanceTab });
     }
 
     if (!id) {

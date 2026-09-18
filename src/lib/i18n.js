@@ -63,6 +63,7 @@ const TEXTOS = {
       admin: "Administración",
       eliminar: "Eliminar",
       eliminar_titulo: "Eliminar todas las publicaciones",
+      eliminar_seccion_titulo: "Eliminar las noticias de la sección activa",
       fuentes: "Fuentes",
       vista: "Vista rápida",
       pestana: "Pestaña",
@@ -162,6 +163,8 @@ const TEXTOS = {
     eliminar: {
       titulo: "Eliminar todas las publicaciones",
       texto: "Se descartarán todas las noticias del feed. Al hacer clic en ‘Refrescar’ se recuperarán las de hoy.",
+      titulo_seccion: "¿Eliminar las noticias de esta sección?",
+      texto_seccion: "Se descartarán {n} noticias de “{seccion}”. Las demás secciones quedan intactas. Al hacer clic en ‘Refrescar’ se recuperarán las de hoy.",
       cancelar: "Cancelar",
       confirmar: "Eliminar",
     },
@@ -556,7 +559,6 @@ const TEXTOS = {
       refresh_ok: "Fuentes y noticias actualizadas.",
       ia_ok: "{n} noticias categorizadas con IA.",
       ia_sin_pendientes: "No hay noticias pendientes de categorización.",
-      ia_fondo: "Categorizando en segundo plano... {n} pendientes.",
       ia_lanzada: "Categorización lanzada en segundo plano...",
       ia_en_curso: "La categorización sigue en curso ({n} pendientes).",
       ia_err: "No se pudo completar la categorización con IA.",
@@ -583,6 +585,13 @@ const TEXTOS = {
       cuenta_err: "No se pudo eliminar.",
       dispositivos_off: "Dispositivos desvinculados.",
       enlace_copiado: "Enlace copiado al portapapeles.",
+    },
+    ia_bar: {
+      titulo: "Categorizando con IA",
+      lanzando: "Lanzando categorización...",
+      avance: "{a} de {total} procesadas ({p} pendientes)",
+      ok: "¡Categorización completada con éxito!",
+      cerrar: "Cerrar aviso",
     },
 };
 
