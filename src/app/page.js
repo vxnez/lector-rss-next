@@ -114,8 +114,11 @@ export default function HomePage() {
   const [orden, setOrden] = useState("recientes");
   // Filtro por estado de categorización IA: "todas" | "con_ia" | "sin_ia".
   const [filtroIA, setFiltroIA] = useState("todas");
-  // Categorización manual con IA (botón aislado: no re-descarga fuentes).
-  const [categorizandoIA, setCategorizandoIA] = useState(false);
+  // Categorización en segundo plano: el botón solo lanza la petición y la
+  // cola sigue sola por lotes; `iaPendientes` (null = inactiva) alimenta el
+  // botón y los avisos con el conteo en vivo. La guarda evita duplicados.
+  const [iaPendientes, setIaPendientes] = useState(null);
+  const iaEnCursoRef = useRef(false);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const [fuentesExpandidas, setFuentesExpandidas] = useState(false);
@@ -308,46 +311,69 @@ export default function HomePage() {
     }
   }, [recargarDatos]);
 
-  // Botón aislado de IA: clasifica la cola de pendientes por lotes sin
-  // tocar fuentes, imágenes ni re-descargas (a diferencia de Refrescar).
-  const handleCategorizarIA = useCallback(async () => {
-    if (categorizandoIA) return;
-    setCategorizandoIA(true);
-    let totalClasificados = 0;
-    try {
-      for (let intento = 0; intento < 12; intento++) {
-        let esperaMs = 500;
-        let clasificados = 0;
-        let restantes = 0;
-        try {
-          const res = await fetch("/api/rss", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
-          });
-          if (!res.ok) throw new Error(t("avisos.ia_err"));
-          const data = await res.json().catch(() => ({}));
-          clasificados = Number(data.clasificados) || 0;
-          restantes = Number(data.restantes) || 0;
-          if (Number(data.reintentarEn) > 0) esperaMs = Number(data.reintentarEn) * 1000;
-        } catch {
-          break;
-        }
-        totalClasificados += clasificados;
-        recargarDatos();
-        if (restantes === 0) break;
-        await new Promise((resolve) => setTimeout(resolve, esperaMs));
-      }
+  // Botón aislado de IA (fire-and-forget): dispara un lote y la cola sigue
+  // en segundo plano sin bloquear el botón ni re-descargar fuentes. Cada
+  // lote refresca la vista (las noticias categorizadas aparecen progresiva-
+  // mente) y el aviso muestra los pendientes restantes hasta finalizar.
+  const handleCategorizarIA = useCallback(() => {
+    if (iaEnCursoRef.current) {
       notify(
-        totalClasificados > 0
-          ? t("avisos.ia_ok", { n: totalClasificados })
-          : t("avisos.ia_sin_pendientes"),
-        totalClasificados > 0 ? "success" : "info"
+        t("avisos.ia_en_curso", { n: iaPendientes ?? 0 }),
+        "info"
       );
-    } finally {
-      setCategorizandoIA(false);
+      return;
     }
-  }, [categorizandoIA, notify, recargarDatos, t]);
+    iaEnCursoRef.current = true;
+
+    const pedirLote = async () => {
+      const res = await fetch("/api/rss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+      });
+      if (!res.ok) throw new Error(t("avisos.ia_err"));
+      const data = await res.json().catch(() => ({}));
+      return {
+        clasificados: Number(data.clasificados) || 0,
+        restantes: Number(data.restantes) || 0,
+        esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 500,
+      };
+    };
+
+    (async () => {
+      let totalClasificados = 0;
+      try {
+        for (let intento = 0; intento < 12; intento++) {
+          let lote;
+          try {
+            lote = await pedirLote();
+          } catch {
+            break;
+          }
+          totalClasificados += lote.clasificados;
+          // Refresco progresivo: lo ya categorizado se ve sin esperar al final.
+          recargarDatos();
+          if (lote.restantes === 0) break;
+          setIaPendientes(lote.restantes);
+          notify(t("avisos.ia_fondo", { n: lote.restantes }), "info");
+          await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
+        }
+        notify(
+          totalClasificados > 0
+            ? t("avisos.ia_ok", { n: totalClasificados })
+            : t("avisos.ia_sin_pendientes"),
+          totalClasificados > 0 ? "success" : "info"
+        );
+      } finally {
+        iaEnCursoRef.current = false;
+        setIaPendientes(null);
+      }
+    })().catch(() => {
+      iaEnCursoRef.current = false;
+      setIaPendientes(null);
+      notify(t("avisos.ia_err"), "error");
+    });
+  }, [iaPendientes, notify, recargarDatos, t]);
 
   // Service worker de push + estado de suscripción (solo navegadores compatibles).
   // Microinteracciones Anime.js en `.btn-press` (solo transform, GPU):
@@ -1187,17 +1213,17 @@ export default function HomePage() {
                       </div>
                       <button
                         onClick={handleCategorizarIA}
-                        disabled={categorizandoIA}
                         title={t("controles.ia_titulo")}
                         aria-label={t("controles.ia_titulo")}
-                        className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 disabled:opacity-50 [html[data-tema-claro='1']_&]:border-violet-600/50 [html[data-tema-claro='1']_&]:bg-violet-600/10 [html[data-tema-claro='1']_&]:text-violet-800 [html[data-tema-claro='1']_&]:hover:bg-violet-600/15"
+                        aria-live="polite"
+                        className="btn-press flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[clamp(0.62rem,0.7vw,0.75rem)] font-medium text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/15 [html[data-tema-claro='1']_&]:border-violet-600/50 [html[data-tema-claro='1']_&]:bg-violet-600/10 [html[data-tema-claro='1']_&]:text-violet-800 [html[data-tema-claro='1']_&]:hover:bg-violet-600/15"
                       >
                         <MorphIcon
-                          icon={categorizandoIA ? LoaderCircleData : SparklesData}
+                          icon={iaPendientes !== null ? LoaderCircleData : SparklesData}
                           size={14}
-                          className={categorizandoIA ? "animate-spin text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" : ""}
+                          className={iaPendientes !== null ? "animate-spin text-violet-300 [html[data-tema-claro='1']_&]:text-violet-700" : ""}
                         />
-                        <span className="truncate">{categorizandoIA ? t("controles.ia_categorizando") : t("controles.ia_categorizar")}</span>
+                        <span className="truncate">{iaPendientes !== null ? `${t("controles.ia_categorizando")} (${iaPendientes})` : t("controles.ia_categorizar")}</span>
                       </button>
                     </section>
 
