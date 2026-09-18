@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Sparkles, CheckCheck, AlertCircle, Minus } from "lucide-react";
 
-const DIAG_VALIDOS = new Set(["sin_clave", "auth", "cuota", "red", "respuesta"]);
+const DIAG_VALIDOS = new Set(["sin_clave", "auth", "cuota", "red", "respuesta", "modelo"]);
 
 export default function IAProgressCard({ progreso, onCerrar, t }) {
   const [minimizada, setMinimizada] = useState(false);

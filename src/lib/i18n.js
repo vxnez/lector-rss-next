@@ -567,6 +567,7 @@ const TEXTOS = {
       ia_err_cuota: "Cuota de la API de IA agotada (429). Reintenta más tarde.",
       ia_err_red: "La IA tardó demasiado en responder. Reintenta más tarde.",
       ia_err_respuesta: "La IA respondió con un formato inesperado.",
+      ia_err_modelo: "El modelo de IA configurado fue retirado. Actualiza IA_MODELOS.",
       sin_cambios: " {n} fuentes sin cambios.",
       purgadas: " Se liberaron {n} noticias antiguas.",
       completando: " Completando {n} categorías en segundo plano...",

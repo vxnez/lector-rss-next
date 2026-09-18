@@ -371,9 +371,10 @@ export default function HomePage() {
           if (total === null) total = lote.clasificados + lote.restantes;
           procesadas += lote.clasificados;
           if (lote.diag && !diagFinal) diagFinal = lote.diag;
-          // Clave rechazada o ausente: reintentar es inútil, se corta aquí
-          // con el diagnóstico específico en vez de quemar 12 intentos.
-          if ((diagFinal === "auth" || diagFinal === "sin_clave") && procesadas === 0) break;
+          // Clave rechazada, ausente o modelo retirado: reintentar es inútil,
+          // se corta aquí con el diagnóstico específico en vez de quemar
+          // 12 intentos.
+          if ((diagFinal === "auth" || diagFinal === "sin_clave" || diagFinal === "modelo") && procesadas === 0) break;
           if (lote.clasificados > 0 || lote.diag !== "cuota") {
             rachaCuota = 0;
           } else if (++rachaCuota >= 3) {

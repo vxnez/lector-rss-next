@@ -1211,7 +1211,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
     ? Math.min(Math.max(Math.ceil(esperaMs / 1000), 1), 120)
     : todosFallaron ? 30 : 0;
   // diag orienta al cliente cuando nada se clasificó ('sin_clave' | 'auth' |
-  // 'cuota' | 'red' | 'respuesta'); null si hubo al menos un éxito.
+  // 'cuota' | 'red' | 'respuesta' | 'modelo'); null si hubo al menos un éxito.
   return NextResponse.json({
     clasificados,
     restantes: Number(conteo?.restantes) || 0,
@@ -1952,7 +1952,9 @@ const SIN_CLASIFICACION = { categoria: "General", metodo: "sin-ia", confianza: 0
 const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash"];
 // Groq (contrato OpenAI-compatible): alto throughput en tier gratuito, ideal
 // para clasificación por lotes. Modelos sobreescribibles con IA_MODELOS.
-const MODELOS_GROQ = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+// (Los llama-3.x fueron dados de baja por Groq el 16/08/2026; estos son los
+// reemplazos oficiales de producción.)
+const MODELOS_GROQ = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"];
 
 // Proveedor de IA para clasificación (variables de entorno):
 // IA_PROVEEDOR=groq usa GROQ_API_KEY; cualquier otro valor (o ausente) usa
@@ -2202,7 +2204,15 @@ async function llamarModeloChat(cfg, apiKey, modelo, textoPrompt, maxTokens, tim
         : extraerEsperaReintento(cuerpo);
       throw new Error(`${cfg.etiqueta} sin cuota en ${modelo} (HTTP 429)`, { cause: { esperaMs, codigo: "cuota" } });
     }
-    if (!response.ok) throw new Error(`${cfg.etiqueta} respondió HTTP ${response.status} con ${modelo}`);
+    if (!response.ok) {
+      // Modelo retirado o inexistente (Groq da de baja IDs periódicamente):
+      // se prueba el siguiente y, si ninguno sirve, diag 'modelo'.
+      const cuerpoError = await response.text().catch(() => "");
+      if (response.status === 404 || /model_not_found|does not exist|decommissioned|deprecated/i.test(cuerpoError)) {
+        throw new Error(`${cfg.etiqueta} retiró el modelo ${modelo} (HTTP ${response.status})`, { cause: { codigo: "modelo" } });
+      }
+      throw new Error(`${cfg.etiqueta} respondió HTTP ${response.status} con ${modelo}`);
+    }
     const data = await response.json().catch(() => null);
     const textoRespuesta = data?.choices?.[0]?.message?.content?.trim();
     if (!textoRespuesta) throw new Error(`${cfg.etiqueta} no devolvió contenido con ${modelo}`);
@@ -2295,14 +2305,17 @@ async function clasificarLoteConIA(apiKey, noticias) {
       }
       if (!falloCodigo) {
         const codigo = error?.cause?.codigo;
-        if (codigo === "auth" || codigo === "cuota") {
+        const mensaje = error?.message || "";
+        if (codigo === "auth" || codigo === "cuota" || codigo === "modelo") {
           falloCodigo = codigo;
         } else if (error?.name === "AbortError") {
           falloCodigo = "red";
-        } else if (/HTTP 40[013]/.test(error?.message || "")) {
+        } else if (/HTTP 40[013]/.test(mensaje)) {
           falloCodigo = "auth";
-        } else if (/429|cuota/i.test(error?.message || "")) {
+        } else if (/429|cuota/i.test(mensaje)) {
           falloCodigo = "cuota";
+        } else if (/HTTP 404|model_not_found|does not exist|decommissioned|deprecated/i.test(mensaje)) {
+          falloCodigo = "modelo";
         } else {
           falloCodigo = "respuesta";
         }
