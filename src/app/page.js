@@ -633,12 +633,19 @@ export default function HomePage() {
   // Usa el pipeline completo de /api/rss (descubrimiento + descarga +
   // clasificación), igual que el alta manual: antes insertaba directo en
   // /api/sources y las URLs sin feed válido quedaban en 0 noticias.
-  const handleAgregarFuenteOnboarding = useCallback(async (titulo, url_feed, categoria) => {
+  // `opciones.forzar_conversion` (p. ej. secciones de GitHub Blog sin feed
+  // nativo) activa el crawler multipágina en el alta, igual que el checkbox
+  // "Convertir página completa" del modal manual.
+  const handleAgregarFuenteOnboarding = useCallback(async (titulo, url_feed, categoria, opciones = {}) => {
     try {
       const res = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url_feed: url_feed.trim(), categoria: (categoria || "General").trim() }),
+        body: JSON.stringify({
+          url_feed: url_feed.trim(),
+          categoria: (categoria || "General").trim(),
+          ...(opciones.forzar_conversion === true ? { forzar_conversion: true } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       // 409 = ya registrada en la cuenta: se considera agregada.

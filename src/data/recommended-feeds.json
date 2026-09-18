@@ -545,6 +545,27 @@
     ],
     "Developers": [
       {
+        "titulo": "GitHub Blog - Lo último",
+        "url": "https://github.blog/latest/",
+        "descripcion": "Novedades y lanzamientos recientes de GitHub (página completa)",
+        "categoria": "Developers",
+        "forzar_conversion": true
+      },
+      {
+        "titulo": "GitHub Blog - Ingeniería",
+        "url": "https://github.blog/engineering/",
+        "descripcion": "Cómo se construye GitHub: arquitectura, plataforma e ingeniería (página completa)",
+        "categoria": "Developers",
+        "forzar_conversion": true
+      },
+      {
+        "titulo": "GitHub Blog - Noticias",
+        "url": "https://github.blog/news-insights/",
+        "descripcion": "Noticias de producto, empresa y comunidad GitHub (página completa)",
+        "categoria": "Developers",
+        "forzar_conversion": true
+      },
+      {
         "titulo": "GitHub Blog",
         "url": "https://github.blog/feed/",
         "descripcion": "Producto, ingeniería y código abierto (GitHub)"
@@ -583,8 +604,8 @@
   },
   "metadata": {
     "fuente": "Curated from vxnez/rssfeeds and verified Spanish/Mexican RSS sources",
-    "actualizado": "2026-09-16",
-    "total_feeds": 108,
+    "actualizado": "2026-09-18",
+    "total_feeds": 111,
     "verificado": "2026-09-16T00:23:36.244Z",
     "nota": "Categorías asignadas automáticamente por palabras clave (título + descripción) según las 24 categorías del dashboard"
   }

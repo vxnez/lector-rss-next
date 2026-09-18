@@ -152,7 +152,13 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
     setFeedsAgregando((prev) => new Set(prev).add(feedKey));
     try {
       if (onAgregarFuente) {
-        await onAgregarFuente(feed.titulo, feed.url, feed.categoria);
+        // Las entradas del JSON pueden traer categoria propia y el flag de
+        // conversión de página completa (secciones sin feed nativo): se
+        // pasan al pipeline de /api/rss para que cada alta use el motor
+        // correspondiente (nativo o crawler multipágina).
+        await onAgregarFuente(feed.titulo, feed.url, feed.categoria, {
+          forzar_conversion: feed.forzar_conversion === true,
+        });
       }
       setFeedsAgregados((prev) => new Set(prev).add(feedKey));
       setTotalAgregados((prev) => prev + 1);
