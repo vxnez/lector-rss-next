@@ -212,12 +212,12 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   // Clasifica la cola de pendientes por lotes hasta agotarla (progreso visible)
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
-      let esperaMs = 500;
+      let esperaMs = 250;
       try {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
         });
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));

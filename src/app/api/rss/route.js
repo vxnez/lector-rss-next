@@ -1983,8 +1983,8 @@ function configIA() {
     baseUrl: null,
   };
 }
-const GEMINI_LOTE_TAMANO = 12;
-const GEMINI_LOTE_MAX_TOKENS = 1200;
+const GEMINI_LOTE_TAMANO = 24;
+const GEMINI_LOTE_MAX_TOKENS = 2200;
 // Tope por llamada a Gemini: con el fail-fast ante 429, el peor caso por
 // petición ronda 2 llamadas y debe caber holgado en el maxDuration (60 s)
 // del serverless. La espera de cuota la hace el cliente entre lotes.
@@ -2191,6 +2191,9 @@ async function llamarModeloChat(cfg, apiKey, modelo, textoPrompt, maxTokens, tim
         messages: [{ role: "user", content: textoPrompt }],
         temperature: 0,
         max_tokens: maxTokens,
+        // Clasificar 24 titulares es trivial: razonamiento mínimo para
+        // responder en segundos en vez de decenas de segundos.
+        reasoning_effort: "low",
       }),
     });
     if ([401, 403].includes(response.status)) {

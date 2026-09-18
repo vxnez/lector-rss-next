@@ -291,12 +291,12 @@ export default function HomePage() {
   const procesarColaClasificacion = useCallback(async () => {
     for (let intento = 0; intento < 12; intento++) {
       let restantes = 0;
-      let esperaMs = 500;
+      let esperaMs = 250;
       try {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
         });
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));
@@ -331,21 +331,21 @@ export default function HomePage() {
     }
     iaEnCursoRef.current = true;
     // La tarjeta aparece de inmediato en modo indeterminado: el primer lote
-    // (llamada a Gemini) tarda segundos en responder.
+    // (la primera llamada a la IA) tarda segundos en responder.
     setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "en_curso" });
 
     const pedirLote = async () => {
       const res = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "clasificar_pendientes", lote: 12 }),
+        body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
       });
       if (!res.ok) throw new Error(t("avisos.ia_err"));
       const data = await res.json().catch(() => ({}));
       return {
         clasificados: Number(data.clasificados) || 0,
         restantes: Number(data.restantes) || 0,
-        esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 500,
+        esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 250,
         diag: typeof data.diag === "string" && data.diag ? data.diag : null,
       };
     };
@@ -356,10 +356,10 @@ export default function HomePage() {
       let falloTransporte = false;
       let diagFinal = null;
       // Racha de lotes en cuota sin clasificar nada: cortar antes de quemar
-      // los 12 intentos (~9 min de esperas) cuando la cuota no se libera.
+      // intentos (con esperas de 43 s+, 24 intentos serían eternos).
       let rachaCuota = 0;
       try {
-        for (let intento = 0; intento < 12; intento++) {
+        for (let intento = 0; intento < 24; intento++) {
           let lote;
           try {
             lote = await pedirLote();
