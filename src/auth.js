@@ -66,12 +66,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const existente = await getUserByEmail(user.email);
           if (!existente) {
-            await createUser({
-              nombre: user.name || user.email,
-              email: user.email,
-              password: `oauth-${account.provider}-${Date.now()}`,
-              proveedor: account.provider,
-            });
+            try {
+              await createUser({
+                nombre: user.name || user.email,
+                email: user.email,
+                password: `oauth-${account.provider}-${Date.now()}`,
+                proveedor: account.provider,
+              });
+            } catch (errorCreacion) {
+              // 409 = el usuario ya existe (carrera o 429 previo que sí creó):
+              // dejar pasar y que la sesión lo resuelva.
+              if (Number(errorCreacion?.status) !== 409) throw errorCreacion;
+            }
           } else if (!String(existente.proveedor || "").split(",").includes(account.provider)) {
             try {
               await patchUser(existente.id, {
@@ -92,6 +98,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             error?.status ? `status=${error.status}` : "",
             error?.message || error
           );
+          // 429/5xx = backend saturado (transitorio): lanzar en vez de
+          // devolver false para no convertirlo en AccessDenied permanente;
+          // NextAuth muestra error y el usuario puede reintentar.
+          if ([429, 502, 503, 504].includes(Number(error?.status))) throw error;
           return false;
         }
       }

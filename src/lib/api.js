@@ -22,39 +22,94 @@ function apiKey() {
   return key;
 }
 
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function reintentoTras(res, intento) {
+  const header = res.headers?.get?.("retry-after");
+  const seg = Number(header);
+  if (Number.isFinite(seg) && seg >= 0 && seg <= 60) return seg * 1000;
+  return Math.min(1000 * 2 ** intento, 8000);
+}
+
 export async function api(path, { method = "GET", body, query } = {}) {
   const base = baseUrl();
   const qs = query ? `?${new URLSearchParams(query).toString()}` : "";
   const url = `${base}${path}${qs}`;
-  const res = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey(),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
-  });
-  const texto = await res.text().catch(() => "");
-  let data = null;
-  try {
-    data = texto ? JSON.parse(texto) : null;
-  } catch {
-    data = { raw: texto };
+  const metodo = String(method || "GET").toUpperCase();
+  let ultimoError = null;
+  for (let intento = 0; intento < 3; intento++) {
+    const res = await fetch(url, {
+      method: metodo,
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey(),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+    if (res.status !== 429 && res.status !== 502 && res.status !== 503 && res.status !== 504) {
+      const texto = await res.text().catch(() => "");
+      let data = null;
+      try {
+        data = texto ? JSON.parse(texto) : null;
+      } catch {
+        data = { raw: texto };
+      }
+      if (!res.ok) {
+        const mensaje =
+          data?.error?.message ||
+          data?.error ||
+          data?.message ||
+          data?.mensaje ||
+          `API ${res.status} en ${path}`;
+        const err = new Error(typeof mensaje === "string" ? mensaje : `API ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+    // 429/5xx: solo reintentar si es seguro (GET siempre; POST solo en 429 no procesado).
+    const seguro = metodo === "GET" || res.status === 429;
+    await res.body?.cancel?.().catch(() => {});
+    if (!seguro || intento === 2) {
+      const err = new Error(`API ${res.status} en ${path}`);
+      err.status = res.status;
+      throw err;
+    }
+    ultimoError = res.status;
+    await esperar(reintentoTras(res, intento));
   }
-  if (!res.ok) {
-    const mensaje =
-      data?.error?.message ||
-      data?.error ||
-      data?.message ||
-      data?.mensaje ||
-      `API ${res.status} en ${path}`;
-    const err = new Error(typeof mensaje === "string" ? mensaje : `API ${res.status}`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
+  const err = new Error(`API ${ultimoError || "429"} en ${path}`);
+  err.status = ultimoError || 429;
+  throw err;
+}
+
+// Caché corto en memoria (por instancia serverless): evita martillar
+// /api/users en cada callback de sesión/signIn y reduce 429 del backend.
+const cacheUsuarios = new Map();
+const TTL_MS = 45 * 1000;
+
+function leerCache(clave) {
+  const entrada = cacheUsuarios.get(clave);
+  if (!entrada) return null;
+  if (Date.now() > entrada.exp) {
+    cacheUsuarios.delete(clave);
+    return null;
   }
-  return data;
+  return entrada.valor;
+}
+
+function guardarCache(clave, valor) {
+  if (cacheUsuarios.size > 500) cacheUsuarios.clear();
+  cacheUsuarios.set(clave, { valor, exp: Date.now() + TTL_MS });
+}
+
+export function invalidarUsuarioCache(id, email) {
+  if (id !== undefined && id !== null) cacheUsuarios.delete(`id:${String(id)}`);
+  if (email) cacheUsuarios.delete(`email:${String(email).toLowerCase()}`);
 }
 
 function normalizarLista(res) {
@@ -78,30 +133,62 @@ export async function getHealth() {
 
 // ---- Usuarios ----
 export async function getUser(id) {
-  return api(`/api/users/${encodeURIComponent(id)}`);
+  const clave = `id:${String(id)}`;
+  const hit = leerCache(clave);
+  if (hit) return hit;
+  const data = await api(`/api/users/${encodeURIComponent(id)}`);
+  const usuario = data?.user || data?.usuario || data;
+  if (usuario?.id || usuario?.email) {
+    guardarCache(clave, usuario);
+    if (usuario.email) guardarCache(`email:${String(usuario.email).toLowerCase()}`, usuario);
+  }
+  return data;
 }
 
 export async function getUserByEmail(email) {
   const correo = String(email || "").trim();
   if (!correo) return null;
+  const clave = `email:${correo.toLowerCase()}`;
+  const hit = leerCache(clave);
+  if (hit) return hit;
   // Intento 1: filtro por query (si el backend lo soporta).
   try {
     const res = await api("/api/users", { query: { email: correo } });
     const lista = normalizarLista(res);
-    if (Array.isArray(lista)) return lista.find((u) => u?.email === correo) || null;
-    if (lista && typeof lista === "object" && lista.email) return lista;
+    let hallado = null;
+    if (Array.isArray(lista)) hallado = lista.find((u) => u?.email === correo) || null;
+    else if (lista && typeof lista === "object" && lista.email) hallado = lista;
+    if (hallado) {
+      guardarCache(clave, hallado);
+      if (hallado.id !== undefined) guardarCache(`id:${String(hallado.id)}`, hallado);
+      return hallado;
+    }
+    // Sin coincidencia por filtro: no lanzar el listado completo aquí.
+    // El listado completo es el que dispara 429 en el backend con muchos
+    // usuarios; devolver null deja que signIn cree la cuenta OAuth.
+    return null;
   } catch (error) {
     // 401/403 = API_SECRET_KEY rechazado: no ocultar el fallo de auth,
     // el llamante debe fallar cerrado con diagnóstico claro.
     if (Number(error?.status) === 401 || Number(error?.status) === 403) throw error;
-    // Se continúa con el listado completo.
+    // 429 persistente tras reintentos: no escalar al listado completo.
+    if (Number(error?.status) === 429) {
+      console.warn("getUserByEmail limitado por backend (429), se omite listado completo.");
+      return null;
+    }
+    // Se continúa con el listado completo solo en errores no limitantes.
   }
-  // Intento 2: listado completo + búsqueda local.
+  // Intento 2: listado completo + búsqueda local (solo si el filtro falló sin 429).
   try {
     const res = await api("/api/users");
     const lista = normalizarLista(res);
-    if (Array.isArray(lista)) return lista.find((u) => u?.email === correo) || null;
-    return null;
+    let hallado = null;
+    if (Array.isArray(lista)) hallado = lista.find((u) => u?.email === correo) || null;
+    if (hallado) {
+      guardarCache(clave, hallado);
+      if (hallado.id !== undefined) guardarCache(`id:${String(hallado.id)}`, hallado);
+    }
+    return hallado;
   } catch (error) {
     if (Number(error?.status) === 404) return null;
     throw error;
@@ -111,15 +198,23 @@ export async function getUserByEmail(email) {
 export async function createUser({ nombre, email, password, proveedor } = {}) {
   const body = { nombre, email, password };
   if (proveedor) body.proveedor = proveedor;
-  return api("/api/users", { method: "POST", body });
+  const data = await api("/api/users", { method: "POST", body });
+  const usuario = data?.user || data?.usuario || data;
+  if (usuario?.id || usuario?.email) invalidarUsuarioCache(usuario?.id, usuario?.email || email);
+  else if (email) invalidarUsuarioCache(null, email);
+  return data;
 }
 
 export async function patchUser(id, patch = {}) {
-  return api(`/api/users/${encodeURIComponent(id)}`, { method: "PATCH", body: patch });
+  const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: "PATCH", body: patch });
+  invalidarUsuarioCache(id, data?.user?.email || data?.usuario?.email || data?.email || patch?.email);
+  return data;
 }
 
 export async function deleteUser(id) {
-  return api(`/api/users/${encodeURIComponent(id)}`, { method: "DELETE" });
+  const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: "DELETE" });
+  invalidarUsuarioCache(id, null);
+  return data;
 }
 
 // ---- Auth ----
