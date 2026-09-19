@@ -13,7 +13,11 @@ function baseUrl() {
 }
 
 function apiKey() {
-  const key = (process.env.API_SECRET_KEY || "").trim();
+  let key = (process.env.API_SECRET_KEY || "").trim();
+  // Tolerancia a secretos pegados con comillas envolventes en el dashboard.
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1).trim();
+  }
   if (!key) throw new Error("API_SECRET_KEY no configurado.");
   return key;
 }
@@ -86,7 +90,10 @@ export async function getUserByEmail(email) {
     const lista = normalizarLista(res);
     if (Array.isArray(lista)) return lista.find((u) => u?.email === correo) || null;
     if (lista && typeof lista === "object" && lista.email) return lista;
-  } catch {
+  } catch (error) {
+    // 401/403 = API_SECRET_KEY rechazado: no ocultar el fallo de auth,
+    // el llamante debe fallar cerrado con diagnóstico claro.
+    if (Number(error?.status) === 401 || Number(error?.status) === 403) throw error;
     // Se continúa con el listado completo.
   }
   // Intento 2: listado completo + búsqueda local.
@@ -95,8 +102,9 @@ export async function getUserByEmail(email) {
     const lista = normalizarLista(res);
     if (Array.isArray(lista)) return lista.find((u) => u?.email === correo) || null;
     return null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (Number(error?.status) === 404) return null;
+    throw error;
   }
 }
 

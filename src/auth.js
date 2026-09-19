@@ -85,7 +85,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
         } catch (error) {
-          console.error("Error al guardar usuario OAuth vía API:", error?.message || error);
+          // 401/403 aquí = API_SECRET_KEY rechazado por servxn o ausente en
+          // Vercel: fallar cerrado con diagnóstico (ver logs del servidor).
+          console.error(
+            "Error al guardar usuario OAuth vía API:",
+            error?.status ? `status=${error.status}` : "",
+            error?.message || error
+          );
           return false;
         }
       }
