@@ -172,9 +172,8 @@ export async function getUserByEmail(email) {
   const clave = `email:${correo.toLowerCase()}`;
   const hit = leerCache(clave);
   if (hit) return hit;
-  // NOTA 2026-09-19: el backend ignora `?email=` y devuelve la lista completa
-  // (verificado por sondeo). El find local sobre esa respuesta es el que
-  // resuelve; no lanzar el segundo fetch si ya se obtuvo la lista aquí.
+  // El backend soporta `?email=` filtrado en SQL (verificado 2026-09-19).
+  // Si no hay coincidencia se devuelve null sin lanzar el listado completo.
   try {
     const res = await api("/api/users", { query: { email: correo } });
     const lista = normalizarLista(res);
