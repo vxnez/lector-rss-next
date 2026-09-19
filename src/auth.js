@@ -1,14 +1,18 @@
-// src/auth.js
+// src/auth.js — NextAuth sin MySQL directo: todo vía API interna (lib/api).
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { db, ensureBienvenidaSchema } from "@/lib/db";
+import { createUser, getUserByEmail, login, patchUser } from "@/lib/api";
 
-// Comparación dummy para igualar tiempos entre correo existente y no
-// existente (mitiga oráculo de enumeración por timing en el login).
-const DUMMY_HASH = bcrypt.hashSync("lector-rss-dummy-compare", 10);
+function MezclarProveedor(actual, nuevo) {
+  const lista = String(actual || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!lista.includes(nuevo)) lista.push(nuevo);
+  return lista.join(",");
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -28,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GITHUB_SECRET,
       authorization: {
         params: {
-          prompt: "select_account", // Fuerza el selector de cuenta de GitHub en cada inicio de sesión
+          prompt: "select_account",
         },
       },
     }),
@@ -40,71 +44,48 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
-        // Buscar usuario en MySQL
-        const [rows] = await db.query("SELECT * FROM usuarios WHERE email = ?", [credentials.email]);
-        const user = rows[0];
-
-        if (!user || !user.password_hash) {
-          // Camino dummy: mismo costo que un login real para no distinguir
-          // correos registrados por tiempo de respuesta.
-          await bcrypt.compare(String(credentials.password || ""), DUMMY_HASH);
+        try {
+          const user = await login(credentials.email, credentials.password);
+          if (!user?.id) return null;
+          return {
+            id: String(user.id),
+            name: user.nombre || user.name || credentials.email,
+            email: user.email || credentials.email,
+            image: user.imagen_url || user.image || null,
+          };
+        } catch {
           return null;
         }
-
-        // Validar contraseña encriptada
-        const passwordMatch = await bcrypt.compare(credentials.password, user.password_hash);
-        if (!passwordMatch) return null;
-
-        return { id: user.id.toString(), name: user.nombre, email: user.email, image: user.imagen_url };
       },
     }),
   ],
   callbacks: {
     async signIn({ user, account }) {
-      // Registro automático y vinculación para Google y GitHub: si el correo
-      // ya existe (p. ej. cuenta de correo+contraseña), se vincula el
-      // proveedor a la misma cuenta en vez de crear un duplicado.
+      // OAuth vía API: vincula o crea sin tocar MySQL.
       if (account?.provider === "google" || account?.provider === "github") {
         try {
-          try {
-            await ensureBienvenidaSchema();
-          } catch {
-            // Si la columna no se pudo crear, se sigue con el flujo anterior.
-          }
-          const [existingUsers] = await db.query("SELECT * FROM usuarios WHERE email = ?", [user.email]);
-
-          if (existingUsers.length === 0) {
-            await db.query(
-              "INSERT INTO usuarios (nombre, email, imagen_url, proveedor) VALUES (?, ?, ?, ?)",
-              [user.name, user.email, user.image, account.provider]
-            );
-            // Cuenta nueva por OAuth: la bienvenida queda pendiente (DEFAULT 0).
-          } else {
-            const actuales = String(existingUsers[0].proveedor || "")
-              .split(",")
-              .map((p) => p.trim())
-              .filter(Boolean);
-            if (!actuales.includes(account.provider)) {
-              // Primera vez que esta cuenta usa este proveedor OAuth: se
-              // vincula y se reactiva la bienvenida aunque el correo ya
-              // existiera (el localStorage por email la ocultaría si no).
-              try {
-                await db.query("UPDATE usuarios SET proveedor = ?, bienvenida_vista = 0 WHERE id = ?", [
-                  [...actuales, account.provider].join(","),
-                  existingUsers[0].id,
-                ]);
-              } catch (error) {
-                if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
-                await db.query("UPDATE usuarios SET proveedor = ? WHERE id = ?", [
-                  [...actuales, account.provider].join(","),
-                  existingUsers[0].id,
-                ]);
-              }
+          const existente = await getUserByEmail(user.email);
+          if (!existente) {
+            await createUser({
+              nombre: user.name || user.email,
+              email: user.email,
+              password: `oauth-${account.provider}-${Date.now()}`,
+              proveedor: account.provider,
+            });
+          } else if (!String(existente.proveedor || "").split(",").includes(account.provider)) {
+            try {
+              await patchUser(existente.id, {
+                proveedor: MezclarProveedor(existente.proveedor, account.provider),
+                bienvenida_vista: 0,
+              });
+            } catch {
+              await patchUser(existente.id, {
+                proveedor: MezclarProveedor(existente.proveedor, account.provider),
+              });
             }
           }
         } catch (error) {
-          console.error("Error al guardar usuario OAuth:", error);
+          console.error("Error al guardar usuario OAuth vía API:", error?.message || error);
           return false;
         }
       }
@@ -113,35 +94,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session }) {
       if (session?.user?.email) {
         try {
-          try {
-            await ensureBienvenidaSchema();
-          } catch {
-            // Sin la columna se usa el comportamiento anterior (solo localStorage).
-          }
-          let rows;
-          try {
-            [rows] = await db.query(
-              "SELECT id, nombre, imagen_url, genero, bienvenida_vista FROM usuarios WHERE email = ?",
-              [session.user.email]
-            );
-          } catch (error) {
-            if (error?.code !== "ER_BAD_FIELD_ERROR") throw error;
-            [rows] = await db.query(
-              "SELECT id, nombre, imagen_url FROM usuarios WHERE email = ?",
-              [session.user.email]
-            );
-          }
-          if (rows[0]) {
-            session.user.id = rows[0].id;
-            if (rows[0].nombre) session.user.name = rows[0].nombre;
-            session.user.image = rows[0].imagen_url || session.user.image || null;
-            session.user.genero = rows[0].genero || null;
-            // 0 = mostrar bienvenida (primer login OAuth o cuenta nueva);
-            // 1 o ausente = respetar solo el localStorage.
-            session.user.bienvenidaVista = rows[0].bienvenida_vista ?? 1;
+          const u = await getUserByEmail(session.user.email);
+          if (u) {
+            session.user.id = u.id;
+            if (u.nombre) session.user.name = u.nombre;
+            session.user.image = u.imagen_url || session.user.image || null;
+            session.user.genero = u.genero || null;
+            session.user.bienvenidaVista = u.bienvenida_vista ?? 1;
           }
         } catch (error) {
-          console.error("Error al resolver la sesión:", error.message);
+          console.error("Error al resolver la sesión vía API:", error?.message || error);
         }
       }
       return session;

@@ -1,6 +1,5 @@
-// src/app/api/auth/register/route.js
-import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
+// src/app/api/auth/register/route.js — Alta vía API interna (sin MySQL directo).
+import { createUser, getUserByEmail } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -18,22 +17,20 @@ export async function POST(req) {
       );
     }
 
-    // Verificar si el usuario ya existe
-    const [existingUsers] = await db.query("SELECT id FROM usuarios WHERE email = ?", [email]);
-    if (existingUsers.length > 0) {
+    const existente = await getUserByEmail(email).catch(() => null);
+    if (existente) {
       return NextResponse.json({ error: "El correo ya está registrado" }, { status: 400 });
     }
 
-    // Encriptar contraseña e insertar en MySQL
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await db.query(
-      "INSERT INTO usuarios (nombre, email, password_hash, proveedor) VALUES (?, ?, ?, 'credentials')",
-      [nombre, email, hashedPassword]
-    );
+    await createUser({ nombre, email, password });
 
     return NextResponse.json({ message: "Usuario creado exitosamente" }, { status: 201 });
   } catch (error) {
-    console.error("Error en registro:", error);
+    console.error("Error en registro vía API:", error?.message || error);
+    const status = Number(error?.status) || 500;
+    if (status === 400 || status === 409) {
+      return NextResponse.json({ error: error.message || "El correo ya está registrado" }, { status });
+    }
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

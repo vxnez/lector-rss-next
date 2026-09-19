@@ -1,36 +1,10 @@
-// src/app/api/perfil/route.js
+// src/app/api/perfil/route.js — Perfil vía API interna (sin MySQL directo).
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { getUser, patchUser } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 const LIMITE_IMAGEN_CHARS = 60000;
 const GENEROS_VALIDOS = ["hombre", "mujer", "no_mencionarlo"];
-
-let perfilSchemaPromise;
-
-async function ensurePerfilSchema() {
-  if (!perfilSchemaPromise) {
-    perfilSchemaPromise = (async () => {
-      const [columns] = await db.query(
-        `SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'usuarios'
-           AND COLUMN_NAME IN ('imagen_url', 'genero')`
-      );
-      const porNombre = new Map(columns.map((column) => [column.COLUMN_NAME, column.DATA_TYPE]));
-      if (porNombre.get("imagen_url") && porNombre.get("imagen_url") !== "text") {
-        await db.query("ALTER TABLE usuarios MODIFY COLUMN imagen_url TEXT NULL");
-      }
-      if (!porNombre.has("genero")) {
-        await db.query("ALTER TABLE usuarios ADD COLUMN genero VARCHAR(20) NULL");
-      }
-    })().catch((error) => {
-      perfilSchemaPromise = undefined;
-      throw error;
-    });
-  }
-  return perfilSchemaPromise;
-}
 
 function validarImagen(valor) {
   if (valor === null || valor === undefined || valor === "") return { valida: true, valor: null };
@@ -43,6 +17,10 @@ function validarImagen(valor) {
   return { valida: true, valor: valor.trim() };
 }
 
+function normalizarPerfil(data) {
+  return data?.user || data?.usuario || data?.perfil || data;
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -50,22 +28,15 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    await ensurePerfilSchema();
-
-    const [rows] = await db.query(
-      `SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero,
-              (password_hash IS NOT NULL) AS tiene_password
-       FROM usuarios WHERE id = ?`,
-      [userId]
-    );
-    if (!rows[0]) {
+    const perfil = normalizarPerfil(await getUser(userId));
+    if (!perfil?.id && !perfil?.email) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
-    return NextResponse.json(rows[0], {
+    return NextResponse.json(perfil, {
       headers: { "Cache-Control": "no-store, max-age=0" },
     });
   } catch (error) {
-    console.error("Error en GET /api/perfil:", error);
+    console.error("Error en GET /api/perfil vía API:", error?.message || error);
     return NextResponse.json({ error: "Error al obtener el perfil" }, { status: 500 });
   }
 }
@@ -77,7 +48,6 @@ export async function PUT(req) {
     if (!userId) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    await ensurePerfilSchema();
 
     const body = await req.json().catch(() => ({}));
     const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
@@ -98,17 +68,12 @@ export async function PUT(req) {
       genero = body.genero;
     }
 
-    await db.query("UPDATE usuarios SET nombre = ?, imagen_url = ?, genero = COALESCE(?, genero) WHERE id = ?", [nombre, imagen.valor, genero, userId]);
-
-    const [rows] = await db.query(
-      `SELECT id, nombre, email, imagen_url, proveedor, creado_en, genero,
-              (password_hash IS NOT NULL) AS tiene_password
-       FROM usuarios WHERE id = ?`,
-      [userId]
+    const actualizado = normalizarPerfil(
+      await patchUser(userId, { nombre, imagen_url: imagen.valor, genero })
     );
-    return NextResponse.json({ message: "Perfil actualizado correctamente", perfil: rows[0] });
+    return NextResponse.json({ message: "Perfil actualizado correctamente", perfil: actualizado });
   } catch (error) {
-    console.error("Error en PUT /api/perfil:", error);
+    console.error("Error en PUT /api/perfil vía API:", error?.message || error);
     return NextResponse.json({ error: "Error al actualizar el perfil" }, { status: 500 });
   }
 }

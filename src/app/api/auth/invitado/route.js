@@ -1,87 +1,37 @@
 // src/app/api/auth/invitado/route.js
-// Gestión del modo invitado:
-// POST { action: "crear" } -> crea un usuario temporal y fija la cookie de sesión.
-// POST { action: "salir" } / DELETE -> elimina toda su información y limpia la cookie.
-// GET -> indica si hay una sesión de invitado válida.
-import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
+// Modo invitado vía API interna (sin MySQL directo):
+// POST { action: "crear" } -> POST /api/users + cookie firmada.
+// POST { action: "salir" } / DELETE -> DELETE /api/users/:id + limpiar cookie.
+// GET -> GET /api/users/:id verifica la sesión.
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { INVITADO_COOKIE, INVITADO_PROVEEDOR, firmarInvitado, invitadoIdDesdeRequest } from "@/lib/invitado";
-
-const PURGA_HORAS = 24;
-
-async function eliminarInvitado(id) {
-  const [filas] = await db.query(
-    "SELECT email FROM usuarios WHERE id = ? AND proveedor = ?",
-    [id, INVITADO_PROVEEDOR]
-  );
-  const usuario = filas[0];
-  if (!usuario) return false;
-  // Limpieza explícita previa a la cascada FK: push (los invitados también
-  // pueden suscribirse) + artículos + fuentes + códigos por email.
-  try {
-    await db.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [id]);
-  } catch {
-    // La tabla de push puede no existir aún: no bloquea la limpieza.
-  }
-  const [fuentes] = await db.query("SELECT id FROM fuentes_rss WHERE usuario_id = ?", [id]);
-  const ids = fuentes.map((f) => f.id);
-  if (ids.length > 0) {
-    await db.query(
-      `DELETE FROM articulos_publicados WHERE fuente_id IN (${ids.map(() => "?").join(",")})`,
-      ids
-    );
-  }
-  await db.query("DELETE FROM fuentes_rss WHERE usuario_id = ?", [id]);
-  try {
-    await db.query("DELETE FROM recuperacion_codigos WHERE email = ?", [usuario.email]);
-  } catch {
-    // La tabla de recuperación puede no existir aún: no bloquea la limpieza.
-  }
-  await db.query("DELETE FROM usuarios WHERE id = ?", [id]);
-  return true;
-}
-
-async function purgarInvitadosViejos() {
-  try {
-    const [viejos] = await db.query(
-      "SELECT id FROM usuarios WHERE proveedor = ? AND creado_en < DATE_SUB(NOW(), INTERVAL ? HOUR)",
-      [INVITADO_PROVEEDOR, PURGA_HORAS]
-    );
-    for (const fila of viejos) {
-      try {
-        await eliminarInvitado(fila.id);
-      } catch {
-        // Se continúa con el siguiente invitado.
-      }
-    }
-  } catch {
-    // La purga es mantenimiento best-effort: nunca bloquea la entrada.
-  }
-}
+import { createUser, deleteUser, getUser } from "@/lib/api";
 
 function limpiarCookie(res) {
   res.cookies.set(INVITADO_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 }
 
+async function esInvitadoValido(id) {
+  try {
+    const data = await getUser(id);
+    const u = data?.user || data?.usuario || data;
+    if (!u?.id) return null;
+    return u;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req) {
   const id = invitadoIdDesdeRequest(req);
   if (!id) return NextResponse.json({ invitado: false }, { status: 401 });
-  try {
-    const [filas] = await db.query(
-      "SELECT id FROM usuarios WHERE id = ? AND proveedor = ?",
-      [id, INVITADO_PROVEEDOR]
-    );
-    if (!filas[0]) {
-      return limpiarCookie(NextResponse.json({ invitado: false }, { status: 401 }));
-    }
-    return NextResponse.json({ invitado: true });
-  } catch (error) {
-    console.error("Error al verificar invitado:", error);
-    return NextResponse.json({ invitado: false }, { status: 500 });
+  const u = await esInvitadoValido(id);
+  if (!u) {
+    return limpiarCookie(NextResponse.json({ invitado: false }, { status: 401 }));
   }
+  return NextResponse.json({ invitado: true });
 }
 
 export async function POST(req) {
@@ -92,26 +42,35 @@ export async function POST(req) {
       const id = invitadoIdDesdeRequest(req);
       if (id) {
         try {
-          await eliminarInvitado(id);
+          await deleteUser(id);
         } catch (error) {
-          console.error("Error al eliminar invitado:", error);
+          console.error("Error al eliminar invitado vía API:", error?.message || error);
         }
       }
       return limpiarCookie(NextResponse.json({ ok: true }));
     }
 
-    // Crear invitado: primero se purgan los invitados viejos olvidados.
-    await purgarInvitadosViejos();
+    // Crear invitado efímero vía API interna.
     const email = `invitado_${Date.now().toString(36)}${crypto.randomInt(100000, 999999)}@invitado.local`;
-    const secreto = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-    const [resultado] = await db.query(
-      "INSERT INTO usuarios (nombre, email, password_hash, proveedor) VALUES (?, ?, ?, ?)",
-      ["Invitado", email, secreto, INVITADO_PROVEEDOR]
-    );
+    const secreto = crypto.randomBytes(32).toString("hex");
+    let nuevoId = null;
+    try {
+      const creado = await createUser({
+        nombre: "Invitado",
+        email,
+        password: secreto,
+        proveedor: INVITADO_PROVEEDOR,
+      });
+      nuevoId = creado?.user?.id || creado?.usuario?.id || creado?.id || creado?.insertId || null;
+    } catch (error) {
+      console.error("Error al crear invitado vía API:", error?.message || error);
+      return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
+    }
+    if (!nuevoId) {
+      return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
+    }
     const res = NextResponse.json({ ok: true });
-    // Cookie de sesión (sin maxAge): se pierde al cerrar el navegador.
-    // Secure en producción para que nunca viaje por HTTP.
-    res.cookies.set(INVITADO_COOKIE, firmarInvitado(resultado.insertId), {
+    res.cookies.set(INVITADO_COOKIE, firmarInvitado(nuevoId), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -119,7 +78,7 @@ export async function POST(req) {
     });
     return res;
   } catch (error) {
-    console.error("Error en modo invitado:", error);
+    console.error("Error en modo invitado vía API:", error?.message || error);
     return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
   }
 }
@@ -128,9 +87,9 @@ export async function DELETE(req) {
   const id = invitadoIdDesdeRequest(req);
   if (id) {
     try {
-      await eliminarInvitado(id);
+      await deleteUser(id);
     } catch (error) {
-      console.error("Error al eliminar invitado:", error);
+      console.error("Error al eliminar invitado vía API:", error?.message || error);
     }
   }
   return limpiarCookie(NextResponse.json({ ok: true }));

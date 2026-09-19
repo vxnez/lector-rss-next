@@ -1,7 +1,6 @@
-// src/app/api/actividad/route.js — Actividad reciente de la cuenta
-// (última fuente agregada) para la subvista de Seguridad.
+// src/app/api/actividad/route.js — Actividad reciente vía API interna.
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { getFuentes } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -12,16 +11,17 @@ export async function GET() {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const [[ultimaFuente]] = await db.query(
-      "SELECT titulo, creado_en FROM fuentes_rss WHERE usuario_id = ? ORDER BY id DESC LIMIT 1",
-      [userId]
-    );
+    const fuentes = (await getFuentes(userId).catch(() => [])) || [];
+    const ultima = Array.isArray(fuentes) && fuentes.length > 0 ? fuentes[0] : null;
+    const ultimaFuente = ultima
+      ? { titulo: ultima.titulo || ultima.nombre || null, creado_en: ultima.creado_en || null }
+      : null;
     return NextResponse.json(
-      { ultimaFuente: ultimaFuente || null },
+      { ultimaFuente },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
   } catch (error) {
-    console.error("Error al obtener actividad:", error);
+    console.error("Error al obtener actividad vía API:", error?.message || error);
     return NextResponse.json({ error: "Error al obtener actividad" }, { status: 500 });
   }
 }

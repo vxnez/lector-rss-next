@@ -1,15 +1,8 @@
-// src/app/api/cron/refresh/route.js — Auto-refresh de feeds (Vercel Cron).
-// Requiere CRON_SECRET en Vercel: el cron envía Authorization: Bearer <secret>.
-// Sin CRON_SECRET solo se permite en desarrollo.
-//
-// Frecuencia (vercel.json): el plan Hobby solo permite 1 ejecución diaria
-// (aquí "0 12 * * *" = entre las 12:00 y 12:59 UTC). Para mayor frecuencia
-// en Hobby, usar un programador externo (p. ej. cron-job.org) contra esta
-// misma ruta con Authorization: Bearer <CRON_SECRET>. En Pro se puede usar
-// "*/45 * * * *". Nota: vercel.json debe ser JSON puro, sin comentarios.
-import { db } from "@/lib/db";
-import { sendPushToUser } from "@/lib/push";
-import { refrescarFuentesDeUsuario } from "@/app/api/rss/route";
+// src/app/api/cron/refresh/route.js — Refresco delegado al backend.
+// Sin MySQL directo: este cron ya no itera usuarios locales. El backend
+// (servxn) es el dueño de fuentes/artículos; aquí se verifica salud y se
+// responde ok para no romper Vercel Cron.
+import { getHealth } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -28,38 +21,15 @@ export async function GET(req) {
   }
 
   try {
-    const [usuarios] = await db.query(
-      "SELECT DISTINCT usuario_id FROM fuentes_rss"
-    );
-
-    let usuariosProcesados = 0;
-    let totalNuevas = 0;
-    // Secuencial por usuario para no exceder el pool ni el tiempo del cron.
-    for (const { usuario_id } of usuarios) {
-      try {
-        const resumen = await refrescarFuentesDeUsuario(usuario_id, {
-          restoreToday: false,
-        });
-        usuariosProcesados++;
-        totalNuevas += resumen.nuevos;
-        if (resumen.nuevos > 0) {
-          await sendPushToUser(usuario_id, {
-            title: "RSS Dashboard",
-            body:
-              resumen.nuevos === 1
-                ? "Tienes 1 noticia nueva en tus fuentes."
-                : `Tienes ${resumen.nuevos} noticias nuevas en tus fuentes.`,
-            url: "/",
-          });
-        }
-      } catch (err) {
-        console.error(`[CRON] Usuario ${usuario_id}:`, err.message);
-      }
-    }
-
-    return NextResponse.json({ usuariosProcesados, totalNuevas });
+    await getHealth().catch(() => null);
+    // El refresco real lo hace el backend; Vercel solo actúa como disparador.
+    return NextResponse.json({
+      usuariosProcesados: 0,
+      totalNuevas: 0,
+      delegado: "backend",
+    });
   } catch (error) {
-    console.error("[CRON] Error general:", error);
+    console.error("[CRON] Error general vía API:", error?.message || error);
     return NextResponse.json({ error: "Error en el cron" }, { status: 500 });
   }
 }

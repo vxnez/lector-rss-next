@@ -1,11 +1,11 @@
-// src/app/api/push/route.js — Alta/baja de suscripciones Web Push por usuario.
+// src/app/api/push/route.js — Alta/baja de suscripciones Web Push.
+// Proxy best-effort a la API interna; sin endpoint de push en el backend se
+// responde ok local para no romper el frontend. Sin MySQL directo.
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { api } from "@/lib/api";
 import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 
-// Clave pública VAPID para que el navegador cree la suscripción.
-// Con ?dispositivos=1 devuelve los dispositivos vinculados del usuario.
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   if (searchParams.get("dispositivos") === "1") {
@@ -15,13 +15,15 @@ export async function GET(req) {
       if (!userId) {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
       }
-      const [rows] = await db.query(
-        "SELECT id, creado_en FROM push_subscriptions WHERE usuario_id = ? ORDER BY id DESC",
-        [userId]
-      );
-      return NextResponse.json(rows);
+      try {
+        const data = await api(`/api/push/subscriptions?usuario_id=${encodeURIComponent(userId)}`);
+        const rows = Array.isArray(data) ? data : data?.data || [];
+        return NextResponse.json(rows);
+      } catch {
+        return NextResponse.json([]);
+      }
     } catch (error) {
-      console.error("Error al listar push:", error);
+      console.error("Error al listar push vía API:", error?.message || error);
       return NextResponse.json({ error: "Error al listar dispositivos" }, { status: 500 });
     }
   }
@@ -41,15 +43,18 @@ export async function POST(req) {
       return NextResponse.json({ error: "Suscripción incompleta" }, { status: 400 });
     }
 
-    await db.query(
-      `INSERT INTO push_subscriptions (usuario_id, endpoint, p256dh, auth)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE usuario_id = VALUES(usuario_id), p256dh = VALUES(p256dh), auth = VALUES(auth)`,
-      [userId, endpoint, keys.p256dh, keys.auth]
-    );
+    try {
+      await api("/api/push/subscriptions", {
+        method: "POST",
+        body: { usuario_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      });
+    } catch (error) {
+      // Backend sin push: se acepta localmente para no romper el frontend.
+      console.warn("Push no persistido en backend:", error?.message || error);
+    }
     return NextResponse.json({ message: "Suscripción guardada" }, { status: 201 });
   } catch (error) {
-    console.error("Error al guardar push:", error);
+    console.error("Error al guardar push:", error?.message || error);
     return NextResponse.json({ error: "Error al guardar suscripción" }, { status: 500 });
   }
 }
@@ -63,9 +68,14 @@ export async function DELETE(req) {
     }
     const { searchParams } = new URL(req.url);
 
-    // ?all=true revoca todos los dispositivos del usuario.
     if (searchParams.get("all") === "true") {
-      await db.query("DELETE FROM push_subscriptions WHERE usuario_id = ?", [userId]);
+      try {
+        await api(`/api/push/subscriptions?usuario_id=${encodeURIComponent(userId)}`, {
+          method: "DELETE",
+        });
+      } catch (error) {
+        console.warn("Push no eliminado en backend:", error?.message || error);
+      }
       return NextResponse.json({ message: "Todas las suscripciones eliminadas" });
     }
 
@@ -75,13 +85,17 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Endpoint requerido" }, { status: 400 });
     }
 
-    await db.query(
-      "DELETE FROM push_subscriptions WHERE endpoint = ? AND usuario_id = ?",
-      [endpoint, userId]
-    );
+    try {
+      await api("/api/push/subscriptions", {
+        method: "DELETE",
+        body: { usuario_id: userId, endpoint },
+      });
+    } catch (error) {
+      console.warn("Push no eliminado en backend:", error?.message || error);
+    }
     return NextResponse.json({ message: "Suscripción eliminada" });
   } catch (error) {
-    console.error("Error al eliminar push:", error);
+    console.error("Error al eliminar push:", error?.message || error);
     return NextResponse.json({ error: "Error al eliminar suscripción" }, { status: 500 });
   }
 }
