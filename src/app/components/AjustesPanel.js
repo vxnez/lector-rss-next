@@ -268,7 +268,11 @@ export default function AjustesPanel({
     setPasoEliminar("eliminando");
     try {
       const res = await fetch("/api/datos", { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudo eliminar la cuenta.");
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => null);
+        const detalle = cuerpo?.detalle || cuerpo?.error;
+        throw new Error(detalle ? `No se pudo eliminar la cuenta: ${detalle}` : "No se pudo eliminar la cuenta.");
+      }
       // Sin rastro en este navegador: ajustes de lectura/apariencia a
       // valores por defecto + marcas de bienvenida de la cuenta. Un
       // re-registro con el mismo correo arranca con perfil limpio.
