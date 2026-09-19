@@ -33,22 +33,43 @@ function reintentoTras(res, intento) {
   return Math.min(1000 * 2 ** intento, 8000);
 }
 
-export async function api(path, { method = "GET", body, query } = {}) {
+export async function api(path, { method = "GET", body, query, timeoutMs = 30000 } = {}) {
   const base = baseUrl();
   const qs = query ? `?${new URLSearchParams(query).toString()}` : "";
   const url = `${base}${path}${qs}`;
   const metodo = String(method || "GET").toUpperCase();
   let ultimoError = null;
   for (let intento = 0; intento < 3; intento++) {
-    const res = await fetch(url, {
-      method: metodo,
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey(),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
-    });
+    const ctrl = new AbortController();
+    const temporizador = setTimeout(() => ctrl.abort(), timeoutMs);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: metodo,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey(),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: "no-store",
+        signal: ctrl.signal,
+      });
+    } catch (error) {
+      clearTimeout(temporizador);
+      // Timeout o corte de red: reintentar solo GET; otros métodos fallan rápido
+      // con diagnóstico en vez de colgar la function de Vercel hasta 60s.
+      if (error?.name === "AbortError") {
+        const err = new Error(`API timeout (${timeoutMs}ms) en ${path}`);
+        err.status = 504;
+        if (metodo === "GET" && intento < 2) {
+          await esperar(Math.min(1000 * 2 ** intento, 4000));
+          continue;
+        }
+        throw err;
+      }
+      throw error;
+    }
+    clearTimeout(temporizador);
     if (res.status !== 429 && res.status !== 502 && res.status !== 503 && res.status !== 504) {
       const texto = await res.text().catch(() => "");
       let data = null;
@@ -151,7 +172,9 @@ export async function getUserByEmail(email) {
   const clave = `email:${correo.toLowerCase()}`;
   const hit = leerCache(clave);
   if (hit) return hit;
-  // Intento 1: filtro por query (si el backend lo soporta).
+  // NOTA 2026-09-19: el backend ignora `?email=` y devuelve la lista completa
+  // (verificado por sondeo). El find local sobre esa respuesta es el que
+  // resuelve; no lanzar el segundo fetch si ya se obtuvo la lista aquí.
   try {
     const res = await api("/api/users", { query: { email: correo } });
     const lista = normalizarLista(res);
@@ -260,10 +283,12 @@ export async function patchFuente(id, patch = {}) {
 }
 
 export async function deleteFuente(id, usuario_id) {
-  const query = usuario_id !== undefined ? { usuario_id: String(usuario_id) } : undefined;
+  // Se envía usuario_id por query Y por body: el backend puede leer uno u
+  // otro según el handler (algunos solo leen query, otros solo body).
+  const uid = usuario_id !== undefined && usuario_id !== null ? String(usuario_id) : undefined;
   return api(`/api/data/fuentes/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    ...(query ? { query } : {}),
+    ...(uid !== undefined ? { query: { usuario_id: uid }, body: { usuario_id: uid } } : {}),
   });
 }
 

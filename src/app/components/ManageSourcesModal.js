@@ -355,7 +355,9 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         onNotify?.(t("fuentes.eliminada_ok"), "success");
         if (onChange) onChange();
       } else {
-        onNotify?.(t("fuentes.err_eliminar"), "error");
+        const data = await res.json().catch(() => ({}));
+        const detalle = data?.detalle || data?.error;
+        onNotify?.(detalle ? `${t("fuentes.err_eliminar")}: ${detalle}` : t("fuentes.err_eliminar"), "error");
       }
     } catch (err) {
       console.error("Error al eliminar fuente:", err);

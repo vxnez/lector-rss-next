@@ -157,23 +157,52 @@ export async function DELETE(req) {
     }
 
     let eliminadas = 0;
+    const fallos = [];
     for (const fid of ids) {
       try {
         await deleteFuente(fid, userId);
         eliminadas++;
       } catch (error) {
-        if (Number(error?.status) === 404) continue;
+        if (Number(error?.status) === 404) {
+          fallos.push({ id: fid, status: 404, detalle: error?.data?.error || error?.message });
+          continue;
+        }
         throw error;
       }
     }
 
     if (eliminadas === 0) {
-      return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+      console.warn(
+        "DELETE /api/sources sin eliminadas:",
+        `userId=${userId}`,
+        `ids=${ids.join(",")}`,
+        fallos.length > 0 ? JSON.stringify(fallos).slice(0, 500) : ""
+      );
+      const detalle = fallos[0]?.detalle;
+      return NextResponse.json(
+        {
+          error: "Fuente no encontrada o no autorizada",
+          ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+        },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ message: "Fuente y artículos eliminados correctamente", eliminadas });
   } catch (error) {
-    console.error("Error en DELETE /api/sources vía API:", error?.message || error);
-    return NextResponse.json({ error: "Error al eliminar fuente" }, { status: 500 });
+    console.error(
+      "Error en DELETE /api/sources vía API:",
+      error?.status ? `status=${error.status}` : "",
+      error?.message || error,
+      error?.data ? JSON.stringify(error.data).slice(0, 500) : ""
+    );
+    const detalle = error?.data?.error || error?.data?.message || error?.message;
+    return NextResponse.json(
+      {
+        error: "Error al eliminar fuente",
+        ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+      },
+      { status: 500 }
+    );
   }
 }
