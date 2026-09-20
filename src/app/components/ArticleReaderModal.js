@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type, Share2, Volume2, VolumeX, Check } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -18,6 +18,13 @@ const TAMANOS_LECTURA = {
   extra: "text-lg md:text-xl leading-relaxed",
 };
 const ORDEN_TAMANOS = ["normal", "grande", "extra"];
+
+const FAMILIAS_LECTURA = {
+  sans: "font-sans",
+  serif: "[font-family:Georgia,Cambria,serif] tracking-wide",
+  mono: "font-mono text-[0.95em]",
+};
+const ORDEN_FAMILIAS = ["sans", "serif", "mono"];
 
 // Dirección de la última navegación entre noticias (1 = siguiente, -1 = anterior, 0 = apertura).
 // Vive a nivel de módulo porque el modal se remontan con `key` por noticia y el estado se pierde.
@@ -85,6 +92,91 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     }
     setTamanoLectura(siguiente);
   };
+
+  // Familia tipográfica del cuerpo (sans / serif / mono)
+  const [familiaLectura, setFamiliaLectura] = useState(() => {
+    try {
+      const guardado = window.localStorage.getItem("lector_familia_fuente");
+      return ORDEN_FAMILIAS.includes(guardado) ? guardado : "sans";
+    } catch {
+      return "sans";
+    }
+  });
+  const ciclarFamiliaLectura = () => {
+    const siguiente = ORDEN_FAMILIAS[(ORDEN_FAMILIAS.indexOf(familiaLectura) + 1) % ORDEN_FAMILIAS.length];
+    try {
+      window.localStorage.setItem("lector_familia_fuente", siguiente);
+    } catch {
+      // Sin almacenamiento
+    }
+    setFamiliaLectura(siguiente);
+  };
+
+  // Barra de progreso de lectura
+  const [progresoLectura, setProgresoLectura] = useState(0);
+  const manejarScroll = useCallback((e) => {
+    const el = e.currentTarget;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) {
+      setProgresoLectura(100);
+    } else {
+      setProgresoLectura(Math.min(Math.max((el.scrollTop / maxScroll) * 100, 0), 100));
+    }
+  }, []);
+
+  // Text-to-Speech nativo (Web Speech API)
+  const [hablando, setHablando] = useState(false);
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [article?.id]);
+
+  const alternarVoz = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (hablando) {
+      window.speechSynthesis.cancel();
+      setHablando(false);
+      return;
+    }
+    const texto = `${article?.titulo || ""}. ${article?.resumen || ""}`;
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.lang = locale === "en" ? "en-US" : "es-ES";
+    utterance.rate = 1.0;
+    utterance.onend = () => setHablando(false);
+    utterance.onerror = () => setHablando(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setHablando(true);
+  };
+
+  // Copiar enlace y Web Share API
+  const [copiado, setCopiado] = useState(false);
+  const compartirArticulo = async () => {
+    const url = article?.url_original || article?.link;
+    if (!url) return;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: article?.titulo || "Noticia",
+          url,
+        });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2200);
+    } catch {
+      // Ignorar
+    }
+  };
+
   const [cargandoImagen, setCargandoImagen] = useState(
     () => Boolean(article?.url_original) && !article?.imagen_url && !article?.video_url
   );
@@ -382,6 +474,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       </button>
       <div
         ref={contenedorRef}
+        onScroll={manejarScroll}
         className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
           direccionEntrada > 0
             ? "anim-articulo-siguiente"
@@ -393,6 +486,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         onTouchStart={manejarInicioToque}
         onTouchEnd={manejarFinToque}
       >
+        {/* Barra de progreso de lectura */}
+        <div className="sticky top-0 left-0 right-0 z-30 h-1 bg-app-raised/40 w-full overflow-hidden">
+          <div
+            className="h-full bg-[var(--accent)] transition-[width] duration-100 ease-out shadow-[0_0_8px_var(--accent)]"
+            style={{ width: `${progresoLectura}%` }}
+          />
+        </div>
+
       <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
         {/* Cabecera del modal */}
         <div>
@@ -477,13 +578,42 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               </span>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {posicion && total ? (
-                <span className="text-xs text-gray-500 tabular-nums" aria-label={t("lector.posicion", { a: posicion, b: total })}>
+                <span className="text-xs text-gray-500 tabular-nums pr-1" aria-label={t("lector.posicion", { a: posicion, b: total })}>
                   {posicion} / {total}
                 </span>
               ) : null}
+
+              {/* Text to Speech */}
               <button
+                type="button"
+                onClick={alternarVoz}
+                title={hablando ? "Detener lectura en voz alta" : "Escuchar noticia (Voz)"}
+                aria-label={hablando ? "Detener voz" : "Escuchar noticia"}
+                className={`btn-press p-1.5 rounded-lg transition shrink-0 ${
+                  hablando
+                    ? "bg-violet-500/20 text-violet-300 border border-violet-500/40 animate-pulse"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800"
+                }`}
+              >
+                {hablando ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+
+              {/* Selector de Familia Tipográfica */}
+              <button
+                type="button"
+                onClick={ciclarFamiliaLectura}
+                title={`Tipografía: ${familiaLectura.toUpperCase()} (clic para alternar)`}
+                aria-label={`Cambiar tipografía: actual ${familiaLectura}`}
+                className="btn-press text-[11px] font-mono font-bold text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 border border-gray-700/60 shrink-0 uppercase"
+              >
+                {familiaLectura}
+              </button>
+
+              {/* Tamaño de letra */}
+              <button
+                type="button"
                 onClick={ciclarTamanoLectura}
                 title={t("lector.letra_t", { t: tamanoLectura })}
                 aria-label={t("lector.letra_aria", { t: tamanoLectura })}
@@ -491,8 +621,25 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               >
                 <Type size={16} />
               </button>
+
+              {/* Compartir o copiar enlace */}
+              <button
+                type="button"
+                onClick={compartirArticulo}
+                title={copiado ? "¡Enlace copiado al portapapeles!" : "Compartir o copiar enlace"}
+                aria-label="Compartir o copiar enlace"
+                className={`btn-press p-1.5 rounded-lg transition shrink-0 ${
+                  copiado
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800"
+                }`}
+              >
+                {copiado ? <Check size={16} /> : <Share2 size={16} />}
+              </button>
+
               {((imagenVisible && !imagenRota) || videoVisible) && (
                 <button
+                  type="button"
                   onClick={alternarImagen}
                   title={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
                   aria-label={imagenOculta ? t("lector.img_mostrar") : t("lector.img_ocultar")}
@@ -505,6 +652,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               {!tieneMedios && !cargandoImagen && (
                 <span className="relative shrink-0">
                   <button
+                    type="button"
                     onClick={manejarOjo}
                     title={t("lector.img_nota")}
                     aria-label={t("lector.img_nota")}
@@ -520,6 +668,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 </span>
               )}
               <button
+                type="button"
                 onClick={onClose}
                 aria-label={t("lector.cerrar")}
                 className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
@@ -534,8 +683,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen de la noticia (sin scroll interno: usa el scroll del modal) */}
-          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
+          {/* Cuerpo / Resumen de la noticia */}
+          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
             <p>{article.resumen || t("lector.sin_resumen")}</p>
           </div>
         </div>

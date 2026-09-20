@@ -255,7 +255,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
-        className="anim-modal scroll-oculto relative max-h-[90vh] w-full max-w-3xl space-y-6 overflow-y-auto overscroll-contain rounded-2xl border border-app-line bg-app-surface p-6 shadow-2xl sm:p-8"
+        className="anim-modal scroll-oculto relative flex max-h-[90vh] w-full max-w-3xl flex-col gap-6 overflow-hidden rounded-2xl border border-app-line bg-app-surface p-6 shadow-2xl sm:p-8"
       >
         <button
           onClick={handleOmitir}
@@ -265,6 +265,9 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
           <X size={20} />
         </button>
 
+        {/* Contenido desplazable: solo esta zona hace scroll; el pie con
+            Omitir/Continuar queda siempre visible sin buscarlo. */}
+        <div className="scroll-oculto min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-1">
         {/* Indicador de pasos */}
         <div className="flex items-center justify-between mb-2">
           {[
@@ -375,6 +378,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
             )}
           </div>
         )}
+        </div>
 
         {/* Botones de navegación */}
         <div className="flex justify-end gap-3 pt-4 border-t border-app-line">
