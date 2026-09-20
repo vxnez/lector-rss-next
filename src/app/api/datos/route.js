@@ -1,7 +1,7 @@
 // src/app/api/datos/route.js — Exportar y eliminar datos propios vía API interna.
 // Solo sesión real (como /api/perfil); invitados usan salir (efímero).
 import { auth } from "@/auth";
-import { api, deleteFuente, deleteUser, getArticulos, getFuentes, getUser, invalidarUsuarioCache } from "@/lib/api";
+import { api, deleteFuente, deleteFuentesBulk, deleteUser, getArticulos, getFuentes, getUser, invalidarUsuarioCache } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -49,19 +49,29 @@ export async function DELETE() {
     try {
       const fuentes = await getFuentes(userId).catch(() => []);
       const lista = Array.isArray(fuentes) ? fuentes : fuentes?.fuentes || fuentes?.data || [];
-      for (const f of lista || []) {
-        const fid = f?.id ?? f?.fuente_id;
-        if (fid === undefined || fid === null) continue;
+      const fids = (lista || [])
+        .map((f) => f?.id ?? f?.fuente_id)
+        .filter((fid) => fid !== undefined && fid !== null);
+      if (fids.length > 0) {
         try {
-          await deleteFuente(fid, userId);
+          await deleteFuentesBulk(fids, userId);
         } catch (error) {
-          if (Number(error?.status) !== 404) {
-            console.warn("No se pudo borrar fuente previa a eliminar cuenta:", fid, error?.message || error);
+          // Sin bulk en el backend (404/405/501): repliegue por fuente.
+          const status = Number(error?.status);
+          if (![404, 405, 501].includes(status)) throw error;
+          for (const fid of fids) {
+            try {
+              await deleteFuente(fid, userId);
+            } catch (errUno) {
+              if (Number(errUno?.status) !== 404) {
+                console.warn("No se pudo borrar fuente previa a eliminar cuenta:", fid, errUno?.message || errUno);
+              }
+            }
           }
         }
       }
     } catch (error) {
-      console.warn("No se pudieron listar fuentes previas a eliminar cuenta:", error?.message || error);
+      console.warn("No se pudieron borrar fuentes previas a eliminar cuenta:", error?.message || error);
     }
     try {
       await api(`/api/push/subscriptions?usuario_id=${encodeURIComponent(userId)}`, {

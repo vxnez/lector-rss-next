@@ -206,6 +206,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       t("fuentes.opml_resumen", { ok, dup, fail: fallos.length }),
       fallos.length > 0 ? "error" : "success"
     );
+    // Lo importado llega sin clasificar: cola en segundo plano sin clic extra.
+    if (ok > 0) procesarColaClasificacion();
   };
 
   useEffect(() => {
@@ -315,9 +317,10 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         const pendientes = Number(data.pendientes) || 0;
+        const nuevos = Number(data.nuevos) || 0;
         let mensaje = data.message || t("fuentes.ok_actualizada");
-        if (pendientes > 0) {
-          mensaje += t("fuentes.completando", { n: pendientes });
+        if (pendientes > 0 || nuevos > 0) {
+          if (pendientes > 0) mensaje += t("fuentes.completando", { n: pendientes });
           procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");
@@ -360,8 +363,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           : t("fuentes.todas_ok");
         if (nuevos > 0) mensaje += t("fuentes.nuevas", { n: nuevos });
         if (sinCambios > 0) mensaje += t("fuentes.sin_cambios", { n: sinCambios });
-        if (pendientes > 0) {
-          mensaje += t("fuentes.completando", { n: pendientes });
+        if (pendientes > 0 || nuevos > 0) {
+          if (pendientes > 0) mensaje += t("fuentes.completando", { n: pendientes });
           procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");

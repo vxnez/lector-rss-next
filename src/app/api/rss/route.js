@@ -26,7 +26,7 @@ function esPendienteIA(a) {
   if (Number(a.descartado) === 1) return false;
   const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
   if (metodo === "manual") return false;
-  if (metodo === "gemini" || metodo === "local") {
+  if (metodo === "gemini" || metodo === "local" || metodo === "groq") {
     const cat = String(a.categoria ?? "").trim();
     return cat === "" || cat.toLowerCase() === "general";
   }
@@ -65,7 +65,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
   let clasificados = 0;
   for (let i = 0; i < pendientes.length; i++) {
     const resultado = resultados[i];
-    if (resultado?.metodo !== "gemini") continue;
+    if (!esExitoIA(resultado?.metodo)) continue;
     try {
       await marcarArticulo(pendientes[i].id, userId, {
         categoria: resultado.categoria,
@@ -81,7 +81,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
   const bulk2 = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
   const lista2 = Array.isArray(bulk2) ? bulk2 : bulk2?.articulos || bulk2?.articles || bulk2?.data || [];
   const restantes = (Array.isArray(lista2) ? lista2 : []).filter(esPendienteIA).length;
-  const todosFallaron = clasificados === 0 && resultados.every((r) => r?.metodo !== "gemini");
+  const todosFallaron = clasificados === 0 && resultados.every((r) => !esExitoIA(r?.metodo));
   const reintentarEn = esperaMs > 0
     ? Math.min(Math.max(Math.ceil(esperaMs / 1000), 1), 120)
     : todosFallaron ? 30 : 0;
@@ -420,12 +420,17 @@ async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
 
 // ---------- Normalización de respuestas del backend ----------
 
-// Clasificado por IA: 'gemini' (pipeline del frontend) o 'local' (motor del
-// backend). Ambos cuentan como categorizados en filtros y contadores; 'manual'
-// es edición del usuario y nunca se reclasifica.
+// Clasificado por IA: 'gemini'/'groq' (pipeline del frontend) o 'local'
+// (motor del backend). Todos cuentan como categorizados en filtros y
+// contadores; 'manual' es edición del usuario y nunca se reclasifica.
 function esClasificadoIA(a) {
   const m = String(a?.clasificacion_metodo || "");
-  return m === "gemini" || m === "local";
+  return m === "gemini" || m === "local" || m === "groq";
+}
+
+// Éxito de clasificación producido por este pipeline (lo que se persiste).
+function esExitoIA(metodo) {
+  return metodo === "gemini" || metodo === "groq";
 }
 
 function extraerLista(res) {  if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
@@ -504,11 +509,11 @@ export async function POST(req) {
         const omitidas = Number(r?.omitidas) || 0;
         const actualizadas = Number(r?.actualizadas ?? r?.fuentes) || 0;
         const detalle = Array.isArray(r?.detalle) ? r.detalle : [];
-        // Fuentes sin cambios = entradas del detalle sin novedades. El contador
-        // suelto `omitidas` del backend cuenta artículos omitidos (dedupe), NO
-        // fuentes: usarlo como "N fuentes" miente (p. ej. 130 con 10 reales).
+        // Fuentes sin cambios = entradas del detalle sin novedades y sin
+        // error. El contador suelto `omitidas` del backend cuenta artículos
+        // omitidos (dedupe), NO fuentes: usarlo como "N fuentes" miente.
         const fuentesSinCambios = detalle.length > 0
-          ? detalle.filter((d) => Number(d?.nuevos || 0) === 0).length
+          ? detalle.filter((d) => Number(d?.nuevos || 0) === 0 && String(d?.estado || "").toLowerCase() !== "error").length
           : null;
         if (nuevos > 0) {
           // P2: avisar al usuario (best-effort, no rompe la respuesta).

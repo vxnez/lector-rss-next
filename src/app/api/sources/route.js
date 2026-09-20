@@ -1,6 +1,6 @@
 // src/app/api/sources/route.js — Proxy a la API interna (sin MySQL directo).
 import { auth } from "@/auth";
-import { createFuente, deleteFuente, getFuentes, patchFuente } from "@/lib/api";
+import { createFuente, deleteFuente, deleteFuentesBulk, getFuentes, patchFuente } from "@/lib/api";
 import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 
@@ -170,6 +170,31 @@ export async function DELETE(req) {
 
     if (ids.length === 0) {
       return NextResponse.json({ error: "ID de fuente requerido" }, { status: 400 });
+    }
+
+    // Vía atómica primero: el backend borra todo-o-nada en una transacción.
+    try {
+      const r = await deleteFuentesBulk(ids, userId);
+      const eliminadas = Number(r?.eliminadas ?? r?.ok ?? ids.length) || ids.length;
+      return NextResponse.json({ message: "Fuente y artículos eliminados correctamente", eliminadas });
+    } catch (error) {
+      const status = Number(error?.status);
+      const faltan = Array.isArray(error?.data?.faltan) ? error.data.faltan : null;
+      // 404 CON faltan = atómico real: nada se borró, no reintentar por partes.
+      if (status === 404 && faltan) {
+        const detalle = error?.data?.error || error?.message;
+        return NextResponse.json(
+          {
+            error: "Fuente no encontrada o no autorizada",
+            ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+            faltan,
+          },
+          { status: 404 }
+        );
+      }
+      // 404 sin faltan / 405 / 501 = el backend aún no expone el bulk:
+      // repliegue al borrado por fuente. Cualquier otro error se propaga.
+      if (status !== 404 && status !== 405 && status !== 501) throw error;
     }
 
     let eliminadas = 0;

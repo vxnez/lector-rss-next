@@ -336,7 +336,15 @@ function extraerJsonLd($) {
     try {
       const datos = JSON.parse(crudo);
       const lista = Array.isArray(datos) ? datos : [datos];
-      for (const nodo of lista) candidatos.push(nodo);
+      for (const nodo of lista) {
+        candidatos.push(nodo);
+        // (a) Descender a @graph/graph: github.blog trae un solo <script>
+        // con WebPage+Article anidados y sin esto la Capa 1 da 0.
+        for (const clave of ["@graph", "graph"]) {
+          const hijo = nodo?.[clave];
+          if (Array.isArray(hijo)) for (const sub of hijo) candidatos.push(sub);
+        }
+      }
     } catch {
       // Bloque JSON-LD inválido: se ignora.
     }
@@ -365,13 +373,17 @@ function itemsDesdeJsonLd(nodos, base, baseHost) {
     if (!nodo || typeof nodo !== "object") return;
     const tipos = Array.isArray(nodo["@type"]) ? nodo["@type"] : [nodo["@type"]];
     const tipoTexto = tipos.filter(Boolean).join(" ");
-    if (/itemlist|collectionpage|blog|newsmediaorganization|website|webpage|searchresults/i.test(tipoTexto)) {
-      const elementos = nodo.itemListElement || nodo.mainEntity?.itemListElement || nodo.blogPost || nodo.hasPart;
-      if (Array.isArray(elementos)) elementos.forEach(apilar);
-      if (Array.isArray(nodo.mainEntity)) nodo.mainEntity.forEach(apilar);
+    if (!esTipoArticulo(tipoTexto)) {
+      // Contenedor (Blog, ItemList, WebPage...): solo se desciende si NO es
+      // noticia. Ojo: "BlogPosting" contiene "blog" pero ES artículo, por eso
+      // el chequeo de artículo va primero.
+      if (/itemlist|collectionpage|blog|newsmediaorganization|website|webpage|searchresults/i.test(tipoTexto)) {
+        const elementos = nodo.itemListElement || nodo.mainEntity?.itemListElement || nodo.blogPost || nodo.hasPart;
+        if (Array.isArray(elementos)) elementos.forEach(apilar);
+        if (Array.isArray(nodo.mainEntity)) nodo.mainEntity.forEach(apilar);
+      }
       return;
     }
-    if (!esTipoArticulo(tipoTexto)) return;
     const url = absolver(nodo.url || nodo.mainEntityOfPage?.["@id"] || nodo.mainEntityOfPage || "", base);
     const titulo = String(nodo.headline || nodo.name || "").replace(/\s+/g, " ").trim();
     if (!url || !titulo || titulo.length < 10) return;
@@ -787,28 +799,33 @@ export function extraerFeedDeHtml(html, baseFinal) {
   let items = itemsDesdeJsonLd(nodosJsonLd, base, baseHost);
   let esArticuloUnico = false;
   if (items.length === 0) {
-    // Desempate listado vs. artículo único: algunas plantillas (WordPress)
-    // declaran og:type=article hasta en páginas de archivo. Si hay varios
-    // <article> (uno por tarjeta) y la heurística de lista encuentra 2+,
-    // es un listado aunque haya señales de artículo único.
+    // Desempate listado vs. artículo único.
     const numArticulos = $("article").length;
-    let lista = [];
     if (numArticulos >= 2) {
-      lista = itemsDesdeLista($, base, baseHost);
-    }
-    if (lista.length >= 2) {
-      items = lista;
+      // (b) Listado (un <article> por tarjeta): nunca artículo único aunque
+      // og:type=article mienta (típico en archivos de WordPress); eso
+      // bloquearía la paginación marcando esArticuloUnico.
+      items = itemsDesdeLista($, base, baseHost);
     } else {
       const unico = extraerArticuloUnico($, base, baseHost, nodosJsonLd);
       if (unico) {
         items = [unico];
         esArticuloUnico = true;
-      } else if (lista.length === 0) {
-        items = itemsDesdeLista($, base, baseHost);
       } else {
-        items = lista;
+        items = itemsDesdeLista($, base, baseHost);
       }
     }
+  }
+  // (c) Dedup por URL intra-página: la misma noticia suele enlazarse desde la
+  // tarjeta y el titular; conservar la primera aparición.
+  if (items.length > 1) {
+    const vistosPagina = new Set();
+    items = items.filter((it) => {
+      const u = String(it?.url || "");
+      if (!u || vistosPagina.has(u)) return false;
+      vistosPagina.add(u);
+      return true;
+    });
   }
   const paginaActual = numeroDePagina(base);
   const siguiente = esArticuloUnico ? "" : detectarSiguientePagina($, base, baseHost, paginaActual);
@@ -831,7 +848,39 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
   if (descarga.sinCambios) return { sinCambios: true, urlFinal: descarga.urlFinal };
 
   const { html, baseFinal, etag, lastModified } = descarga;
-  const primera = extraerFeedDeHtml(html, baseFinal);
+  let primera = extraerFeedDeHtml(html, baseFinal);
+  if (primera.items.length === 0 && !primera.esArticuloUnico) {
+    // (d) Sondeo inicial: algunas plantillas no exponen nada seguible en la
+    // primera página; probar /page/2/, ?paged=2 y ?page=2 como páginas
+    // iniciales antes de declarar WEB_INCOMPATIBLE.
+    let hostSondeo = "";
+    try {
+      hostSondeo = new URL(baseFinal).hostname.toLowerCase();
+    } catch {
+      // Base inválida: sin sondeo.
+    }
+    if (hostSondeo) {
+      for (const urlSondeo of candidatosSondeoPagina(primera.base || baseFinal, hostSondeo)) {
+        let sonda = null;
+        try {
+          sonda = await descargarPagina(urlSondeo);
+        } catch {
+          continue;
+        }
+        if (sonda?.sinCambios || !sonda?.html) continue;
+        let extra = null;
+        try {
+          extra = extraerFeedDeHtml(sonda.html, sonda.baseFinal);
+        } catch {
+          continue;
+        }
+        if (extra && extra.items.length > 0 && !extra.esArticuloUnico) {
+          primera = extra;
+          break;
+        }
+      }
+    }
+  }
   if (primera.items.length === 0) {
     throw errorWeb(
       "Esta página no tiene una estructura de contenido compatible: no se encontraron artículos (ni datos JSON-LD, ni artículo único, ni lista de titulares).",

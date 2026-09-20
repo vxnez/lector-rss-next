@@ -462,7 +462,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               )}
               {metodoMostrado && (
                 <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap">
-                  {metodoMostrado === "gemini" || metodoMostrado === "local" ? t("lector.ia") : metodoMostrado === "manual" ? t("lector.manual") : t("lector.sin_ia")} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
+                  {metodoMostrado === "gemini" || metodoMostrado === "local" || metodoMostrado === "groq" ? t("lector.ia") : metodoMostrado === "manual" ? t("lector.manual") : t("lector.sin_ia")} · {Math.round(Number(confianzaMostrada || 0) * 100)}%
                 </span>
               )}
               {fechaFormateada && (

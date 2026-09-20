@@ -298,6 +298,27 @@ export async function deleteFuente(id, usuario_id) {
   });
 }
 
+// Borrado masivo atómico del backend: una transacción todo-o-nada.
+// 200 {ok, eliminadas, articulos_eliminados}; 404 {error:not_found, faltan}
+// sin borrar nada. Solo reintenta ante 429 (no procesado), así que no hay
+// riesgo de doble borrado en 502/504.
+export async function deleteFuentesBulk(ids, usuario_id) {
+  const lista = [...new Set(
+    (Array.isArray(ids) ? ids : [ids])
+      .map((v) => Number(String(v).trim()))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  )];
+  if (lista.length === 0) {
+    const err = new Error("IDs de fuente requeridos");
+    err.status = 400;
+    throw err;
+  }
+  return api("/api/data/fuentes", {
+    method: "DELETE",
+    query: { usuario_id: String(usuario_id), ids: lista.join(",") },
+  });
+}
+
 // ---- Refresh (ingesta del backend) ----
 export async function refreshFuentes(usuario_id, fuente_id, { timeoutMs = 55000 } = {}) {
   const uid = String(usuario_id);

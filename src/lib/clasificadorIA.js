@@ -233,9 +233,13 @@ function validarPropuestaCategoria(propuesta) {
   );
   if (!categoriaValida) return null;
   const confianzaNumerica = Number(propuesta.confianza);
+  // Método dinámico según proveedor (configIA): 'groq' con IA_PROVEEDOR=groq,
+  // 'gemini' en cualquier otro caso. Hardcodearlo a 'gemini' dejaba las filas
+  // groq como pendientes eternas.
+  const metodo = configIA().proveedor === "groq" ? "groq" : "gemini";
   return {
     categoria: categoriaValida,
-    metodo: "gemini",
+    metodo,
     confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
   };
 }
