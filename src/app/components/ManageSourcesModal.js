@@ -50,8 +50,18 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       if (res.ok) {
         const data = await res.json();
         const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
+        let counts = null;
+        try {
+          const r = await fetch("/api/rss?tipo=conteo_fuentes", { cache: "no-store", signal });
+          if (r.ok) counts = (await r.json().catch(() => null))?.counts || null;
+        } catch {
+          // Sin conteos: se conserva el valor del backend.
+        }
         return sourcesArr.map((s) => ({
           ...s,
+          ...(counts && s?.id !== undefined && counts[String(s.id)] !== undefined
+            ? { articulos_count: counts[String(s.id)] }
+            : {}),
           convertFullPage: Number(s.convert_full_page) === 1 || s.convertFullPage === true,
         }));
       }

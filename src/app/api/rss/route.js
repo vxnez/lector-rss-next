@@ -341,10 +341,16 @@ async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
 // ---------- Normalización de respuestas del backend ----------
 
 function extraerLista(res) {
-  if (Array.isArray(res)) return { items: res, total: res.length };
+  if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
   const items = res?.articles || res?.articulos || res?.data || res?.items || [];
-  const total = Number(res?.total ?? res?.count ?? items.length) || items.length;
-  return { items: Array.isArray(items) ? items : [], total };
+  const crudo = res?.total ?? res?.count;
+  // Sin total del backend no hay última página conocida: se infiere hasMore
+  // por bloque lleno (ver rama paginada). `exacto` lo señala.
+  if (crudo === undefined || crudo === null) {
+    return { items: Array.isArray(items) ? items : [], total: Array.isArray(items) ? items.length : 0, exacto: false };
+  }
+  const total = Number(crudo) || (Array.isArray(items) ? items.length : 0);
+  return { items: Array.isArray(items) ? items : [], total, exacto: true };
 }
 
 function repararTextoMalDecodificado(texto = "") {
@@ -520,8 +526,21 @@ export async function GET(req) {
       return NextResponse.json(medios);
     }
 
-    if (tipo === "conteos") {
-      const stats = await getStats(userId).catch(() => null);
+    // Conteos por fuente para el gestor (el backend no manda articulos_count):
+    // un solo bulk y agrupado local. Topado en 1000 (ver `truncado`).
+    if (tipo === "conteo_fuentes") {
+      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
+      const { items } = extraerLista(res);
+      const counts = {};
+      for (const a of items || []) {
+        const fid = a?.fuente_id ?? a?.fuenteId;
+        if (fid === undefined || fid === null) continue;
+        counts[String(fid)] = (counts[String(fid)] || 0) + 1;
+      }
+      return NextResponse.json({ counts, truncado: (items || []).length >= 1000 });
+    }
+
+    if (tipo === "conteos") {      const stats = await getStats(userId).catch(() => null);
       const articulos = Number(stats?.articulos ?? stats?.total ?? 0) || 0;
       const pendientes = Number(stats?.no_leidos ?? stats?.pendientes ?? 0) || 0;
       let guardadas = Number(stats?.guardadas ?? stats?.guardados ?? 0) || 0;
@@ -591,7 +610,12 @@ export async function GET(req) {
 
     if (necesitaLocal) {
       const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, categoria: categoriaUnica, ...base, order, dir });
-      let { items } = extraerLista(res);
+      let { items, exacto } = extraerLista(res);
+      // El bulk va topado en 1000: si vino lleno, el total filtrado es cota
+      // inferior y puede haber más páginas (el frontend retrocede solo si la
+      // página extra llega vacía).
+      const topeBulk = items.length >= 1000;
+      if (topeBulk) exacto = false;
       if (fuentesFiltro.length > 0) {
         const set = new Set(fuentesFiltro.map(String));
         items = items.filter((a) => set.has(String(a.fuente_id)));
@@ -605,10 +629,13 @@ export async function GET(req) {
       if (orden === "az") items.sort((a, b) => String(a.titulo).localeCompare(String(b.titulo, "es")));
       else if (orden === "za") items.sort((a, b) => String(b.titulo).localeCompare(String(a.titulo), "es"));
       const total = items.length;
-      const totalPaginas = Math.max(Math.ceil(total / limite), 1);
+      // Total inexacto y bloque final lleno: se ofrece la página siguiente
+      // aunque "total" no la vea (retroceso automático si llega vacía).
+      const hayMasLocal = !exacto && total > 0 && total % limite === 0;
+      const totalPaginas = hayMasLocal ? pagina + 1 : Math.max(Math.ceil(total / limite), 1);
       const paginaSegura = Math.min(pagina, totalPaginas);
       const slice = items.slice((paginaSegura - 1) * limite, (paginaSegura - 1) * limite + limite).map(repararFilaArticulo);
-      return NextResponse.json({ articles: slice, total, page: paginaSegura, limit: limite, totalPages: totalPaginas, hasMore: (paginaSegura - 1) * limite + slice.length < total });
+      return NextResponse.json({ articles: slice, total, page: paginaSegura, limit: limite, totalPages: totalPaginas, hasMore: hayMasLocal || (paginaSegura - 1) * limite + slice.length < total });
     }
 
     const res = await getArticulos({
@@ -621,16 +648,22 @@ export async function GET(req) {
       order,
       dir,
     });
-    const { items, total } = extraerLista(res);
+    const { items, total, exacto } = extraerLista(res);
     const articulos = items.map(repararFilaArticulo);
-    const totalPaginas = Math.max(Math.ceil(total / limite), 1);
+    // Sin total del backend: bloque lleno => puede haber siguiente (ver arriba).
+    const hayMas = exacto
+      ? desplazamiento + articulos.length < total
+      : articulos.length >= limite;
+    const totalPaginas = exacto
+      ? Math.max(Math.ceil(total / limite), 1)
+      : (hayMas ? pagina + 1 : Math.max(pagina, 1));
     return NextResponse.json({
       articles: articulos,
-      total,
+      total: exacto ? total : desplazamiento + articulos.length,
       page: Math.min(pagina, totalPaginas),
       limit: limite,
       totalPages: totalPaginas,
-      hasMore: desplazamiento + articulos.length < total,
+      hasMore: hayMas,
     });
   } catch (error) {
     console.error("Error al obtener datos vía API:", error?.message || error);
