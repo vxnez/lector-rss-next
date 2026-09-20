@@ -337,6 +337,8 @@ export function useFeedState({
   const toggleGuardado = useCallback(
     async (id, guardadoActual) => {
       const guardadoNuevo = !guardadoActual;
+      const indiceRespaldo = articulos.findIndex((a) => a.id === id);
+      const respaldo = indiceRespaldo >= 0 ? articulos[indiceRespaldo] : null;
       setArticulos((prev) =>
         prev.map((art) => (art.id === id ? { ...art, guardado: guardadoNuevo } : art))
       );
@@ -359,7 +361,16 @@ export function useFeedState({
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || "No se pudo actualizar el estado guardado.");
         }
-        recargarDatos();
+        // El listado del backend aún no refleja guardado (lo lee de otra
+        // tabla que el payload): NO refetchear la lista o pisaría la marca.
+        // Se excluye en vista local según pestaña y solo se reconcilian conteos.
+        if (guardadoNuevo && activeTab !== "guardadas") {
+          setArticulos((prev) => prev.filter((art) => art.id !== id));
+          setTotalNoticias((prev) => Math.max((Number(prev) || 1) - 1, 0));
+        } else if (!guardadoNuevo && activeTab === "guardadas") {
+          setArticulos((prev) => prev.filter((art) => art.id !== id));
+          setTotalNoticias((prev) => Math.max((Number(prev) || 1) - 1, 0));
+        }
         fetchConteos();
         return true;
       } catch {
@@ -370,13 +381,23 @@ export function useFeedState({
           const artObj = articulos.find((a) => a.id === id);
           if (artObj) sincronizarArticulosOffline([{ ...artObj, guardado: 1 }]);
         }
-        setArticulos((prev) =>
-          prev.map((art) => (art.id === id ? { ...art, guardado: guardadoActual } : art))
-        );
+        if (respaldo) {
+          setArticulos((prev) => {
+            const sin = prev.filter((art) => art.id !== id);
+            sin.splice(Math.min(Math.max(indiceRespaldo, 0), sin.length), 0, respaldo);
+            return sin;
+          });
+        } else {
+          setArticulos((prev) =>
+            prev.map((art) => (art.id === id ? { ...art, guardado: guardadoActual } : art))
+          );
+        }
+        recargarDatos();
+        fetchConteos();
         return false;
       }
     },
-    [articulos, fetchConteos, recargarDatos]
+    [activeTab, articulos, fetchConteos, recargarDatos]
   );
 
   const actualizarCategoria = useCallback(
