@@ -61,10 +61,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account }) {
-      // OAuth vía API: vincula o crea sin tocar MySQL.
+      // OAuth vía API: vincula o crea sin tocar MySQL. Lectura fresca
+      // (force): crear sobre un fantasma cacheado duplicaría la sesión
+      // contra un id eliminado.
       if (account?.provider === "google" || account?.provider === "github") {
         try {
-          const existente = await getUserByEmail(user.email);
+          const existente = await getUserByEmail(user.email, { force: true });
           if (!existente) {
             try {
               await createUser({

@@ -153,10 +153,12 @@ export async function getHealth() {
 }
 
 // ---- Usuarios ----
-export async function getUser(id) {
+export async function getUser(id, { force = false } = {}) {
   const clave = `id:${String(id)}`;
-  const hit = leerCache(clave);
-  if (hit) return hit;
+  if (!force) {
+    const hit = leerCache(clave);
+    if (hit) return hit;
+  }
   const data = await api(`/api/users/${encodeURIComponent(id)}`);
   const usuario = data?.user || data?.usuario || data;
   if (usuario?.id || usuario?.email) {
@@ -166,12 +168,17 @@ export async function getUser(id) {
   return data;
 }
 
-export async function getUserByEmail(email) {
+export async function getUserByEmail(email, { force = false } = {}) {
   const correo = String(email || "").trim();
   if (!correo) return null;
   const clave = `email:${correo.toLowerCase()}`;
-  const hit = leerCache(clave);
-  if (hit) return hit;
+  // Rutas de escritura (signIn/register) usan force:true: decidir crear sobre
+  // un fantasma cacheado (p. ej. cuenta recién eliminada) abre la app con un
+  // id que ya no existe y sin fila nueva en la BD.
+  if (!force) {
+    const hit = leerCache(clave);
+    if (hit) return hit;
+  }
   // El backend soporta `?email=` filtrado en SQL (verificado 2026-09-19).
   // Si no hay coincidencia se devuelve null sin lanzar el listado completo.
   try {

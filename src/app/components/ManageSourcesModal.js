@@ -46,17 +46,16 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   const fetchSources = useCallback(async (signal) => {
     try {
-      const res = await fetch("/api/sources", { cache: "no-store", signal });
-      if (res.ok) {
-        const data = await res.json();
-        const sourcesArr = Array.isArray(data) ? data : (data.sources || data.data || []);
-        let counts = null;
-        try {
-          const r = await fetch("/api/rss?tipo=conteo_fuentes", { cache: "no-store", signal });
-          if (r.ok) counts = (await r.json().catch(() => null))?.counts || null;
-        } catch {
-          // Sin conteos: se conserva el valor del backend.
-        }
+      // Fuentes y conteos en paralelo: el modal no espera una tras otra.
+      const [res, counts] = await Promise.all([
+        fetch("/api/sources", { cache: "no-store", signal }).then((r) => (r.ok ? r.json().catch(() => null) : null)),
+        fetch("/api/rss?tipo=conteo_fuentes", { cache: "no-store", signal })
+          .then((r) => (r.ok ? r.json().catch(() => null) : null))
+          .then((d) => d?.counts || null)
+          .catch(() => null),
+      ]);
+      if (res) {
+        const sourcesArr = Array.isArray(res) ? res : (res.sources || res.data || []);
         return sourcesArr.map((s) => ({
           ...s,
           ...(counts && s?.id !== undefined && counts[String(s.id)] !== undefined

@@ -1,7 +1,7 @@
 // src/app/api/datos/route.js — Exportar y eliminar datos propios vía API interna.
 // Solo sesión real (como /api/perfil); invitados usan salir (efímero).
 import { auth } from "@/auth";
-import { api, deleteFuente, deleteUser, getArticulos, getFuentes, getUser } from "@/lib/api";
+import { api, deleteFuente, deleteUser, getArticulos, getFuentes, getUser, invalidarUsuarioCache } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -72,6 +72,10 @@ export async function DELETE() {
     }
     // Borrado delegado al backend (elimina cuenta + asociados).
     await deleteUser(userId);
+    // Sin esta invalidación, la caché (email->usuario) seguiría devolviendo al
+    // borrado 45s: re-registrar con el mismo correo abriría la app con un id
+    // fantasma y sin fila nueva en la BD.
+    invalidarUsuarioCache(userId, session?.user?.email);
     return NextResponse.json({ message: "Cuenta y datos eliminados" });
   } catch (error) {
     console.error("Error al eliminar datos vía API:", error?.status ? `status=${error.status}` : "", error?.message || error, error?.data ? JSON.stringify(error.data).slice(0, 500) : "");

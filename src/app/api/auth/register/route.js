@@ -17,7 +17,7 @@ export async function POST(req) {
       );
     }
 
-    const existente = await getUserByEmail(email).catch(() => null);
+    const existente = await getUserByEmail(email, { force: true }).catch(() => null);
     if (existente) {
       return NextResponse.json({ error: "El correo ya está registrado" }, { status: 400 });
     }
