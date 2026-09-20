@@ -250,7 +250,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("fuentes.convert_full_err"));
+        const detalle = data?.detalle || data?.error;
+        throw new Error(detalle ? `${t("fuentes.convert_full_err")}: ${detalle}` : t("fuentes.convert_full_err"));
       }
       if (onChange) onChange();
       if (siguiente) {
@@ -434,7 +435,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("fuentes.err_actualizar"));
+        const detalle = data?.detalle || data?.error;
+        throw new Error(detalle ? `${t("fuentes.err_actualizar")}: ${detalle}` : (data.error || t("fuentes.err_actualizar")));
       }
 
       setSources((prev) => prev.map((source) => (

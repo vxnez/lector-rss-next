@@ -867,6 +867,9 @@ export default function HomePage() {
       const res = await fetch(`/api/rss?delete_all=true&tab=${activeTab}`, { method: "DELETE" });
       if (!res.ok) throw new Error(t("avisos.eliminar_err"));
       setPagina(1);
+      // Re-sincroniza lista + conteos con el servidor: los contadores solo
+      // son fiables si se releen tras la mutación (el backend es la verdad).
+      recargarDatos();
       fetchConteos();
       notify(t("avisos.eliminadas_ok"), "success");
     } catch (err) {

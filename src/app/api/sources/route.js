@@ -117,14 +117,18 @@ export async function PUT(req) {
       await patchFuente(id, patch);
     } catch (error) {
       const status = Number(error?.status) || 500;
+      const detalle = error?.data?.error || error?.data?.message || error?.message;
+      const cuerpo =
+        typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {};
       if (status === 404) {
-        return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+        return NextResponse.json({ error: "Fuente no encontrada o no autorizada", ...cuerpo }, { status: 404 });
       }
       // Backend sin PATCH de fuentes: edición no soportada.
       if (status === 404 || status === 405 || status === 501) {
-        return NextResponse.json({ error: "Edición no soportada por el backend" }, { status: 501 });
+        return NextResponse.json({ error: "Edición no soportada por el backend", ...cuerpo }, { status: 501 });
       }
-      throw error;
+      console.warn("PUT /api/sources rechazado por backend:", `status=${status}`, typeof detalle === "string" ? detalle.slice(0, 300) : "");
+      return NextResponse.json({ error: "Error al actualizar fuente", ...cuerpo }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -132,8 +136,20 @@ export async function PUT(req) {
       ...(flag !== undefined ? { convertFullPage: flag === 1 } : {}),
     });
   } catch (error) {
-    console.error("Error en PUT /api/sources vía API:", error?.message || error);
-    return NextResponse.json({ error: "Error al actualizar fuente" }, { status: 500 });
+    console.error(
+      "Error en PUT /api/sources vía API:",
+      error?.status ? `status=${error.status}` : "",
+      error?.message || error,
+      error?.data ? JSON.stringify(error.data).slice(0, 500) : ""
+    );
+    const detalle = error?.data?.error || error?.data?.message || error?.message;
+    return NextResponse.json(
+      {
+        error: "Error al actualizar fuente",
+        ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+      },
+      { status: 500 }
+    );
   }
 }
 
