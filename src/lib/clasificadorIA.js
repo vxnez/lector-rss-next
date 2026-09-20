@@ -58,6 +58,9 @@ export function configIA() {
 
 const GEMINI_LOTE_TAMANO = 24;
 const GEMINI_LOTE_MAX_TOKENS = 2200;
+// Umbral mínimo de confianza persistible (80%): la interfaz nunca muestra un
+// veredicto por debajo; lo rechazado sigue pendiente para reintentarse.
+const UMBRAL_CONFIANZA_MINIMA = 0.8;
 // Tope por llamada: con fail-fast ante 429, el peor caso por petición ronda 2
 // llamadas y cabe holgado en el maxDuration (60 s) del serverless. La espera
 // de cuota la hace el cliente entre lotes.
@@ -73,7 +76,7 @@ function normalizarCategoriaLocal(valor = "") {
 
 function construirInstruccionLote(noticias = []) {
   const listado = noticias
-    .map((noticia, indice) => `[${indice}] Título: ${(noticia.titulo || "").slice(0, 300)}\n[${indice}] Resumen: ${(noticia.resumen || "").slice(0, 250)}`)
+    .map((noticia, indice) => `[${indice}] Título: ${(noticia.titulo || "").slice(0, 300)}\n[${indice}] Resumen: ${(noticia.resumen || "").slice(0, 300)}`)
     .join("\n");
   return `Eres un clasificador de noticias. Clasifica CADA una de las siguientes noticias eligiendo la ÚNICA categoría del catálogo que mejor la describa.
 
@@ -83,8 +86,15 @@ ${CATALOGO_PROMPT}
 Reglas:
 - Responde únicamente un arreglo JSON válido con esta forma exacta: [{"i":0,"categoria":"<nombre exacto de una categoría del catálogo>","confianza":0.9}]
 - Incluye un objeto por cada noticia, con su índice "i".
-- "confianza" es un número entre 0 y 1 que indica qué tan seguro estás.
+- "confianza" es un número entre 0 y 1 que indica qué tan seguro estás. Solo responde 0.8 o más cuando la noticia encaja CLARAMENTE en la categoría; si dudas entre dos, elige la del tema central del titular y baja la confianza.
 - No inventes ni combines categorías; usa exactamente un nombre del catálogo.
+
+Desempates frecuentes (el titular manda sobre el contexto):
+- Consola portátil / dispositivo para jugar aunque use Android o Snapdragon: Videojuegos, no Celulares.
+- Smartphone, iPhone, operador o plan móvil como tema central: Celulares.
+- IA aplicada a programar, APIs, código, DevOps: Developers, no Tecnología.
+- Ciberseguridad, hackeo, malware, ransomware: Tecnología (salvo delito con proceso judicial: Seguridad y Justicia).
+- Precio/oferta como gancho pero el producto es lo central: la categoría del producto.
 
 Noticias:
 ${listado}`;
@@ -233,6 +243,10 @@ function validarPropuestaCategoria(propuesta) {
   );
   if (!categoriaValida) return null;
   const confianzaNumerica = Number(propuesta.confianza);
+  // Umbral mínimo 80%: un veredicto tibio (<0.8) es peor que no clasificar,
+  // porque fija una etiqueta errónea visible (p. ej. consola retro como
+  // "Celulares" al 50%). Se rechaza y la noticia sigue pendiente.
+  if (!Number.isFinite(confianzaNumerica) || confianzaNumerica < UMBRAL_CONFIANZA_MINIMA) return null;
   // Método dinámico según proveedor (configIA): 'groq' con IA_PROVEEDOR=groq,
   // 'gemini' en cualquier otro caso. Hardcodearlo a 'gemini' dejaba las filas
   // groq como pendientes eternas.
@@ -240,7 +254,7 @@ function validarPropuestaCategoria(propuesta) {
   return {
     categoria: categoriaValida,
     metodo,
-    confianza: Number.isFinite(confianzaNumerica) ? Math.max(0, Math.min(1, confianzaNumerica)) : 0.5,
+    confianza: Math.max(0, Math.min(1, confianzaNumerica)),
   };
 }
 

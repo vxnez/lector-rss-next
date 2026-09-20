@@ -18,18 +18,23 @@ import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
 
 // Pendiente de IA: "General" (categoría por defecto) o nula equivale a no
 // categorizado y SIEMPRE se reprocesa, salvo edición manual del usuario.
-// Los veredictos IA existentes con categoría real (gemini/local) no se tocan.
-// Nota: si la IA devuelve General de nuevo, la próxima pasada la retoma;
-// es el comportamiento pedido (ninguna noticia conserva General al final).
+// Además, un veredicto propio (gemini/groq) con confianza <80% se retoma:
+// la interfaz solo muestra 80-100%, así que un 50% visible es un pendiente.
+// ('local' no entra aquí: su 0.5 por defecto es indistinguible de un valor
+// real y reprocesarlo quemaría cuota sin señal.)
 function esPendienteIA(a) {
   if (!a || typeof a !== "object") return false;
   if (Number(a.descartado) === 1) return false;
   const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
   if (metodo === "manual") return false;
-  if (metodo === "gemini" || metodo === "local" || metodo === "groq") {
+  if (metodo === "gemini" || metodo === "groq") {
     const cat = String(a.categoria ?? "").trim();
-    return cat === "" || cat.toLowerCase() === "general";
+    if (cat === "" || cat.toLowerCase() === "general") return true;
+    const conf = Number(a.clasificacion_confianza ?? a.confianza);
+    if (Number.isFinite(conf) && conf < 0.8) return true;
+    return false;
   }
+  if (metodo === "local") return false;
   return true;
 }
 
