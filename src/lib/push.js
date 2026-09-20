@@ -49,17 +49,23 @@ export async function sendPushToUser(userId, { title, body, url = "/" } = {}) {
   let enviadas = 0;
   await Promise.all(
     subs.map(async (s) => {
+      // El backend devuelve {endpoint, keys:{p256dh,auth}} y/o plano.
+      const p256dh = s?.p256dh || s?.keys?.p256dh;
+      const auth = s?.auth || s?.keys?.auth;
+      if (!s?.endpoint || !p256dh || !auth) return;
       try {
         await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          { endpoint: s.endpoint, keys: { p256dh, auth } },
           payload
         );
         enviadas++;
       } catch (err) {
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           try {
-            await api(`/api/push/subscriptions?endpoint=${encodeURIComponent(s.endpoint)}`, {
+            await api("/api/push/subscriptions", {
               method: "DELETE",
+              query: { usuario_id: String(userId) },
+              body: { usuario_id: String(userId), endpoint: s.endpoint },
             });
           } catch {
             // Poda best-effort.

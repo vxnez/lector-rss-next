@@ -832,9 +832,11 @@ export default function HomePage() {
       const pendientes = Number(data.pendientes) || 0;
       const omitidas = Number(data.omitidas) || 0;
       const purgados = Number(data.purgados) || 0;
+      const nuevos = Number(data.nuevos) || 0;
       let mensaje = restaurados > 0
         ? t("avisos.refresh_restauradas", { n: restaurados })
         : t("avisos.refresh_ok");
+      if (nuevos > 0) mensaje += t("avisos.refresh_nuevas", { n: nuevos });
       if (omitidas > 0) mensaje += t("avisos.sin_cambios", { n: omitidas });
       if (purgados > 0) mensaje += t("avisos.purgadas", { n: purgados });
       if (pendientes > 0) {

@@ -1,8 +1,9 @@
-// src/app/api/cron/refresh/route.js — Refresco delegado al backend.
-// Sin MySQL directo: este cron ya no itera usuarios locales. El backend
-// (servxn) es el dueño de fuentes/artículos; aquí se verifica salud y se
-// responde ok para no romper Vercel Cron.
-import { getHealth } from "@/lib/api";
+// src/app/api/cron/refresh/route.js — Refresco programado vía backend.
+// Vercel Cron dispara aquí (ver vercel.json); este handler lista usuarios y
+// refresca cada uno contra la API interna, agregando el resultado.
+// Sin MySQL directo. Requiere CRON_SECRET como Bearer en producción.
+import { api, refreshFuentes } from "@/lib/api";
+import { sendPushToUser } from "@/lib/push";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -21,12 +22,37 @@ export async function GET(req) {
   }
 
   try {
-    await getHealth().catch(() => null);
-    // El refresco real lo hace el backend; Vercel solo actúa como disparador.
+    const lista = await api("/api/users").catch(() => []);
+    const usuarios = Array.isArray(lista)
+      ? lista
+      : lista?.data || lista?.users || lista?.usuarios || [];
+    let usuariosProcesados = 0;
+    let totalNuevas = 0;
+    const errores = [];
+    for (const u of usuarios) {
+      const uid = u?.id;
+      if (uid === undefined || uid === null) continue;
+      try {
+        // Presupuesto acotado por usuario para no quemar los 60s de Vercel.
+        const r = await refreshFuentes(uid, null, { timeoutMs: 20000 });
+        const nuevos = Number(r?.nuevos) || 0;
+        usuariosProcesados++;
+        totalNuevas += nuevos;
+        if (nuevos > 0) {
+          await sendPushToUser(uid, {
+            title: "RSS Dashboard",
+            body: `${nuevos} noticias nuevas`,
+            url: "/",
+          }).catch(() => null);
+        }
+      } catch (error) {
+        errores.push({ id: uid, error: String(error?.message || error).slice(0, 120) });
+      }
+    }
     return NextResponse.json({
-      usuariosProcesados: 0,
-      totalNuevas: 0,
-      delegado: "backend",
+      usuariosProcesados,
+      totalNuevas,
+      ...(errores.length > 0 ? { errores: errores.slice(0, 10) } : {}),
     });
   } catch (error) {
     console.error("[CRON] Error general vía API:", error?.message || error);

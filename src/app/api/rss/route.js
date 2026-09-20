@@ -11,7 +11,9 @@ import {
   getStats,
   marcarArticulo,
   patchFuente,
+  refreshFuentes,
 } from "@/lib/api";
+import { sendPushToUser } from "@/lib/push";
 import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
@@ -409,14 +411,50 @@ export async function POST(req) {
     }
 
     if (body.action === "refresh_source" || body.action === "refresh") {
-      return NextResponse.json({
-        message: "Actualización delegada al backend",
-        nuevos: 0,
-        restaurados: 0,
-        pendientes: 0,
-        omitidas: 0,
-        purgados: 0,
-      });
+      // Refresco real en el backend (ingesta). Sin fuente_id = todas.
+      const fuenteId = body.source_id ?? body.fuente_id ?? body.id ?? null;
+      try {
+        const r = await refreshFuentes(userId, fuenteId, { timeoutMs: 55000 });
+        const nuevos = Number(r?.nuevos) || 0;
+        const omitidas = Number(r?.omitidas) || 0;
+        const actualizadas = Number(r?.actualizadas ?? r?.fuentes) || 0;
+        if (nuevos > 0) {
+          // P2: avisar al usuario (best-effort, no rompe la respuesta).
+          await sendPushToUser(userId, {
+            title: "RSS Dashboard",
+            body: `${nuevos} noticias nuevas`,
+            url: "/",
+          }).catch((err) => console.warn("Push tras refresh falló:", err?.message || err));
+        }
+        return NextResponse.json({
+          message:
+            nuevos > 0
+              ? `Actualización completa: ${nuevos} noticias nuevas`
+              : "Fuentes actualizadas sin novedades",
+          nuevos,
+          restaurados: 0,
+          pendientes: 0,
+          omitidas,
+          purgados: 0,
+          actualizadas,
+          detalle: r?.detalle || undefined,
+        });
+      } catch (error) {
+        console.error(
+          "Error en refresh vía backend:",
+          error?.status ? `status=${error.status}` : "",
+          error?.message || error
+        );
+        const detalle = error?.data?.error || error?.data?.message || error?.message;
+        const status = Number(error?.status) === 429 ? 429 : 500;
+        return NextResponse.json(
+          {
+            error: "No se pudo refrescar desde el backend",
+            ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+          },
+          { status }
+        );
+      }
     }
 
     const { url_feed } = body;

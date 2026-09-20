@@ -557,6 +557,7 @@ const TEXTOS = {
     avisos: {
       refresh_restauradas: "Fuentes actualizadas. Se recuperaron {n} noticias borradas.",
       refresh_ok: "Fuentes y noticias actualizadas.",
+      refresh_nuevas: " {n} noticias nuevas.",
       ia_ok: "{n} noticias categorizadas con IA.",
       ia_sin_pendientes: "No hay noticias pendientes de categorización.",
       ia_lanzada: "Categorización lanzada en segundo plano...",

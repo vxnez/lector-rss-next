@@ -298,6 +298,24 @@ export async function deleteFuente(id, usuario_id) {
   });
 }
 
+// ---- Refresh (ingesta del backend) ----
+export async function refreshFuentes(usuario_id, fuente_id, { timeoutMs = 55000 } = {}) {
+  const uid = String(usuario_id);
+  // POST preferido; el backend también acepta GET como variante.
+  const body = { usuario_id: uid };
+  if (fuente_id !== undefined && fuente_id !== null) body.fuente_id = fuente_id;
+  try {
+    return await api("/api/data/refresh", { method: "POST", body, timeoutMs });
+  } catch (error) {
+    if ([404, 405, 501].includes(Number(error?.status))) {
+      const query = { usuario_id: uid };
+      if (fuente_id !== undefined && fuente_id !== null) query.fuente_id = String(fuente_id);
+      return await api("/api/data/refresh", { query, timeoutMs });
+    }
+    throw error;
+  }
+}
+
 // ---- Artículos ----
 export async function getArticulos({
   usuario_id,
