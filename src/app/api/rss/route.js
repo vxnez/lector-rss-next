@@ -17,13 +17,14 @@ import { sendPushToUser } from "@/lib/push";
 import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
 
 // Pendiente de IA: sin clasificar (sin-ia) o atascada en General/nula, que no
-// sea edición manual ni ya clasificada, y no descartada. Cubre el falso
-// "completado" del backend: General inicial cuenta como pendiente.
+// sea edición manual ni ya clasificada (gemini/local), y no descartada. Cubre
+// el falso "completado": General inicial cuenta como pendiente, pero un
+// veredicto IA/manual existente nunca se reprocesa (sin bucles infinitos).
 function esPendienteIA(a) {
   if (!a || typeof a !== "object") return false;
   if (Number(a.descartado) === 1) return false;
   const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
-  if (metodo === "gemini" || metodo === "manual") return false;
+  if (metodo === "gemini" || metodo === "manual" || metodo === "local") return false;
   return true;
 }
 
@@ -414,8 +415,15 @@ async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
 
 // ---------- Normalización de respuestas del backend ----------
 
-function extraerLista(res) {
-  if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
+// Clasificado por IA: 'gemini' (pipeline del frontend) o 'local' (motor del
+// backend). Ambos cuentan como categorizados en filtros y contadores; 'manual'
+// es edición del usuario y nunca se reclasifica.
+function esClasificadoIA(a) {
+  const m = String(a?.clasificacion_metodo || "");
+  return m === "gemini" || m === "local";
+}
+
+function extraerLista(res) {  if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
   const items = res?.articles || res?.articulos || res?.data || res?.items || [];
   const crudo = res?.total ?? res?.count;
   // Sin total del backend no hay última página conocida: se infiere hasMore
@@ -681,8 +689,8 @@ export async function GET(req) {
         const set = new Set(fuentesFiltro.map(String));
         items = items.filter((a) => set.has(String(a.fuente_id)));
       }
-      if (ia === "con_ia") items = items.filter((a) => a.clasificacion_metodo === "gemini");
-      else if (ia === "sin_ia") items = items.filter((a) => (a.clasificacion_metodo || "sin-ia") === "sin-ia");
+      if (ia === "con_ia") items = items.filter((a) => esClasificadoIA(a));
+      else if (ia === "sin_ia") items = items.filter((a) => !esClasificadoIA(a) && String(a.clasificacion_metodo || "") !== "manual");
       const mapa = new Map();
       for (const a of items) {
         const cat = repararTextoMalDecodificado(a.categoria || "General");
@@ -734,8 +742,8 @@ export async function GET(req) {
         const set = new Set(categorias);
         items = items.filter((a) => set.has(a.categoria));
       }
-      if (ia === "con_ia") items = items.filter((a) => a.clasificacion_metodo === "gemini");
-      else if (ia === "sin_ia") items = items.filter((a) => (a.clasificacion_metodo || "sin-ia") === "sin-ia");
+      if (ia === "con_ia") items = items.filter((a) => esClasificadoIA(a));
+      else if (ia === "sin_ia") items = items.filter((a) => !esClasificadoIA(a) && String(a.clasificacion_metodo || "") !== "manual");
       if (orden === "az") items.sort((a, b) => String(a.titulo).localeCompare(String(b.titulo, "es")));
       else if (orden === "za") items.sort((a, b) => String(b.titulo).localeCompare(String(a.titulo), "es"));
       const total = items.length;

@@ -120,6 +120,8 @@ export default function HomePage() {
   // evita lanzamientos duplicados.
   const [iaProgreso, setIaProgreso] = useState(null);
   const iaEnCursoRef = useRef(false);
+  // Anti-doble-disparo automático por cuenta (login): el manual siempre pasa.
+  const iaAutoRef = useRef(null);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const [fuentesExpandidas, setFuentesExpandidas] = useState(false);
@@ -318,8 +320,10 @@ export default function HomePage() {
   // pendientes) con barra proporcional; cada lote refresca la vista para que
   // lo categorizado aparezca progresivamente. Los fallos de transporte
   // (timeout del serverless, red) no se disfrazan de "sin pendientes".
-  const handleCategorizarIA = useCallback(() => {
+  // Con {silencioso:true} (auto-disparos) no notifica si ya hay una corrida.
+  const handleCategorizarIA = useCallback((opciones = {}) => {
     if (iaEnCursoRef.current) {
+      if (opciones.silencioso) return;
       const pendientes = iaProgreso?.pendientes;
       notify(
         pendientes === null || pendientes === undefined
@@ -746,6 +750,15 @@ export default function HomePage() {
     };
   }, [session, pagina, tamanoPagina, activeTab, orden, busquedaAplicada, categoriasSeleccionadas, fuentesSeleccionadas, filtroIA, nonceRecarga]);
 
+  // Auto-categorización al iniciar sesión (una vez por cuenta): si no hay
+  // pendientes, el primer lote vuelve con restantes:0 y no hace nada más.
+  useEffect(() => {
+    const clave = session?.user ? (session.user.email || session.user.id) : null;
+    if (!clave || iaAutoRef.current === clave) return;
+    iaAutoRef.current = clave;
+    handleCategorizarIA({ silencioso: true });
+  }, [session, handleCategorizarIA]);
+
   const closeOnboardingSurvey = () => {
     // La guía se marca como vista al cerrarla por cualquier vía (completar,
     // omitir o X): reabrirla queda disponible en "Sugerencia de fuentes" o
@@ -771,8 +784,10 @@ export default function HomePage() {
       }
     }
     setShowOnboardingSurvey(false);
+    // Al cerrar la bienvenida puede haber fuentes recién agregadas sin
+    // clasificar: la cola arranca sola (silenciosa si ya corre).
+    handleCategorizarIA({ silencioso: true });
   };
-
   // Función para agregar fuentes desde la encuesta de onboarding (un clic).
   // Usa el pipeline completo de /api/rss (descubrimiento + descarga +
   // clasificación), igual que el alta manual: antes insertaba directo en
@@ -801,14 +816,15 @@ export default function HomePage() {
       fetchConteos();
       if (Number(data?.pendientes) > 0) {
         notify(t("avisos.cola_agregada"), "success");
-        procesarColaClasificacion();
       }
+      // La fuente nueva llega sin clasificar: dispara la cola en segundo plano.
+      handleCategorizarIA({ silencioso: true });
       return data;
     } catch (err) {
       console.error("Error agregando fuente desde onboarding:", err);
       throw err;
     }
-  }, [fetchSources, fetchConteos, notify, procesarColaClasificacion, recargarDatos, t]);
+  }, [fetchSources, fetchConteos, handleCategorizarIA, notify, recargarDatos, t]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -828,8 +844,7 @@ export default function HomePage() {
       else setPagina(1);
       fetchSources();
       fetchConteos();
-      const restaurados = Number(data.restaurados) || 0;
-      const pendientes = Number(data.pendientes) || 0;
+      const restaurados = Number(data.restaurados) || 0;      const pendientes = Number(data.pendientes) || 0;
       const omitidas = Number(data.omitidas) || 0;
       const purgados = Number(data.purgados) || 0;
       const nuevos = Number(data.nuevos) || 0;
@@ -844,6 +859,8 @@ export default function HomePage() {
         procesarColaClasificacion();
       }
       notify(mensaje, "success");
+      // Lo recién refrescado llega sin clasificar: cola en segundo plano.
+      if (nuevos > 0) handleCategorizarIA({ silencioso: true });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Error al refrescar las noticias:", err);
@@ -1751,8 +1768,9 @@ export default function HomePage() {
           }
           if (Number(data?.pendientes) > 0) {
             notify(t("avisos.cola_agregada"), "success");
-            procesarColaClasificacion();
           }
+          // El alta llega sin clasificar: cola en segundo plano.
+          handleCategorizarIA({ silencioso: true });
         }}
       />
       <ManageSourcesModal
