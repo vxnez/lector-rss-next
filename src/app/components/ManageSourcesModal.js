@@ -263,6 +263,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         throw new Error(detalle ? `${t("fuentes.convert_full_err")}: ${detalle}` : t("fuentes.convert_full_err"));
       }
       if (onChange) onChange();
+      await refrescarConteos();
       if (siguiente) {
         // Activado: refrescar con el crawler completo sin pedir otro clic.
         await handleRefreshSingle({ ...source, convertFullPage: true, convert_full_page: 1 });
@@ -277,6 +278,25 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
       setTogglingFullPageId(null);
     }
   };
+
+  // Recalcula los contadores por fuente y los fusiona en vivo, sin cerrar
+  // el modal ni forzar un refresco general (punto 2: el toggle de página
+  // completa y el refresco individual actualizan su contador al instante).
+  const refrescarConteos = useCallback(async (signal) => {
+    try {
+      const r = await fetch("/api/rss?tipo=conteo_fuentes", { cache: "no-store", signal });
+      if (!r.ok) return;
+      const counts = (await r.json().catch(() => null))?.counts || null;
+      if (!counts) return;
+      setSources((prev) => prev.map((s) => (
+        s?.id !== undefined && counts[String(s.id)] !== undefined
+          ? { ...s, articulos_count: counts[String(s.id)] }
+          : s
+      )));
+    } catch (err) {
+      if (err?.name !== "AbortError") console.warn("No se pudieron recargar conteos:", err?.message || err);
+    }
+  }, []);
 
   // Refrescar una fuente individual por su ID o URL de feed
   const handleRefreshSingle = async (source) => {
@@ -301,6 +321,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
           procesarColaClasificacion();
         }
         onNotify?.(mensaje, "success");
+        await refrescarConteos();
         if (onChange) onChange();
       } else {
         onNotify?.(t("fuentes.err_refrescar"), "error");

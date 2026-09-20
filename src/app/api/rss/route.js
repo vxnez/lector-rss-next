@@ -14,6 +14,78 @@ import {
   refreshFuentes,
 } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
+import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
+
+// Pendiente de IA: sin clasificar (sin-ia) o atascada en General/nula, que no
+// sea edición manual ni ya clasificada, y no descartada. Cubre el falso
+// "completado" del backend: General inicial cuenta como pendiente.
+function esPendienteIA(a) {
+  if (!a || typeof a !== "object") return false;
+  if (Number(a.descartado) === 1) return false;
+  const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
+  if (metodo === "gemini" || metodo === "manual") return false;
+  return true;
+}
+
+function normalizarCandidataIA(a) {
+  return {
+    id: a.id,
+    titulo: String(a.titulo ?? a.title ?? ""),
+    resumen: String(a.resumen ?? a.summary ?? a.descripcion ?? ""),
+  };
+}
+
+async function clasificarPendientesResponse(userId, body = {}) {
+  const limite = Math.min(Math.max(Number(body.lote) || 12, 1), 24);
+  const bulk = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
+  const lista = Array.isArray(bulk) ? bulk : bulk?.articulos || bulk?.articles || bulk?.data || [];
+  const pendientes = (Array.isArray(lista) ? lista : [])
+    .filter(esPendienteIA)
+    .sort((x, y) => String(y.fecha_publicacion || "").localeCompare(String(x.fecha_publicacion || "")))
+    .slice(0, limite)
+    .map(normalizarCandidataIA)
+    .filter((c) => c.id !== undefined && c.id !== null);
+
+  if (pendientes.length === 0) {
+    return NextResponse.json({ clasificados: 0, restantes: 0 });
+  }
+
+  const apiKey = configIA().apiKey;
+  if (!apiKey) {
+    return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave" });
+  }
+
+  const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes);
+  let clasificados = 0;
+  for (let i = 0; i < pendientes.length; i++) {
+    const resultado = resultados[i];
+    if (resultado?.metodo !== "gemini") continue;
+    try {
+      await marcarArticulo(pendientes[i].id, userId, {
+        categoria: resultado.categoria,
+        clasificacion_metodo: resultado.metodo,
+        clasificacion_confianza: resultado.confianza,
+      });
+      clasificados++;
+    } catch (error) {
+      console.warn("No se pudo persistir categoría:", pendientes[i].id, error?.message || error);
+    }
+  }
+
+  const bulk2 = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
+  const lista2 = Array.isArray(bulk2) ? bulk2 : bulk2?.articulos || bulk2?.articles || bulk2?.data || [];
+  const restantes = (Array.isArray(lista2) ? lista2 : []).filter(esPendienteIA).length;
+  const todosFallaron = clasificados === 0 && resultados.every((r) => r?.metodo !== "gemini");
+  const reintentarEn = esperaMs > 0
+    ? Math.min(Math.max(Math.ceil(esperaMs / 1000), 1), 120)
+    : todosFallaron ? 30 : 0;
+  return NextResponse.json({
+    clasificados,
+    restantes,
+    reintentarEn,
+    diag: clasificados > 0 ? null : (fallo || "respuesta"),
+  });
+}
 import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
@@ -407,7 +479,7 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
 
     if (body.action === "clasificar_pendientes") {
-      return NextResponse.json({ clasificados: 0, restantes: 0, reintentarEn: 0, diag: null });
+      return clasificarPendientesResponse(userId, body);
     }
 
     if (body.action === "refresh_source" || body.action === "refresh") {
