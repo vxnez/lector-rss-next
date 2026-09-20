@@ -565,7 +565,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
               title={t("fuentes.agregar_titulo")}
               aria-label={t("fuentes.agregar_aria")}
-              className="btn-press group bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 hover:shadow-lg hover:shadow-sky-600/20"
+              className="btn-press group bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5"
             >
               <Plus size={14} />
               <span className="hidden sm:inline">{t("fuentes.agregar")}</span>
@@ -610,7 +610,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
           {/* Buscador de fuentes por título o URL (filtrado en tiempo real). */}
           {!vistaOpml && (
-            <label className="relative flex items-center rounded-xl border border-gray-800 bg-gray-950/60 transition focus-within:border-sky-500/60 focus-within:shadow-[0_0_0_3px_rgba(14,165,233,0.15)]">
+            <label className="relative flex items-center rounded-xl border border-gray-800 bg-gray-950/60 transition focus-within:border-sky-500/60 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_15%,transparent)]">
               <Search size={15} className="absolute left-3 shrink-0 text-gray-500" aria-hidden="true" />
               <input
                 type="search"
@@ -807,7 +807,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                   type="button"
                   onClick={importarSeleccionadas}
                   disabled={importando || opmlItems.filter((i) => i.seleccionada && !i.duplicada).length === 0}
-                  className="btn-press w-full rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50 hover:shadow-lg hover:shadow-sky-600/20 flex items-center justify-center gap-2"
+                  className="btn-press w-full rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Upload size={15} />
                   {t("fuentes.opml_importar_btn", { n: opmlItems.filter((i) => i.seleccionada && !i.duplicada).length })}

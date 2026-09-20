@@ -4,7 +4,7 @@ export const TEMAS = [
   { id: "medianoche", nombre: "Medianoche", claro: false, bg: "#070b12", accent: "#27a9e8" },
   { id: "duna", nombre: "Duna", claro: false, bg: "#211f1f", accent: "#c47d50" },
   { id: "mineral", nombre: "Mineral", claro: false, bg: "#1d2b26", accent: "#bdd9d7" },
-  { id: "bosque", nombre: "Bosque", claro: false, bg: "#132a22", accent: "#28b330" },
+  { id: "bosque", nombre: "Bosque", claro: false, bg: "#132a22", accent: "#3aa244" },
   { id: "ebano", nombre: "Ébano", claro: false, bg: "#191827", accent: "#36b4ae" },
   { id: "celeste", nombre: "Celeste", claro: true, bg: "#e6e7da", accent: "#5c6850" },
   { id: "menta", nombre: "Menta", claro: true, bg: "#e2ede9", accent: "#2c4a3e" },

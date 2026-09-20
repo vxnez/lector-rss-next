@@ -101,8 +101,8 @@
   --surface-raised: #2e5a4d;
   --border: #3d6f5e;
   --muted: #93b8a4;
-  --accent: #28b330;
-  --accent-strong: #28b330;
+  --accent: #3aa244;
+  --accent-strong: #3aa244;
   --on-accent-strong: #0c1f14;
   --accent-ink: #a9ecb3;
   --ink: #e8f3ec;
@@ -118,10 +118,10 @@
   --color-gray-200: #d9e8dd;
   --color-gray-100: #e8f3ec;
 
-  --color-sky-600: #25a52e;
-  --color-sky-500: #28b330;
-  --color-sky-400: #4fd65a;
-  --color-sky-300: #7ce584;
+  --color-sky-600: #2f8f38;
+  --color-sky-500: #3aa244;
+  --color-sky-400: #5cb862;
+  --color-sky-300: #8fd694;
 }
 
 /* ============ ÉBANO (Ebony Clay #28263E + Java #36B4AE) — oscuro ============ */

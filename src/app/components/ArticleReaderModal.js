@@ -489,7 +489,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         {/* Barra de progreso de lectura */}
         <div className="sticky top-0 left-0 right-0 z-30 h-1 bg-app-raised/40 w-full overflow-hidden">
           <div
-            className="h-full bg-[var(--accent)] transition-[width] duration-100 ease-out shadow-[0_0_8px_var(--accent)]"
+            className="h-full bg-[var(--accent)] transition-[width] duration-100 ease-out"
             style={{ width: `${progresoLectura}%` }}
           />
         </div>
@@ -727,7 +727,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             href={article.url_original}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-press group px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center hover:shadow-lg hover:shadow-sky-600/20 min-w-0"
+            className="btn-press group px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0"
           >
             <span className="leading-tight">{t("lector.sitio")}</span>
             <ExternalLink size={14} className="shrink-0 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

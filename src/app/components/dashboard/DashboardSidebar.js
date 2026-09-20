@@ -92,7 +92,7 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className={`dashboard-control-sidebar scroll-oculto order-5 lg:order-last space-y-3 rounded-3xl border border-app-line/80 bg-app-surface/85 p-3 shadow-[0_20px_55px_-28px_color-mix(in_srgb,var(--accent)_55%,transparent)] backdrop-blur-xl sm:p-4 lg:sticky lg:top-24 ${
+      className={`dashboard-control-sidebar scroll-oculto order-5 lg:order-last space-y-3 rounded-3xl border border-app-line/80 bg-app-surface/85 p-3 backdrop-blur-xl sm:p-4 lg:sticky lg:top-24 ${
         panelMovilAbierto
           ? "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-20 max-lg:z-40 max-lg:max-h-[calc(70dvh-4rem)] max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:shadow-2xl"
           : "max-lg:hidden"
