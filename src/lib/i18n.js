@@ -272,6 +272,7 @@ const TEXTOS = {
       err_conexion: "Error de conexión al refrescar la fuente.",
       todas_ok_restauradas: "Todas las fuentes fueron actualizadas. Se recuperaron {n} noticias borradas.",
       todas_ok: "Todas las fuentes fueron actualizadas.",
+      nuevas: " {n} noticias nuevas.",
       sin_cambios: " {n} fuentes sin cambios.",
       eliminada_ok: "Fuente eliminada correctamente.",
       err_eliminar: "No se pudo eliminar la fuente.",

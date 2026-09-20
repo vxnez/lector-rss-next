@@ -16,15 +16,20 @@ import {
 import { sendPushToUser } from "@/lib/push";
 import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
 
-// Pendiente de IA: sin clasificar (sin-ia) o atascada en General/nula, que no
-// sea edición manual ni ya clasificada (gemini/local), y no descartada. Cubre
-// el falso "completado": General inicial cuenta como pendiente, pero un
-// veredicto IA/manual existente nunca se reprocesa (sin bucles infinitos).
+// Pendiente de IA: "General" (categoría por defecto) o nula equivale a no
+// categorizado y SIEMPRE se reprocesa, salvo edición manual del usuario.
+// Los veredictos IA existentes con categoría real (gemini/local) no se tocan.
+// Nota: si la IA devuelve General de nuevo, la próxima pasada la retoma;
+// es el comportamiento pedido (ninguna noticia conserva General al final).
 function esPendienteIA(a) {
   if (!a || typeof a !== "object") return false;
   if (Number(a.descartado) === 1) return false;
   const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
-  if (metodo === "gemini" || metodo === "manual" || metodo === "local") return false;
+  if (metodo === "manual") return false;
+  if (metodo === "gemini" || metodo === "local") {
+    const cat = String(a.categoria ?? "").trim();
+    return cat === "" || cat.toLowerCase() === "general";
+  }
   return true;
 }
 
@@ -498,6 +503,13 @@ export async function POST(req) {
         const nuevos = Number(r?.nuevos) || 0;
         const omitidas = Number(r?.omitidas) || 0;
         const actualizadas = Number(r?.actualizadas ?? r?.fuentes) || 0;
+        const detalle = Array.isArray(r?.detalle) ? r.detalle : [];
+        // Fuentes sin cambios = entradas del detalle sin novedades. El contador
+        // suelto `omitidas` del backend cuenta artículos omitidos (dedupe), NO
+        // fuentes: usarlo como "N fuentes" miente (p. ej. 130 con 10 reales).
+        const fuentesSinCambios = detalle.length > 0
+          ? detalle.filter((d) => Number(d?.nuevos || 0) === 0).length
+          : null;
         if (nuevos > 0) {
           // P2: avisar al usuario (best-effort, no rompe la respuesta).
           await sendPushToUser(userId, {
@@ -515,6 +527,7 @@ export async function POST(req) {
           restaurados: 0,
           pendientes: 0,
           omitidas,
+          fuentesSinCambios,
           purgados: 0,
           actualizadas,
           detalle: r?.detalle || undefined,
@@ -690,7 +703,7 @@ export async function GET(req) {
         items = items.filter((a) => set.has(String(a.fuente_id)));
       }
       if (ia === "con_ia") items = items.filter((a) => esClasificadoIA(a));
-      else if (ia === "sin_ia") items = items.filter((a) => !esClasificadoIA(a) && String(a.clasificacion_metodo || "") !== "manual");
+      else if (ia === "sin_ia") items = items.filter((a) => esPendienteIA(a));
       const mapa = new Map();
       for (const a of items) {
         const cat = repararTextoMalDecodificado(a.categoria || "General");
@@ -743,7 +756,7 @@ export async function GET(req) {
         items = items.filter((a) => set.has(a.categoria));
       }
       if (ia === "con_ia") items = items.filter((a) => esClasificadoIA(a));
-      else if (ia === "sin_ia") items = items.filter((a) => !esClasificadoIA(a) && String(a.clasificacion_metodo || "") !== "manual");
+      else if (ia === "sin_ia") items = items.filter((a) => esPendienteIA(a));
       if (orden === "az") items.sort((a, b) => String(a.titulo).localeCompare(String(b.titulo, "es")));
       else if (orden === "za") items.sort((a, b) => String(b.titulo).localeCompare(String(a.titulo), "es"));
       const total = items.length;

@@ -351,10 +351,15 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         const restaurados = Number(data.restaurados) || 0;
         const pendientes = Number(data.pendientes) || 0;
         const omitidas = Number(data.omitidas) || 0;
+        const nuevos = Number(data.nuevos) || 0;
+        const sinCambios = data.fuentesSinCambios !== undefined && data.fuentesSinCambios !== null
+          ? Number(data.fuentesSinCambios) || 0
+          : omitidas;
         let mensaje = restaurados > 0
           ? t("fuentes.todas_ok_restauradas", { n: restaurados })
           : t("fuentes.todas_ok");
-        if (omitidas > 0) mensaje += t("fuentes.sin_cambios", { n: omitidas });
+        if (nuevos > 0) mensaje += t("fuentes.nuevas", { n: nuevos });
+        if (sinCambios > 0) mensaje += t("fuentes.sin_cambios", { n: sinCambios });
         if (pendientes > 0) {
           mensaje += t("fuentes.completando", { n: pendientes });
           procesarColaClasificacion();

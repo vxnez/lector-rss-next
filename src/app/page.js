@@ -844,15 +844,21 @@ export default function HomePage() {
       else setPagina(1);
       fetchSources();
       fetchConteos();
-      const restaurados = Number(data.restaurados) || 0;      const pendientes = Number(data.pendientes) || 0;
+      const restaurados = Number(data.restaurados) || 0;
+      const pendientes = Number(data.pendientes) || 0;
       const omitidas = Number(data.omitidas) || 0;
       const purgados = Number(data.purgados) || 0;
       const nuevos = Number(data.nuevos) || 0;
+      // Fuentes sin cambios: del detalle por fuente; el `omitidas` suelto
+      // cuenta artículos omitidos (dedupe), no fuentes.
+      const sinCambios = data.fuentesSinCambios !== undefined && data.fuentesSinCambios !== null
+        ? Number(data.fuentesSinCambios) || 0
+        : omitidas;
       let mensaje = restaurados > 0
         ? t("avisos.refresh_restauradas", { n: restaurados })
         : t("avisos.refresh_ok");
       if (nuevos > 0) mensaje += t("avisos.refresh_nuevas", { n: nuevos });
-      if (omitidas > 0) mensaje += t("avisos.sin_cambios", { n: omitidas });
+      if (sinCambios > 0) mensaje += t("avisos.sin_cambios", { n: sinCambios });
       if (purgados > 0) mensaje += t("avisos.purgadas", { n: purgados });
       if (pendientes > 0) {
         mensaje += t("avisos.completando", { n: pendientes });
@@ -881,6 +887,13 @@ export default function HomePage() {
     const backupArticulos = [...articulos];
     setArticulos([]);
     setTotalNoticias(0);
+    // Optimista por pestaña: lo borrado es solo la vista activa; el resto de
+    // contadores se deja intacto y todo se reconcilia con el servidor abajo.
+    // Sin esto la tarjeta muestra el número obsoleto (p. ej. 277) hasta que
+    // responde la API.
+    const backupConteos = { ...conteos };
+    const claveTab = activeTab === "guardadas" ? "guardadas" : activeTab === "leidas" ? "leidas" : "pendientes";
+    setConteos((prev) => ({ ...prev, [claveTab]: 0 }));
 
     try {
       const res = await fetch(`/api/rss?delete_all=true&tab=${activeTab}`, { method: "DELETE" });
@@ -894,7 +907,9 @@ export default function HomePage() {
     } catch (err) {
       console.error("Error al eliminar todas las noticias:", err);
       setArticulos(backupArticulos);
+      setConteos(backupConteos);
       recargarDatos();
+      fetchConteos();
       notify(err.message || t("avisos.eliminar_feed"), "error");
     }
   };
