@@ -5,6 +5,7 @@
 // Porteado del pipeline pre-migración: catálogo cerrado, cadena de modelos con
 // fail-fast ante 429, caché en memoria solo de éxitos.
 import { CATALOGO_PROMPT, CATEGORIAS_DISPONIBLES } from "./categoryClassifier";
+import { clasificarPorPalabras } from "./keywordFallback";
 
 const CLASIFICACION_CACHE_MAX = 2000;
 const clasificacionCache = new Map();
@@ -95,6 +96,13 @@ Desempates frecuentes (el titular manda sobre el contexto):
 - IA aplicada a programar, APIs, código, DevOps: Developers, no Tecnología.
 - Ciberseguridad, hackeo, malware, ransomware: Tecnología (salvo delito con proceso judicial: Seguridad y Justicia).
 - Precio/oferta como gancho pero el producto es lo central: la categoría del producto.
+
+Ejemplos guía:
+- "Retroid Pocket Flip 2 baja a 229 dólares" → Videojuegos (0.95)
+- "How Hacker News ranking works: scoring and penalties" → Developers (0.9)
+- "Bitcoin supera los 100 mil dólares en la bolsa" → Economía y Finanzas (0.95)
+- "Selección clasifica al mundial tras ganar 2-0" → Deportes (0.95)
+- "New Study Links Ultra-Processed Foods to Heart Disease" → Salud y Medicina (0.9)
 
 Noticias:
 ${listado}`;
@@ -290,7 +298,20 @@ export async function clasificarLoteConIA(apiKey, noticias) {
         if (propuesta && Number.isInteger(Number(propuesta.i))) porIndice.set(Number(propuesta.i), propuesta);
       }
       lote.forEach((item, posicion) => {
-        const validada = validarPropuestaCategoria(porIndice.get(posicion));
+        let validada = validarPropuestaCategoria(porIndice.get(posicion));
+        if (!validada) {
+          // Respaldo heurístico: la IA falló o respondió tibio (<0.8).
+          // Con evidencia fuerte de palabras clave se asigna al piso del
+          // umbral (0.8) en vez de dejar General; sin evidencia sigue pendiente.
+          const categoriaKw = clasificarPorPalabras(item.titulo, item.resumen);
+          if (categoriaKw) {
+            validada = {
+              categoria: categoriaKw,
+              metodo: configIA().proveedor === "groq" ? "groq" : "gemini",
+              confianza: UMBRAL_CONFIANZA_MINIMA,
+            };
+          }
+        }
         const resultado = validada || { ...SIN_CLASIFICACION };
         if (validada) cacheClasificacionSet(item.key, resultado);
         item.indices.forEach((indice) => {
@@ -320,8 +341,19 @@ export async function clasificarLoteConIA(apiKey, noticias) {
         }
       }
       lote.forEach((item) => {
+        // Aunque el lote falle (cuota/red), el respaldo por palabras rescata
+        // lo evidente en vez de devolver todo a General.
+        const categoriaKw = clasificarPorPalabras(item.titulo, item.resumen);
+        const resultado = categoriaKw
+          ? {
+              categoria: categoriaKw,
+              metodo: configIA().proveedor === "groq" ? "groq" : "gemini",
+              confianza: UMBRAL_CONFIANZA_MINIMA,
+            }
+          : { ...SIN_CLASIFICACION };
+        if (categoriaKw) cacheClasificacionSet(item.key, resultado);
         item.indices.forEach((indice) => {
-          resultados[indice] = { ...SIN_CLASIFICACION };
+          resultados[indice] = resultado;
         });
       });
     }
