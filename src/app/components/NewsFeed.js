@@ -331,7 +331,7 @@ const TarjetaCompact = memo(function TarjetaCompact({
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         <span
           style={pillDominioStyle}
-          className="text-[10px] font-bold border px-1.5 py-0.5 rounded truncate max-w-[110px] shrink-0"
+          className="text-[10px] font-bold border px-1.5 py-0.5 rounded truncate w-[92px] sm:w-[110px] shrink-0 text-center"
         >
           {nombreFuente}
         </span>
@@ -356,7 +356,7 @@ const TarjetaCompact = memo(function TarjetaCompact({
         )}
 
         {fechaFormateada && (
-          <span className="hidden md:inline-block text-[11px] text-app-muted shrink-0">
+          <span className="hidden md:inline-block text-[11px] text-app-muted shrink-0 tabular-nums text-right min-w-[118px]">
             {fechaFormateada}
           </span>
         )}
