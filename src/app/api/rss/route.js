@@ -43,17 +43,27 @@ function normalizarCandidataIA(a) {
 
 async function clasificarPendientesResponse(userId, body = {}) {
   const limite = Math.min(Math.max(Number(body.lote) || 12, 1), 24);
+  // IDs ya procesados en esta corrida (el cliente los acumula): evitan
+  // reprocesar en el mismo run lo que quedó en General, que seguiría
+  // contando como pendiente y haría crecer "procesadas" más allá del total.
+  const excluidos = new Set(
+    (Array.isArray(body.excluir) ? body.excluir : [])
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n) && n > 0)
+      .slice(0, 2000)
+  );
   const bulk = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
   const lista = Array.isArray(bulk) ? bulk : bulk?.articulos || bulk?.articles || bulk?.data || [];
-  const pendientes = (Array.isArray(lista) ? lista : [])
-    .filter(esPendienteIA)
+  const elegibles = (Array.isArray(lista) ? lista : []).filter(esPendienteIA);
+  const pendientes = elegibles
+    .filter((a) => !excluidos.has(Number(a.id)))
     .sort((x, y) => String(y.fecha_publicacion || "").localeCompare(String(x.fecha_publicacion || "")))
     .slice(0, limite)
     .map(normalizarCandidataIA)
     .filter((c) => c.id !== undefined && c.id !== null);
 
   if (pendientes.length === 0) {
-    return NextResponse.json({ clasificados: 0, restantes: 0 });
+    return NextResponse.json({ clasificados: 0, restantes: elegibles.length, lote: 0 });
   }
 
   const apiKey = configIA().apiKey;
@@ -63,6 +73,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
 
   const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes);
   let clasificados = 0;
+  const idsClasificados = [];
   for (let i = 0; i < pendientes.length; i++) {
     const resultado = resultados[i];
     if (!esExitoIA(resultado?.metodo)) continue;
@@ -73,6 +84,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
         clasificacion_confianza: resultado.confianza,
       });
       clasificados++;
+      idsClasificados.push(pendientes[i].id);
     } catch (error) {
       console.warn("No se pudo persistir categoría:", pendientes[i].id, error?.message || error);
     }
@@ -90,6 +102,11 @@ async function clasificarPendientesResponse(userId, body = {}) {
     restantes,
     reintentarEn,
     diag: clasificados > 0 ? null : (fallo || "respuesta"),
+    // Lote seleccionado (tras excluir) e IDs clasificados: el cliente acumula
+    // `excluir` y corta cuando lote===0 aunque restantes>0 (veredictos
+    // General que se reintentan en la próxima corrida, no en esta).
+    lote: pendientes.length,
+    ids: idsClasificados,
   });
 }
 import { resolverUsuarioId } from "@/lib/invitado";

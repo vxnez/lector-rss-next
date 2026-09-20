@@ -35,28 +35,24 @@ Encabezados de navegador reales y timeouts. Si la URL ya existe en la cuenta (co
 ### 2b. Conversión web → RSS (estilo RSS.app)
 Si la página no tiene feed nativo, el motor `src/lib/webToRss.js` la convierte automáticamente: extracción en 3 capas (JSON-LD → artículo único por Open Graph → heurística de lista con puntuación), fechas textuales EN/ES, autor, imagen y video. Incluye **crawling multipágina** (detecta `rel="next"`, `/page/N`, botones "Siguiente"; topes: 20 páginas / 100 noticias / 45 s, con pausa de cortesía) y consolidación desduplicada en orden cronológico inverso. Con el checkbox *"Convertir página completa"* (`forzar_conversion`) se omite el feed nativo y se crawlea la paginación (útil cuando el feed recorta el histórico, p. ej. WordPress sirve ~10 ítems). Las convertidas se guardan con `origen='web'` y se refrescan re-scrapeando, con el mismo caché condicional. Descargas bajo guarda SSRF (`src/lib/ssrf.js`: IP pública, redirects revalidados).
 
-### 3. Clasificación 100% IA (sin clasificador local)
-Gemini recibe título, resumen y un **catálogo cerrado de 24 categorías** con descripción (incluye **Developers**: programación, frameworks, DevOps, APIs, código abierto e IA aplicada). Solo puede elegir una categoría existente (validación insensible a acentos). Cadena de modelos con reintento ante 429 (espera sugerida por la API), timeout 25 s y `maxDuration = 60` en la ruta.
+### 3. Clasificación 100% IA (catálogo cerrado, en el backend)
+La IA clasifica al ingerir con un **catálogo cerrado de 25 categorías** (24 + General, incluye **Developers**: programación, frameworks, DevOps, APIs, código abierto e IA aplicada). Solo puede elegir una categoría existente (validación insensible a acentos, default General). El botón "Categorizar con IA" confirma que no hay pendientes: la clasificación vive en el backend, con reintento ante 429 y timeout 25 s.
 
-### 4. Sincronización optimizada para serverless
-- **Respuesta inmediata**: noticias se guardan con categoría provisional, sin bloquear en IA
-- **Solo-nuevas**: SELECT previo reutiliza categorías ya guardadas; las marcadas `sin-ia` se reclasifican (autorreparación)
-- **Lotes de 12** por llamada IA, con caché en memoria (solo éxitos) y deduplicación
-- **Persistencia masiva**: máx. 3 consultas por fuente (INSERT multivalor + UPDATEs con `CASE`), sin tocar `leido`/`guardado`
-- **Cola con progreso**: acción `clasificar_pendientes` clasifica 12 y devuelve `restantes`; el panel la solicita en ciclo corto hasta agotarla (pausa 30 s si no hay cuota)
-- **Restauración**: Refrescar recupera descartadas del día (`restore_today`)
-- **Descargas condicionales**: cada fuente guarda `etag`/`last_modified`; si el feed responde 304 se omite sin parsear, clasificar ni guardar
-- **Poda automática**: tras refrescar se eliminan descartadas de +7 días y leídas no guardadas de +60 días (nunca guardadas ni pendientes de leer)
-
-Tiempos estimados: refresco sin novedades ~2–4 s; fuente nueva de 40 artículos ~9 s + cola visible; 100 artículos ~25–30 s (hasta ~2.5 min con cuota limitada).
+### 4. Sincronización (ingesta y refresco en el backend)
+- **Refresco real**: `POST /api/data/refresh {usuario_id, fuente_id?}` (variante `GET` con query) responde `{fuentes, nuevos, omitidas, actualizadas, detalle[]}`; sin `fuente_id` refresca todas. Las acciones `refresh`/`refresh_source` del frontend delegan ahí (<25 s por fuente).
+- **Ingesta al crear**: dar de alta una fuente descarga su feed e inserta los artículos (upsert por par fuente+URL); las nuevas no quedan en 0.
+- **Descargas condicionales**: cada fuente guarda `etag`/`last_modified`; si el feed responde 304 se omite sin parsear, clasificar ni guardar.
+- **Poda automática**: tras refrescar se eliminan descartadas de +7 días y leídas no guardadas de +60 días (nunca guardadas ni pendientes de leer).
+- **Cron programado**: Vercel Cron dispara `GET /api/cron/refresh` (con `CRON_SECRET`), que refresca usuario por usuario y agrega `{usuariosProcesados, totalNuevas}`.
+- **Restauración**: el borrado masivo del feed marca `descartado=1` (lógico, restaurable el día en curso).
 
 ### 5. Persistencia (esquema MySQL)
 Tablas principales:
-- `usuarios` — identidad, hash, proveedor
-- `fuentes_rss` — propietario, título, URL, categoría, creación, validadores de caché (`etag`, `last_modified`, `ultima_revision`) y `origen` (`rss` nativo / `web` convertida)
-- `articulos_publicados` — fuente, título, resumen, URL, fecha, categoría, método y confianza de clasificación, leído, guardado, descartado
+- `usuarios` — identidad, hash, proveedor. Borrado duro con cascada: re-alta con el mismo correo funciona en <10 s, sin filas fantasma.
+- `fuentes_rss` — propietario, título, URL, categoría, creación, validadores de caché (`etag`, `last_modified`, `ultima_revision`), `origen` (`rss` nativo / `web` convertida) y `convert_full_page` (0/1, aceptado por PATCH y honrado en el refresco).
+- `articulos_publicados` — fuente, título, resumen, URL, fecha, categoría, método y confianza de clasificación, leído, guardado, descartado.
 
-Columnas de clasificación creadas de forma idempotente. Soporte UTF-8 / ISO-8859-1 / Windows-1252 con reparación de mojibake.
+Contrato de listados: artículos con `total` sin paginar; fuentes con `articulos_count`; `descartado=1` excluido de listados y conteos. Columnas de clasificación creadas de forma idempotente. Soporte UTF-8 / ISO-8859-1 / Windows-1252 con reparación de mojibake.
 
 ### 6. Interfaz y accesibilidad
 Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto / categoría / fuente. Checkboxes personalizados con icono Lucide real. Imagen lateral del feed en el lector (solo visualización remota, se oculta si falla). `aria-labels`, `focus-visible`, cierre con Escape, `role="status"`. Soporte para **reduced motion** y densidad compacta/cómoda persistidas en `localStorage`.
@@ -74,7 +70,7 @@ Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto /
 Encuesta de preferencias al primer ingreso que sugiere feeds recomendados (curados en `src/data/recommended-feeds.json`, 108 feeds verificados) y permite agregarlos con un clic. Incluye la categoría **Developers** (🧑‍💻) con 7 fuentes curadas y verificadas: GitHub Blog, Hacker News, DEV Community, Stack Overflow Blog, CSS-Tricks, Smashing Magazine y Martin Fowler. Verificación automática semanal de feeds recomendados via GitHub Action.
 
 ### 9. Notificaciones push
-Web Push API con VAPID. Service Worker registrado en cliente. Suscripción/desuscripción desde panel de ajustes. Clave pública servida desde `/api/push`.
+Web Push API con VAPID. Service Worker registrado en cliente. Suscripción/desuscripción desde panel de ajustes. Clave pública servida desde `/api/push`. Tras cada refresco (manual o cron) con novedades, el servidor envía push VAPID a los suscriptores del usuario (`src/lib/push.js`).
 
 ### 10. Seguridad
 Consultas parametrizadas (anti SQL injection), contraseñas con bcrypt, aislamiento por usuario, clave de Gemini solo en servidor, `.env*` ignorados en Git.
@@ -195,7 +191,7 @@ Sin `mysql2`, sin `DATABASE_URL`, sin `DB_HOST/DB_USER/DB_PASSWORD`: no existe n
 2. Ejecutar scripts SQL en orden (`00_` a `11_`) o usar `06_ensure_schema.sql` para migraciones idempotentes
 3. Configurar variables de entorno en Vercel (`API_URL`, `API_SECRET_KEY`, resto de claves)
 4. Deploy automático en push a `main`
-5. (Opcional) Cron externo → `POST /api/cron/refresh` para refresco programado
+5. Vercel Cron → `GET /api/cron/refresh` (con `CRON_SECRET`, ver `vercel.json`) para refresco programado de todos los usuarios
 
 ## Acceso a datos y administración de MySQL
 

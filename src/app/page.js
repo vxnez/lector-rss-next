@@ -291,25 +291,33 @@ export default function HomePage() {
   }, []);
 
   const procesarColaClasificacion = useCallback(async () => {
+    const excluidos = [];
     for (let intento = 0; intento < 12; intento++) {
       let restantes = 0;
+      let loteNum = 0;
       let esperaMs = 250;
       try {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir: excluidos }),
         });
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data.ids)) {
+          for (const id of data.ids) {
+            if (!excluidos.includes(id)) excluidos.push(id);
+          }
+        }
         restantes = Number(data.restantes) || 0;
+        loteNum = Number(data.lote) || 0;
         if (Number(data.reintentarEn) > 0) esperaMs = Number(data.reintentarEn) * 1000;
       } catch {
         break;
       }
       // Refresca la página visible (vía nonce) con las categorías ya clasificadas.
       recargarDatos();
-      if (restantes === 0) break;
+      if (restantes === 0 || loteNum === 0) break;
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
   }, [recargarDatos]);
@@ -338,17 +346,19 @@ export default function HomePage() {
     // (la primera llamada a la IA) tarda segundos en responder.
     setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "en_curso" });
 
-    const pedirLote = async () => {
+    const pedirLote = async (excluir) => {
       const res = await fetch("/api/rss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
+        body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir }),
       });
       if (!res.ok) throw new Error(t("avisos.ia_err"));
       const data = await res.json().catch(() => ({}));
       return {
         clasificados: Number(data.clasificados) || 0,
         restantes: Number(data.restantes) || 0,
+        lote: Number(data.lote) || 0,
+        ids: Array.isArray(data.ids) ? data.ids : [],
         esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 250,
         diag: typeof data.diag === "string" && data.diag ? data.diag : null,
       };
@@ -359,6 +369,10 @@ export default function HomePage() {
       let procesadas = 0;
       let falloTransporte = false;
       let diagFinal = null;
+      // IDs ya clasificados en esta corrida: se excluyen del siguiente lote
+      // para no reprocesar veredictos General dentro del mismo run (eso
+      // inflaba "procesadas" más allá del total).
+      const excluidos = [];
       // Racha de lotes en cuota sin clasificar nada: cortar antes de quemar
       // intentos (con esperas de 43 s+, 24 intentos serían eternos).
       let rachaCuota = 0;
@@ -366,7 +380,7 @@ export default function HomePage() {
         for (let intento = 0; intento < 24; intento++) {
           let lote;
           try {
-            lote = await pedirLote();
+            lote = await pedirLote(excluidos);
           } catch {
             falloTransporte = true;
             break;
@@ -374,6 +388,9 @@ export default function HomePage() {
           // El total se fija con la primera respuesta (foto al lanzar).
           if (total === null) total = lote.clasificados + lote.restantes;
           procesadas += lote.clasificados;
+          for (const id of lote.ids) {
+            if (!excluidos.includes(id)) excluidos.push(id);
+          }
           if (lote.diag && !diagFinal) diagFinal = lote.diag;
           // Clave rechazada, ausente o modelo retirado: reintentar es inútil,
           // se corta aquí con el diagnóstico específico en vez de quemar
@@ -386,12 +403,17 @@ export default function HomePage() {
           }
           // Refresco progresivo: lo ya categorizado se ve sin esperar al final.
           recargarDatos();
-          if (lote.restantes === 0) break;
-          setIaProgreso({ total, procesadas, pendientes: lote.restantes, estado: "en_curso" });
+          // Sin seleccionables en este run (todo lo restante ya se procesó
+          // aquí, aunque siga en General): cortar; la próxima corrida lo retoma.
+          if (lote.restantes === 0 || lote.lote === 0) break;
+          // Saneo defensivo: procesadas nunca supera al total en pantalla.
+          const procesadasVista = total === null ? procesadas : Math.min(procesadas, total);
+          setIaProgreso({ total, procesadas: procesadasVista, pendientes: lote.restantes, estado: "en_curso" });
           await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
         }
         if (procesadas > 0) {
-          setIaProgreso({ total: total ?? procesadas, procesadas, pendientes: 0, estado: "ok" });
+          const totalVista = total ?? procesadas;
+          setIaProgreso({ total: totalVista, procesadas: Math.min(procesadas, totalVista), pendientes: 0, estado: "ok" });
         } else if (falloTransporte && !diagFinal) {
           setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
         } else if (diagFinal) {

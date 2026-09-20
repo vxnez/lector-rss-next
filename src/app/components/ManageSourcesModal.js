@@ -222,18 +222,26 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   // Clasifica la cola de pendientes por lotes hasta agotarla (progreso visible)
   const procesarColaClasificacion = useCallback(async () => {
+    const excluidos = [];
     for (let intento = 0; intento < 12; intento++) {
       let esperaMs = 250;
       try {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24 }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir: excluidos }),
         });
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data.ids)) {
+          for (const id of data.ids) {
+            if (!excluidos.includes(id)) excluidos.push(id);
+          }
+        }
         if (onChange) await onChange();
-        if (!Number(data.restantes)) break;
+        // Sin seleccionables en este run (o sin restantes): cortar. Los
+        // veredictos General se retoman en la próxima corrida, no aquí.
+        if (!Number(data.restantes) || Number(data.lote) === 0) break;
         if (Number(data.reintentarEn) > 0) esperaMs = Number(data.reintentarEn) * 1000;
       } catch {
         break;
