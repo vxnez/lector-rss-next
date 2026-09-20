@@ -25,20 +25,47 @@ function esTemaClaro() {
   }
 }
 
-export function getCategoryStyle(category = "General") {
-  const [hue, saturation, lightness] = PALETTE[Math.abs(hash(category)) % PALETTE.length];
-  // En temas claros el texto debe oscurecerse para seguir legible.
-  if (esTemaClaro()) {
+function paleta(hue, saturation, lightness, claro) {
+  if (claro) {
     return {
-      backgroundColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 12, 30)}%, 0.22)`,
-      color: `hsl(${hue}, ${Math.min(saturation + 10, 95)}%, ${Math.max(lightness - 34, 24)}%)`,
-      borderColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 20, 35)}%, 0.55)`,
+      fondo: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 12, 30)}%, 0.22)`,
+      texto: `hsl(${hue}, ${Math.min(saturation + 10, 95)}%, ${Math.max(lightness - 36, 22)}%)`,
+      borde: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 20, 35)}%, 0.55)`,
     };
   }
   return {
-    backgroundColor: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 25, 18)}%, 0.28)`,
-    color: `hsl(${hue}, ${Math.min(saturation + 8, 90)}%, ${Math.min(lightness + 28, 86)}%)`,
-    borderColor: `hsla(${hue}, ${saturation}%, ${Math.min(lightness + 8, 70)}%, 0.5)`,
+    fondo: `hsla(${hue}, ${saturation}%, ${Math.max(lightness - 25, 18)}%, 0.28)`,
+    texto: `hsl(${hue}, ${Math.min(saturation + 8, 90)}%, ${Math.min(lightness + 28, 86)}%)`,
+    borde: `hsla(${hue}, ${saturation}%, ${Math.min(lightness + 8, 70)}%, 0.5)`,
+  };
+}
+
+export function getCategoryStyle(category = "General") {
+  const [hue, saturation, lightness] = PALETTE[Math.abs(hash(category)) % PALETTE.length];
+  // Compatibilidad: variante según tema actual (los badges nuevos usan
+  // getCategoryVars, que no depende del momento del render).
+  if (esTemaClaro()) {
+    const v = paleta(hue, saturation, lightness, true);
+    return { backgroundColor: v.fondo, color: v.texto, borderColor: v.borde };
+  }
+  const v = paleta(hue, saturation, lightness, false);
+  return { backgroundColor: v.fondo, color: v.texto, borderColor: v.borde };
+}
+
+// Variantes claro/oscuro como variables CSS: la resolución al tema la hace
+// CSS ([data-tema-claro]), no JS en render — así el badge es legible desde el
+// primer pintado en los 8 temas.
+export function getCategoryVars(category = "General") {
+  const [hue, saturation, lightness] = PALETTE[Math.abs(hash(category)) % PALETTE.length];
+  const o = paleta(hue, saturation, lightness, false);
+  const c = paleta(hue, saturation, lightness, true);
+  return {
+    "--cat-bg-d": o.fondo,
+    "--cat-fg-d": o.texto,
+    "--cat-bd-d": o.borde,
+    "--cat-bg-l": c.fondo,
+    "--cat-fg-l": c.texto,
+    "--cat-bd-l": c.borde,
   };
 }
 

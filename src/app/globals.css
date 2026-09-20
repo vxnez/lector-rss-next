@@ -458,6 +458,20 @@ textarea:focus-visible {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
 }
 
+/* Insignia de categoría: paleta determinista por hash con variantes
+   claro/oscuro resueltas por CSS (ver getCategoryVars). Texto AA en ambos. */
+.cat-pill {
+  background-color: var(--cat-bg-d);
+  color: var(--cat-fg-d);
+  border: 1px solid var(--cat-bd-d);
+}
+[data-tema-claro="1"] .cat-pill {
+  background-color: var(--cat-bg-l);
+  color: var(--cat-fg-l);
+  border-color: var(--cat-bd-l);
+  font-weight: 600;
+}
+
 /* Tipografía editorial: evita viudas/huérfanas sin tocar copy. */
 .text-balance {
   text-wrap: balance;

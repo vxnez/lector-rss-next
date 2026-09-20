@@ -8,7 +8,7 @@ import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { animarEntradaTarjetas } from "@/lib/animaciones";
-import { getCategoryStyle } from "@/lib/categoryStyles";
+import { getCategoryVars } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
 import { useIdioma } from "@/lib/i18n";
@@ -23,7 +23,7 @@ const pillDominioStyle = {
   borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
 };
 
-const getCategoryColor = (categoria) => getCategoryStyle(categoria);
+const getCategoryColor = (categoria) => getCategoryVars(categoria);
 
 // 1. MODO TARJETAS (Cards) — Cuadrícula tradicional con efecto Spotlight
 const TarjetaCards = memo(function TarjetaCards({
@@ -134,7 +134,7 @@ const TarjetaCards = memo(function TarjetaCards({
             {art.categoria && (
               <span
                 style={getCategoryColor(art.categoria)}
-                className="border px-2 py-1 rounded text-[11px] flex items-center gap-1 font-medium"
+                className="cat-pill px-2 py-1 rounded text-[11px] flex items-center gap-1 font-medium"
               >
                 <Tag size={10} className="opacity-75" />
                 <span>{art.categoria}</span>
@@ -349,7 +349,7 @@ const TarjetaCompact = memo(function TarjetaCompact({
         {art.categoria && (
           <span
             style={getCategoryColor(art.categoria)}
-            className="hidden sm:inline-block border px-1.5 py-0.5 rounded text-[10px] shrink-0"
+            className="cat-pill hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] shrink-0"
           >
             {art.categoria}
           </span>

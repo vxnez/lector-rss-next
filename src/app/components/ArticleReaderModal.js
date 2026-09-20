@@ -5,7 +5,7 @@ import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, Chevr
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
-import { getCategoryStyle } from "@/lib/categoryStyles";
+import { getCategoryVars } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
@@ -33,7 +33,7 @@ let direccionNavegacion = 0;
 let ultimoCambioRueda = 0;
 
 // Fuente única de verdad: lib/categoryStyles. (Se eliminó el switch duplicado muerto.)
-const getCategoryColor = (categoria) => getCategoryStyle(categoria);
+const getCategoryColor = (categoria) => getCategoryVars(categoria);
 
 
 
@@ -546,7 +546,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               ) : (
                 <>
                   {categoriaMostrada && (
-                    <span style={getCategoryColor(categoriaMostrada)} className="flex items-center gap-1 border px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium whitespace-nowrap">
+                    <span style={getCategoryColor(categoriaMostrada)} className="cat-pill flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium whitespace-nowrap">
                       <Tag size={12} className="opacity-75 shrink-0" />
                       {categoriaMostrada}
                     </span>
