@@ -16,20 +16,20 @@ import {
 import { sendPushToUser } from "@/lib/push";
 import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
 
-// Pendiente de IA: "General" (categoría por defecto) o nula equivale a no
-// categorizado y SIEMPRE se reprocesa, salvo edición manual del usuario.
+// Pendiente de IA (contrato §5.2 backend): "General"/nula equivale a no
+// categorizado y se retoma de CUALQUIER método salvo edición manual.
 // Además, un veredicto propio (gemini/groq) con confianza <80% se retoma:
-// la interfaz solo muestra 80-100%, así que un 50% visible es un pendiente.
-// ('local' no entra aquí: su 0.5 por defecto es indistinguible de un valor
-// real y reprocesarlo quemaría cuota sin señal.)
+// la interfaz solo muestra 80-100%. 'local' con categoría real no se toca
+// (el backend solo mejora, nunca degrada); su 0.5 por defecto es
+// indistinguible de un valor real.
 function esPendienteIA(a) {
   if (!a || typeof a !== "object") return false;
   if (Number(a.descartado) === 1) return false;
   const metodo = String(a.clasificacion_metodo || a.metodo || "sin-ia");
   if (metodo === "manual") return false;
+  const cat = String(a.categoria ?? "").trim();
+  if (cat === "" || cat.toLowerCase() === "general") return true;
   if (metodo === "gemini" || metodo === "groq") {
-    const cat = String(a.categoria ?? "").trim();
-    if (cat === "" || cat.toLowerCase() === "general") return true;
     const conf = Number(a.clasificacion_confianza ?? a.confianza);
     if (Number.isFinite(conf) && conf < 0.8) return true;
     return false;
@@ -530,13 +530,19 @@ export async function POST(req) {
         const nuevos = Number(r?.nuevos) || 0;
         const omitidas = Number(r?.omitidas) || 0;
         const actualizadas = Number(r?.actualizadas ?? r?.fuentes) || 0;
+        // Contrato backend: pendientes = General/NULL restantes (lo consume la
+        // cola IA); reparados = rescatados por repararGenerales.
+        const pendientesBackend = Number(r?.pendientes) || 0;
+        const reparados = Number(r?.reparados) || 0;
         const detalle = Array.isArray(r?.detalle) ? r.detalle : [];
-        // Fuentes sin cambios = entradas del detalle sin novedades y sin
-        // error. El contador suelto `omitidas` del backend cuenta artículos
-        // omitidos (dedupe), NO fuentes: usarlo como "N fuentes" miente.
-        const fuentesSinCambios = detalle.length > 0
-          ? detalle.filter((d) => Number(d?.nuevos || 0) === 0 && String(d?.estado || "").toLowerCase() !== "error").length
-          : null;
+        // Fuentes sin cambios: se prefiere el conteo propio del backend
+        // (snake_case); si falta, se deriva del detalle. El `omitidas` suelto
+        // cuenta ARTÍCULOS duplicados, NO fuentes.
+        const fuentesSinCambios = Number.isFinite(Number(r?.fuentes_sin_cambios))
+          ? Number(r.fuentes_sin_cambios)
+          : detalle.length > 0
+            ? detalle.filter((d) => Number(d?.nuevos || 0) === 0 && String(d?.estado || "").toLowerCase() !== "error").length
+            : null;
         if (nuevos > 0) {
           // P2: avisar al usuario (best-effort, no rompe la respuesta).
           await sendPushToUser(userId, {
@@ -552,9 +558,10 @@ export async function POST(req) {
               : "Fuentes actualizadas sin novedades",
           nuevos,
           restaurados: 0,
-          pendientes: 0,
+          pendientes: pendientesBackend,
           omitidas,
           fuentesSinCambios,
+          reparados,
           purgados: 0,
           actualizadas,
           detalle: r?.detalle || undefined,
