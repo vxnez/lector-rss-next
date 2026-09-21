@@ -194,6 +194,12 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.08);
 }
 
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Aviso "Desliza para cambiar de noticia": entra desde la derecha y sale hacia la izquierda */
 @keyframes swipe-hint-enter-exit {
   0% {

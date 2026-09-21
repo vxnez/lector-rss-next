@@ -62,7 +62,9 @@ export default function SelectorTemas({ tema, onTema }) {
                   : "border border-app-line hover:border-[var(--accent)]/60",
               ].join(" ")}
               style={{
-                backgroundColor: item.claro ? item.bg : `color-mix(in srgb, ${item.bg} 85%, #0a0a0a)`,
+                background: `linear-gradient(135deg, ${item.bg} 0%, ${item.accent} 100%)`,
+                backgroundSize: "200% 200%",
+                animation: "gradientShift 4s ease infinite",
               }}
             >
               {/* Nombre del tema y etiqueta de modo */}
