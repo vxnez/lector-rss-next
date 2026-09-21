@@ -10,6 +10,11 @@ const CLAVE_ABIERTA = "notification_panel_abierta";
 const CLAVE_ITEMS = "notification_panel_items";
 const MAX_ITEMS = 50;
 
+// Fuente única de verdad para la limpieza de cuenta (ajustesPorDefecto):
+// la bandeja es local por navegador y debe borrarse al eliminar la cuenta
+// o salir, para no filtrar avisos a la siguiente cuenta del mismo navegador.
+export const CLAVES_NOTIFICACIONES = [CLAVE_ABIERTA, CLAVE_ITEMS];
+
 export function useNotificaciones({ toast, onCerrarToast, iaProgreso }) {
   const { t } = useIdioma();
   const [items, setItems] = useState([]);

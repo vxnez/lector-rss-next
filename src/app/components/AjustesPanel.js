@@ -28,7 +28,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import SelectorTemas from "./SelectorTemas";
-import { limpiarRastrosCuenta } from "@/lib/ajustesPorDefecto";
+import { limpiarRastrosCuenta, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
 const URL_APP = "https://lector-rss-next.vercel.app";
@@ -305,6 +305,8 @@ export default function AjustesPanel({
       onCerrarSesion();
       return;
     }
+    // La bandeja es local: no debe filtrarse a la siguiente cuenta.
+    limpiarNotificacionesLocales();
     await signOut({ callbackUrl: "/login" });
   };
 

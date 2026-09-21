@@ -16,6 +16,7 @@ import { useIdioma } from "@/lib/i18n";
 import { urlBase64ToUint8Array } from "@/lib/feed-utils";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
+import { limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
@@ -272,6 +273,7 @@ export default function HomePage() {
     } catch {
       // Limpieza local de todas formas
     }
+    limpiarNotificacionesLocales();
     setSession(null);
     setArticulos([]);
     bumpCacheVersion();

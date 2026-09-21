@@ -5,6 +5,7 @@
 // auto-marcado, movimiento, densidad, tema, fuente del lector, etc.
 // Este módulo es la única fuente de verdad para "valores por defecto":
 // restablecer = eliminar claves para que cada lector caiga a su default.
+import { CLAVES_NOTIFICACIONES } from "@/lib/hooks/useNotificaciones";
 
 export const AJUSTES_POR_DEFECTO = {
   lector_tema: null, // null = preferencia del sistema (ver temas.temaPreferidoSistema)
@@ -60,12 +61,27 @@ export function restablecerAjustesLocales() {
 }
 
 /**
+ * Bandeja de notificaciones: vive en localStorage del navegador, así que al
+ * eliminar la cuenta o salir hay que borrarla o los avisos viejos persisten
+ * para la siguiente cuenta del mismo navegador.
+ */
+export function limpiarNotificacionesLocales() {
+  try {
+    CLAVES_NOTIFICACIONES.forEach((clave) => window.localStorage.removeItem(clave));
+  } catch {
+    // Sin almacenamiento disponible: nada que limpiar.
+  }
+}
+
+/**
  * Limpieza total al eliminar la cuenta permanente: defaults + marcas de
- * bienvenida/onboarding del navegador. Tras esto, un re-registro con el
- * mismo correo arranca con perfil completamente limpio.
+ * bienvenida/onboarding del navegador + bandeja de notificaciones. Tras
+ * esto, un re-registro con el mismo correo arranca con perfil
+ * completamente limpio.
  */
 export function limpiarRastrosCuenta() {
   restablecerAjustesLocales();
+  limpiarNotificacionesLocales();
   try {
     clavesRastroCuenta().forEach((clave) => window.localStorage.removeItem(clave));
   } catch {
