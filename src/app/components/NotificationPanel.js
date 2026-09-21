@@ -4,7 +4,8 @@
 // selección múltiple para borrado y gestión estándar de bandeja.
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
 import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
 
@@ -102,6 +103,21 @@ export default function NotificationPanel({
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
 
+  // Mismo comportamiento que AjustesPanel: fondo sin scroll ni interacción,
+  // Escape cierra. Sin setState en el cuerpo del efecto.
+  useBloquearScroll(abierto);
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const alTeclado = (event) => {
+      if (event.key !== "Escape") return;
+      setModoSeleccion(false);
+      setSeleccionadas(new Set());
+      onCerrar();
+    };
+    document.addEventListener("keydown", alTeclado);
+    return () => document.removeEventListener("keydown", alTeclado);
+  }, [abierto, onCerrar]);
+
   if (!abierto) return null;
 
   // Barra IA: corrida terminada = 100 %. El total era una estimación del
@@ -130,11 +146,17 @@ export default function NotificationPanel({
   };
 
   return (
-    <div
-      className="anim-panel-derecha fixed inset-y-0 right-0 z-[70] flex w-[min(24rem,90vw)] flex-col border-l border-app-line bg-app-surface shadow-2xl"
-      role="region"
-      aria-label={t("ajustes.notificaciones.panel")}
-    >
+    <>
+      <div
+        aria-hidden="true"
+        onClick={onCerrar}
+        className="anim-fondo-fundido fixed inset-0 z-[65] bg-black/60 backdrop-blur-[2px]"
+      />
+      <div
+        className="anim-panel-derecha fixed inset-y-0 right-0 z-[70] flex w-[min(24rem,90vw)] flex-col border-l border-app-line bg-app-surface shadow-2xl"
+        role="region"
+        aria-label={t("ajustes.notificaciones.panel")}
+      >
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-app-line px-3 py-3">
         <button
@@ -282,6 +304,7 @@ export default function NotificationPanel({
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
