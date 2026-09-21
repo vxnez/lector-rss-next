@@ -26,8 +26,7 @@ import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import AppHeader from "./components/dashboard/AppHeader";
 import StatsCards from "./components/dashboard/StatsCards";
 import Paginacion from "./components/dashboard/Paginacion";
-import Toast from "./components/dashboard/Toast";
-import IAProgressCard from "./components/dashboard/IAProgressCard";
+import NotificationPanel from "./components/NotificationPanel";
 import OnboardingSurvey from "./components/dashboard/OnboardingSurvey";
 import ConfirmDeleteModal from "./components/dashboard/ConfirmDeleteModal";
 import DashboardSidebar from "./components/dashboard/DashboardSidebar";
@@ -1050,8 +1049,14 @@ export default function HomePage() {
         }}
       />
 
-      <Toast toast={toast} />
-      <IAProgressCard progreso={iaProgreso} onCerrar={() => setIaProgreso(null)} t={t} />
+      <NotificationPanel
+        iaProgreso={iaProgreso}
+        onCerrarIA={() => setIaProgreso(null)}
+        toast={toast}
+        onCerrarToast={() => setToast(null)}
+        pushActivado={pushActivado}
+        onGestionarPush={gestionarPush}
+      />
       <KeyboardShortcutsModal
         abierto={ayudaAtajosAbierta}
         onCerrar={() => setAyudaAtajosAbierta(false)}

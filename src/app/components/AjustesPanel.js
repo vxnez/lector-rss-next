@@ -1,7 +1,7 @@
 // src/app/components/AjustesPanel.js — Ajustes estilo Cuenta de Google.
 // Menú de tarjetas (icono + título + descripción) con subvistas internas:
-// Apariencia, Cuenta, Seguridad, Notificaciones, Datos y privacidad,
-// Apoyo al creador y Sobre el proyecto.
+// Apariencia, Cuenta, Lectura, Datos y privacidad y Ayuda.
+// (Notificaciones migradas al panel flotante NotificationPanel.)
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   Palette,
   ShieldCheck,
-  BellRing,
   Database,
   Languages,
   Info,
@@ -28,8 +27,6 @@ import {
   Star,
   TriangleAlert,
 } from "lucide-react";
-import { BellRing as BellRingData, BellOff as BellOffData } from "lucide";
-import MorphIcon from "./MorphIcon";
 import SelectorTemas from "./SelectorTemas";
 import { limpiarRastrosCuenta } from "@/lib/ajustesPorDefecto";
 
@@ -340,7 +337,6 @@ export default function AjustesPanel({
     apariencia: t("ajustes.apariencia_t"),
     cuenta: t("ajustes.cuenta_seg_t"),
     lectura: t("ajustes.lectura_t"),
-    notificaciones: t("ajustes.noti_t"),
     datos: t("ajustes.datos_t"),
     ayuda: t("ajustes.ayuda_t"),
   };
@@ -428,14 +424,6 @@ export default function AjustesPanel({
                 titulo={t("ajustes.lectura_t")}
                 descripcion={t("ajustes.lectura_d")}
                 onAbrir={() => abrirVista("lectura")}
-              />
-              <TarjetaAjuste
-                icono={<BellRing size={20} />}
-                fondoIcono="#ffedd5"
-                tintaIcono="#9a3412"
-                titulo={t("ajustes.noti_t")}
-                descripcion={pushActivado ? t("ajustes.noti_on") : t("ajustes.noti_d")}
-                onAbrir={() => abrirVista("notificaciones")}
               />
               <TarjetaAjuste
                 icono={<Database size={20} />}
@@ -663,46 +651,6 @@ export default function AjustesPanel({
                       <Trash2 size={15} /> {t("ajustes.eliminar_cuenta")}
                     </button>
                   </div>
-                </>
-              )}
-            </section>
-          )}
-
-          {vista === "notificaciones" && (
-            <section className="stagger-in space-y-2.5">
-              {!pushSoportado ? (
-                <p className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs leading-relaxed text-gray-400">
-                  {t("ajustes.noti_no")}
-                </p>
-              ) : (
-                <>
-                  <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">{t("ajustes.noti_estado")}</p>
-                    <p className="text-sm font-medium text-gray-100">
-                      {pushActivado ? t("ajustes.noti_activados") : t("ajustes.noti_desactivados")}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onGestionarPush}
-                    disabled={pushCargando}
-                    aria-pressed={pushActivado}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium btn-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-50 ${
-                      pushActivado
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
-                        : "border-app-line bg-app-surface/70 text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-raised/70"
-                    }`}
-                  >
-                    <MorphIcon icon={pushActivado ? BellRingData : BellOffData} size={16} />
-                    {pushCargando
-                      ? t("ajustes.noti_config")
-                      : pushActivado
-                        ? t("ajustes.noti_desactivar")
-                        : t("ajustes.noti_activar")}
-                  </button>
-                  <p className="text-xs leading-relaxed text-gray-500">
-                    {t("ajustes.noti_nota")}
-                  </p>
                 </>
               )}
             </section>
