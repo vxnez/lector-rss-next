@@ -7,6 +7,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useIdioma } from "@/lib/i18n";
 import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
+import { Bell as BellData, BellRing as BellRingData } from "lucide";
+import MorphIcon from "./MorphIcon";
 
 const CLAVE_MINIMIZADA = "notification_panel_min";
 const CLAVE_NOTIFICACIONES = "notification_panel_items";
@@ -254,29 +256,30 @@ export default function NotificationPanel({
   if (!hidratado) return null;
 
   if (minimizada) {
+    const enCurso = iaProgreso?.estado === "en_curso";
+    const hayNuevas = noLeidas > 0;
     return (
       <button
         type="button"
         onClick={() => guardarMinimizado(false)}
-        className="fixed bottom-5 right-5 z-[70] grid h-11 w-11 place-content-center rounded-full border border-app-line bg-app-surface shadow-2xl toast-app"
+        className="anim-burbuja fixed right-0 bottom-28 z-[70] grid h-12 w-12 place-content-center rounded-l-full border border-r-0 border-app-line bg-app-surface shadow-2xl transition-transform duration-200 ease-out hover:scale-105 active:scale-95 max-md:right-3 max-md:bottom-24 max-md:rounded-full max-md:border-r"
         aria-label={t("ajustes.notificaciones.expandir")}
         title={t("ajustes.notificaciones.expandir")}
       >
         <span className="relative" aria-hidden="true">
-          <span className="text-violet-400 [html[data-tema-claro='1']_&]:text-violet-600">
-            {noLeidas > 0 ? (
-              <>
-                <Sparkles size={18} />
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-bold">
-                  {noLeidas > 9 ? "9+" : noLeidas}
-                </span>
-              </>
-            ) : (
-              <Sparkles size={18} />
-            )}
+          <span className={hayNuevas || enCurso ? "text-[var(--accent)]" : "text-app-muted"}>
+            <MorphIcon icon={hayNuevas ? BellRingData : BellData} size={20} strokeWidth={2} />
           </span>
-          {(iaProgreso?.estado === "en_curso") && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+          {hayNuevas && (
+            <span
+              key={noLeidas}
+              className="anim-burbuja absolute -top-1.5 -left-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white"
+            >
+              {noLeidas > 9 ? "9+" : noLeidas}
+            </span>
+          )}
+          {enCurso && (
+            <span className="absolute -bottom-0.5 -left-0.5 flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" />
             </span>
@@ -290,7 +293,7 @@ export default function NotificationPanel({
   return (
     <div
       ref={panelRef}
-      className="anim-panel-izquierda fixed inset-y-0 right-0 z-[70] flex w-[min(24rem,90vw)] flex-col border-l border-app-line bg-app-surface shadow-2xl"
+      className="anim-panel-derecha fixed inset-y-0 right-0 z-[70] flex w-[min(24rem,90vw)] flex-col border-l border-app-line bg-app-surface shadow-2xl"
       role="region"
       aria-label={t("ajustes.notificaciones.panel")}
     >

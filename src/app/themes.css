@@ -493,6 +493,38 @@
   animation: panel-entrar-izquierda 0.22s cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
+/* ============ Entrada del panel lateral derecho (notificaciones) ============ */
+@keyframes panel-entrar-derecha {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.anim-panel-derecha {
+  animation: panel-entrar-derecha 0.22s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+/* ============ Entrada de la burbuja flotante (scale + opacity) ============ */
+@keyframes burbuja-entrar {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anim-burbuja {
+  animation: burbuja-entrar 0.18s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
 @keyframes fondo-fundido {
   from {
     opacity: 0;
@@ -508,6 +540,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .anim-panel-izquierda,
+  .anim-panel-derecha,
+  .anim-burbuja,
   .anim-fondo-fundido {
     animation: none;
   }
