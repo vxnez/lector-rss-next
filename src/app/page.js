@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
 import NewsFeed from "./components/NewsFeed";
 import MorphIcon from "./components/MorphIcon";
-import { Plus, Search, LayoutGrid, Rows, AlignJustify, Keyboard, WifiOff } from "lucide-react";
+import { Plus, Search, LayoutGrid, Rows, AlignJustify, Keyboard, WifiOff, SearchX, TriangleAlert, RotateCw } from "lucide-react";
 import { Filter as FilterData, X as XData } from "lucide";
 
 import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
@@ -223,6 +223,7 @@ export default function HomePage() {
     totalNoticias,
     setTotalNoticias,
     cargandoFeed,
+    errorFeed,
     lastUpdated,
     toggleLeido,
     toggleGuardado,
@@ -801,21 +802,61 @@ export default function HomePage() {
                 ) : totalNoticias === 0 ? (
                   <div className="bezel-outer my-8">
                     <div className="bezel-inner p-12 text-center space-y-4">
-                      <p className="eyebrow mx-auto w-fit">{t("filtros.titulo")}</p>
-                      <p className="text-base text-app-muted max-w-md mx-auto">
-                        {activeTab === "guardadas"
-                          ? t("vacio.guardadas")
-                          : activeTab === "leidas"
-                          ? t("vacio.leidas")
-                          : t("vacio.todas")}
-                      </p>
-                      {activeTab === "todas" && (
-                        <button
-                          onClick={() => setIsAddModalOpen(true)}
-                          className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
-                        >
-                          <Plus size={16} /> {t("vacio.agregar")}
-                        </button>
+                      {errorFeed ? (
+                        <>
+                          <span className="mx-auto grid h-12 w-12 place-content-center rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-400">
+                            <TriangleAlert size={22} />
+                          </span>
+                          <p className="text-base font-semibold text-app-fg max-w-md mx-auto">
+                            {t("vacio.error_titulo")}
+                          </p>
+                          <p className="text-sm text-app-muted max-w-md mx-auto">
+                            {t("vacio.error_d")}
+                          </p>
+                          <button
+                            onClick={() => recargarDatos()}
+                            className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
+                          >
+                            <RotateCw size={16} /> {t("vacio.reintentar")}
+                          </button>
+                        </>
+                      ) : hayFiltrosActivos ? (
+                        <>
+                          <span className="mx-auto grid h-12 w-12 place-content-center rounded-full border border-app-line bg-app-raised text-app-muted">
+                            <SearchX size={22} />
+                          </span>
+                          <p className="text-base font-semibold text-app-fg max-w-md mx-auto">
+                            {t("vacio.sin_resultados")}
+                          </p>
+                          <p className="text-sm text-app-muted max-w-md mx-auto">
+                            {t("vacio.sin_resultados_d")}
+                          </p>
+                          <button
+                            onClick={() => limpiarFiltros()}
+                            className="btn-press group inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 text-sm font-medium text-amber-200 hover:bg-amber-500/20"
+                          >
+                            {t("vacio.limpiar")} ({numFiltrosActivos})
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="eyebrow mx-auto w-fit">{t("filtros.titulo")}</p>
+                          <p className="text-base text-app-muted max-w-md mx-auto">
+                            {activeTab === "guardadas"
+                              ? t("vacio.guardadas")
+                              : activeTab === "leidas"
+                              ? t("vacio.leidas")
+                              : t("vacio.todas")}
+                          </p>
+                          {activeTab === "todas" && (
+                            <button
+                              onClick={() => setIsAddModalOpen(true)}
+                              className="btn-press group inline-flex items-center gap-2 rounded-full bg-[var(--accent-strong)] px-5 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
+                            >
+                              <Plus size={16} /> {t("vacio.agregar")}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

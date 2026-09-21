@@ -113,6 +113,12 @@ const TEXTOS = {
       todas: "¡Estás al día! No hay noticias pendientes por leer.",
       agregar: "Agregar",
       cargando: "Cargando noticias",
+      sin_resultados: "Sin resultados para estos filtros.",
+      sin_resultados_d: "Ninguna noticia coincide con la búsqueda o los filtros activos. Ajusta o limpia los filtros para ver más.",
+      limpiar: "Limpiar filtros",
+      error_titulo: "No se pudo sincronizar la fuente.",
+      error_d: "Revisa tu conexión e inténtalo de nuevo. Si el problema persiste, la fuente puede estar caída.",
+      reintentar: "Reintentar",
     },
     guia: {
       etiqueta: "Guía para nuevos usuarios",

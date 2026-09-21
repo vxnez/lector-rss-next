@@ -45,6 +45,9 @@ export function useFeedState({
   const [totalNoticias, setTotalNoticias] = useState(0);
   const [cargandoFeed, setCargandoFeed] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  // Error de carga de la fuente (fetch fallido, no abortado): permite
+  // distinguir "cero por filtros" de "fallo de sincronización".
+  const [errorFeed, setErrorFeed] = useState(null);
 
   const claveFeedActualRef = useRef("");
 
@@ -106,6 +109,7 @@ export function useFeedState({
         setLastUpdated(new Date());
       }
       setCargandoFeed(!instantanea);
+      setErrorFeed(null);
 
       try {
         const [data, facetas] = await Promise.all([
@@ -190,6 +194,7 @@ export function useFeedState({
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error("Error al cargar feed:", err);
+          setErrorFeed("fetch");
           // Fallback offline para artículos guardados
           if (activeTab === "guardadas") {
             try {
@@ -508,6 +513,7 @@ export function useFeedState({
     totalNoticias,
     setTotalNoticias,
     cargandoFeed,
+    errorFeed,
     lastUpdated,
     toggleLeido,
     toggleGuardado,
