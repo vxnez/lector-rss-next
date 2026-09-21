@@ -565,12 +565,16 @@ export default function HomePage() {
         data.fuentesSinCambios !== undefined && data.fuentesSinCambios !== null
           ? Number(data.fuentesSinCambios) || 0
           : omitidas;
+      const fallidas = Array.isArray(data.fuentesFallidas) ? data.fuentesFallidas.length : 0;
+      const reparadas = Array.isArray(data.reparadas) ? data.reparadas.length : 0;
       let mensaje =
         restaurados > 0
           ? t("avisos.refresh_restauradas", { n: restaurados })
           : t("avisos.refresh_ok");
       if (nuevos > 0) mensaje += t("avisos.refresh_nuevas", { n: nuevos });
       if (sinCambios > 0) mensaje += t("avisos.sin_cambios", { n: sinCambios });
+      if (reparadas > 0) mensaje += t("avisos.refresh_reparadas", { n: reparadas });
+      if (fallidas > 0) mensaje += t("avisos.refresh_fallidas", { n: fallidas });
       if (purgados > 0) mensaje += t("avisos.purgadas", { n: purgados });
       if (pendientes > 0) {
         mensaje += t("avisos.completando", { n: pendientes });

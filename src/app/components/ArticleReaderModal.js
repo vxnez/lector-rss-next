@@ -41,6 +41,21 @@ const getCategoryColor = (categoria) => getCategoryVars(categoria);
 // Fecha legible con cache compartido en lib/formato.
 const formatFechaArticulo = (fechaStr, t, locale) => formatFecha(fechaStr, t("tarjeta.reciente"), locale);
 
+// Resumen truncado en origen (post-DDL: resumen_completo=1) o, si el flag
+// aún no viene (caché vieja, offline), heurística por longitud.
+function esResumenTruncado(article) {
+  const marca = article?.resumen_completo;
+  if (marca === 1 || marca === "1" || marca === true) return true;
+  if (marca === 0 || marca === "0" || marca === false) return false;
+  return String(article?.resumen || "").length > 400;
+}
+
+// Fecha estimada por el servidor cuando el feed no trae fecha válida.
+function esFechaEstimada(article) {
+  const marca = article?.fecha_estimada;
+  return marca === 1 || marca === "1" || marca === true;
+}
+
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
   const { t, locale } = useIdioma();
   const [savingAction, setSavingAction] = useState("");
@@ -571,9 +586,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 </span>
               )}
               {fechaFormateada && (
-                <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap">
+                <span
+                  className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap"
+                  title={esFechaEstimada(article) ? t("lector.fecha_estimada") : undefined}
+                >
                   <Calendar size={12} className="opacity-75 shrink-0" />
-                  {fechaFormateada}
+                  {esFechaEstimada(article) ? `~${fechaFormateada}` : fechaFormateada}
                 </span>
               )}
               <span className="flex items-center gap-1 bg-gray-800/60 border border-gray-700/60 text-gray-400 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md whitespace-nowrap" title={t("tarjeta.min_titulo", { n: minutosLectura })}>
@@ -696,7 +714,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               expandido={resumenExpandido}
             />
           </div>
-          {article.resumen && article.resumen.length > 400 && (
+          {esResumenTruncado(article) && (
             <button
               type="button"
               onClick={() => setResumenExpandido((v) => !v)}

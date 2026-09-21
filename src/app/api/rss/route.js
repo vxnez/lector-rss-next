@@ -534,6 +534,9 @@ export async function POST(req) {
         // cola IA); reparados = rescatados por repararGenerales.
         const pendientesBackend = Number(r?.pendientes) || 0;
         const reparados = Number(r?.reparados) || 0;
+        // Post-DDL backend: listas de fuentes fallidas/reparadas (ids).
+        const fuentesFallidas = Array.isArray(r?.fuentes_fallidas) ? r.fuentes_fallidas : [];
+        const reparadas = Array.isArray(r?.reparadas) ? r.reparadas : [];
         const detalle = Array.isArray(r?.detalle) ? r.detalle : [];
         // Fuentes sin cambios: se prefiere el conteo propio del backend
         // (snake_case); si falta, se deriva del detalle. El `omitidas` suelto
@@ -562,6 +565,8 @@ export async function POST(req) {
           omitidas,
           fuentesSinCambios,
           reparados,
+          fuentesFallidas,
+          reparadas,
           purgados: 0,
           actualizadas,
           detalle: r?.detalle || undefined,
