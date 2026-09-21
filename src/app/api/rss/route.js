@@ -79,6 +79,8 @@ async function clasificarPendientesResponse(userId, body = {}) {
   const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes);
   let clasificados = 0;
   const idsClasificados = [];
+  // Detalle por item para parche instantáneo en el cliente (sin refetch).
+  const detalleResultados = [];
   for (let i = 0; i < pendientes.length; i++) {
     const resultado = resultados[i];
     if (!esExitoIA(resultado?.metodo)) continue;
@@ -90,6 +92,12 @@ async function clasificarPendientesResponse(userId, body = {}) {
       });
       clasificados++;
       idsClasificados.push(pendientes[i].id);
+      detalleResultados.push({
+        id: pendientes[i].id,
+        categoria: resultado.categoria,
+        metodo: resultado.metodo,
+        confianza: resultado.confianza,
+      });
     } catch (error) {
       console.warn("No se pudo persistir categoría:", pendientes[i].id, error?.message || error);
     }
@@ -112,6 +120,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
     // General que se reintentan en la próxima corrida, no en esta).
     lote: pendientes.length,
     ids: idsClasificados,
+    resultados: detalleResultados,
   });
 }
 import { resolverUsuarioId } from "@/lib/invitado";

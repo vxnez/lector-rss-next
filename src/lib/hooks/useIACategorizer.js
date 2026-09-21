@@ -84,6 +84,24 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         let diagFinal = null;
         const excluidos = [];
         let rachaCuota = 0;
+        // Sondeo ligero de telemetría backend (~3 s, solo durante la
+        // corrida): mantiene vivos los pendientes en esperas largas
+        // (reintentarEn hasta 120 s) sin refetch completo. Silencioso.
+        const sondeoProgreso = setInterval(async () => {
+          try {
+            if (!iaEnCursoRef.current) return;
+            const res = await fetch("/api/ia/progreso", { cache: "no-store" });
+            if (!res.ok) return;
+            const prog = await res.json().catch(() => null);
+            const p = Number(prog?.pendientes);
+            if (!Number.isFinite(p)) return;
+            setIaProgreso((prev) =>
+              prev && prev.estado === "en_curso" ? { ...prev, pendientes: p } : prev
+            );
+          } catch {
+            // Sondeo best-effort: el loop por lotes sigue mandando.
+          }
+        }, 3000);
         try {
           for (let intento = 0; intento < 24; intento++) {
             let lote;
@@ -135,9 +153,11 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
           // vista con lo persistido (los parches por lote ya adelantaron).
           recargarDatos();
         } finally {
+          clearInterval(sondeoProgreso);
           iaEnCursoRef.current = false;
         }
       })().catch(() => {
+        clearInterval(sondeoProgreso);
         iaEnCursoRef.current = false;
         setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
       });

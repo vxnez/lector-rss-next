@@ -8,20 +8,37 @@ import { CATALOGO_PROMPT, CATEGORIAS_DISPONIBLES } from "./categoryClassifier";
 import { clasificarPorPalabras } from "./keywordFallback";
 
 const CLASIFICACION_CACHE_MAX = 2000;
-const clasificacionCache = new Map();
+// TTL por instancia serverless: los republicados se reinfieren tras 6 h.
+const CLASIFICACION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const clasificacionCache = new Map(); // clave -> { valor, ts }
+
+// Clave normalizada: republicados con distinto casing/espaciado comparten
+// veredicto en vez de re-inferirse.
+export function normalizarClaveClasificacion(titulo, resumen) {
+  const norm = (s) =>
+    String(s || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  return `${norm(titulo)}\u0000${norm(resumen)}`;
+}
 
 function cacheClasificacionGet(key) {
   const hit = clasificacionCache.get(key);
-  if (hit) {
+  if (!hit) return undefined;
+  if (Date.now() - hit.ts > CLASIFICACION_CACHE_TTL_MS) {
     clasificacionCache.delete(key);
-    clasificacionCache.set(key, hit);
+    return undefined;
   }
-  return hit;
+  clasificacionCache.delete(key);
+  clasificacionCache.set(key, hit);
+  return hit.valor;
 }
 
 function cacheClasificacionSet(key, valor) {
-  if (clasificacionCache.has(key)) clasificacionCache.delete(key);
-  clasificacionCache.set(key, valor);
+  clasificacionCache.delete(key);
+  clasificacionCache.set(key, { valor, ts: Date.now() });
   if (clasificacionCache.size > CLASIFICACION_CACHE_MAX) {
     clasificacionCache.delete(clasificacionCache.keys().next().value);
   }
@@ -275,7 +292,7 @@ export async function clasificarLoteConIA(apiKey, noticias) {
   let falloCodigo = null;
   const grupos = new Map();
   noticias.forEach((noticia, indice) => {
-    const key = `${(noticia.titulo || "").trim()}\u0000${(noticia.resumen || "").trim()}`;
+    const key = normalizarClaveClasificacion(noticia.titulo, noticia.resumen);
     const cached = cacheClasificacionGet(key);
     if (cached) {
       resultados[indice] = cached;

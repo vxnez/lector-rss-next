@@ -372,3 +372,11 @@ export async function marcarArticulo(articulo_id, usuario_id, patch = {}) {
 export async function getStats(usuario_id) {
   return api("/api/data/stats", { query: { usuario_id: String(usuario_id) } });
 }
+
+// ---- Progreso IA (telemetría barata: 1 COUNT en el backend) ----
+export async function getIAProgreso(usuario_id) {
+  return api("/api/ia/progreso", {
+    query: { usuario_id: String(usuario_id) },
+    timeoutMs: 8000,
+  });
+}
