@@ -125,7 +125,8 @@ export function useNotificaciones({ toast, onCerrarToast, iaProgreso }) {
 
   const marcarTodasLeidas = useCallback(() => {
     setItems((prev) => {
-      const nuevos = prev.map((n) => ({ ...n, leida: true }));
+      // La fijada (IA) nunca se marca como leída: siempre activa.
+      const nuevos = prev.map((n) => (n.pinned ? n : { ...n, leida: true }));
       guardar(nuevos);
       return nuevos;
     });

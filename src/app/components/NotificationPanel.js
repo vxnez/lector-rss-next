@@ -28,10 +28,13 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
   const tipo = TIPOS[item.tipo] || TIPOS.info;
   const Icon = tipo.icon;
   const leida = item.leida;
+  // La fijada (IA) nunca se opaca ni se puede eliminar: solo se actualiza
+  // cuando el usuario ejecuta la categorización con IA.
+  const esFijada = item.pinned === true;
 
   return (
     <div
-      className={`group relative flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${tipo.bg} ${tipo.border} ${leida ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""}`}
+      className={`group relative flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""}`}
     >
       <input
         type="checkbox"
@@ -62,26 +65,28 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
           )}
         </p>
       </div>
-      <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity peer-checked:opacity-100">
-        {!leida && (
+      {!esFijada && (
+        <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity peer-checked:opacity-100">
+          {!leida && (
+            <button
+              type="button"
+              onClick={onMarcarLeida}
+              className="btn-press rounded-lg p-1.5 text-app-muted hover:text-app-fg"
+              aria-label={t("ajustes.notificaciones.marcar_leida")}
+            >
+              <Check size={14} />
+            </button>
+          )}
           <button
             type="button"
-            onClick={onMarcarLeida}
-            className="btn-press rounded-lg p-1.5 text-app-muted hover:text-app-fg"
-            aria-label={t("ajustes.notificaciones.marcar_leida")}
+            onClick={onEliminar}
+            className="btn-press rounded-lg p-1.5 text-app-muted hover:text-rose-400"
+            aria-label={t("ajustes.notificaciones.eliminar")}
           >
-            <Check size={14} />
+            <Trash2 size={14} />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onEliminar}
-          className="btn-press rounded-lg p-1.5 text-app-muted hover:text-rose-400"
-          aria-label={t("ajustes.notificaciones.eliminar")}
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
