@@ -19,6 +19,7 @@ import { inicializarMicrointeracciones } from "@/lib/animaciones";
 
 import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
+import { useNotificaciones } from "@/lib/hooks/useNotificaciones";
 import { useFeedState } from "@/lib/hooks/useFeedState";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 
@@ -177,6 +178,19 @@ export default function HomePage() {
   // Hook de Clasificación IA
   const { iaProgreso, setIaProgreso, handleCategorizarIA, procesarColaClasificacion } =
     useIACategorizer({ session, recargarDatos, notify, t });
+
+  // Bandeja central de notificaciones (campanita del header + panel lateral).
+  const {
+    items: notificaciones,
+    abierta: notifsAbiertas,
+    fijarAbierta: fijarNotifs,
+    noLeidas: noLeidasNotifs,
+    iaEnCurso: iaEnCursoNotifs,
+    eliminarUna: eliminarNotif,
+    marcarLeida: marcarNotifLeida,
+    marcarTodasLeidas: marcarNotifsLeidas,
+    eliminarSeleccionadas: eliminarNotifsSel,
+  } = useNotificaciones({ toast, onCerrarToast: () => setToast(null), iaProgreso });
 
   // Hook de Estado del Feed
   const {
@@ -641,6 +655,10 @@ export default function HomePage() {
         esInvitado={esInvitado}
         panelAjustes={panelAjustes}
         onAbrirAjustes={() => setPanelAjustes(true)}
+        panelNotifs={notifsAbiertas}
+        onAbrirNotifs={() => fijarNotifs(!notifsAbiertas)}
+        noLeidasNotifs={noLeidasNotifs}
+        iaNotifsEnCurso={iaEnCursoNotifs}
         t={t}
       />
 
@@ -1050,12 +1068,17 @@ export default function HomePage() {
       />
 
       <NotificationPanel
+        abierto={notifsAbiertas}
+        onCerrar={() => fijarNotifs(false)}
+        notificaciones={notificaciones}
+        noLeidas={noLeidasNotifs}
         iaProgreso={iaProgreso}
         onCerrarIA={() => setIaProgreso(null)}
-        toast={toast}
-        onCerrarToast={() => setToast(null)}
         pushActivado={pushActivado}
-        onGestionarPush={gestionarPush}
+        onEliminarUna={eliminarNotif}
+        onMarcarLeida={marcarNotifLeida}
+        onMarcarTodasLeidas={marcarNotifsLeidas}
+        onEliminarSeleccionadas={eliminarNotifsSel}
       />
       <KeyboardShortcutsModal
         abierto={ayudaAtajosAbierta}

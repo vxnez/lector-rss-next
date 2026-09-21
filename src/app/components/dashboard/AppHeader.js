@@ -3,10 +3,39 @@
 
 import Link from "next/link";
 import { Rss, LogIn, UserPlus } from "lucide-react";
-import { Menu as MenuData, X as XData } from "lucide";
+import { Menu as MenuData, X as XData, Bell as BellData, BellRing as BellRingData } from "lucide";
 import MorphIcon from "../MorphIcon";
 
-export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAjustes, t }) {
+export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAjustes, panelNotifs, onAbrirNotifs, noLeidasNotifs, iaNotifsEnCurso, t }) {
+  const hayNuevas = Number(noLeidasNotifs) > 0;
+  const botonNotifs = (
+    <button
+      type="button"
+      onClick={onAbrirNotifs}
+      title={t("ajustes.notificaciones.titulo")}
+      aria-label={t("ajustes.notificaciones.panel")}
+      aria-expanded={panelNotifs}
+      className="btn-press relative rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+    >
+      <MorphIcon icon={panelNotifs ? XData : (hayNuevas ? BellRingData : BellData)} size={21} strokeWidth={2.25} />
+      {hayNuevas && (
+        <span
+          key={noLeidasNotifs}
+          aria-hidden="true"
+          className="anim-burbuja absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white"
+        >
+          {noLeidasNotifs > 9 ? "9+" : noLeidasNotifs}
+        </span>
+      )}
+      {iaNotifsEnCurso && (
+        <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+        </span>
+      )}
+    </button>
+  );
+
   const botonAjustes = (
     <button
       type="button"
@@ -42,6 +71,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
         {session?.user ? (
           <>
             {botonAjustes}
+            {botonNotifs}
             {esInvitado && (
               <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">
                 {t("header.invitado")}
