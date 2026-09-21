@@ -67,7 +67,10 @@ export default function IAProgressCard({ progreso, onCerrar, t }) {
     ? null
     : Number(progreso.pendientes) || 0;
   const fraccion = total > 0 ? Math.max(0, Math.min(1, procesadas / total)) : 0;
-  const indeterminado = total <= 0;
+  const indeterminado = total <= 0 && !terminada;
+  // Corrida terminada = barra llena: el total era una estimación del primer
+  // lote y la corrida puede cerrar antes (cuota, tope de intentos, red).
+  const porcentaje = terminada ? 100 : Math.round(fraccion * 100);
 
   const detalle = fallida
     ? (diag ? t(`avisos.ia_err_${diag}`) : t("avisos.ia_err"))
@@ -97,13 +100,13 @@ export default function IAProgressCard({ progreso, onCerrar, t }) {
             role="progressbar"
             aria-label={t("ia_bar.titulo")}
             aria-valuemin={0}
-            aria-valuemax={indeterminado ? undefined : total}
-            aria-valuenow={indeterminado ? undefined : procesadas}
+            aria-valuemax={terminada ? 100 : (indeterminado ? undefined : total)}
+            aria-valuenow={terminada ? 100 : (indeterminado ? undefined : procesadas)}
             className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-500/20 [html[data-tema-claro='1']_&]:bg-violet-600/20"
           >
             <div
               className={`h-full rounded-full bg-violet-500 [html[data-tema-claro='1']_&]:bg-violet-600 ${indeterminado ? "w-full animate-pulse" : "transition-[width] duration-500"}`}
-              style={indeterminado ? undefined : { width: `${Math.round(fraccion * 100)}%` }}
+              style={indeterminado ? undefined : { width: `${porcentaje}%` }}
             />
           </div>
         </div>

@@ -252,6 +252,16 @@ export default function NotificationPanel({
 
   const noLeidas = notificaciones.filter((n) => !n.leida && !n.pinned).length;
 
+  // Barra IA: corrida terminada = 100 %. El total era una estimación del
+  // primer lote y la corrida puede cerrar antes (cuota, tope de intentos, red).
+  const iaOk = iaProgreso?.estado === "ok";
+  const iaTotal = Number(iaProgreso?.total) || 0;
+  const iaProcesadas = Number(iaProgreso?.procesadas) || 0;
+  const iaIndeterminado = !iaOk && iaTotal <= 0;
+  const iaPct = iaOk
+    ? 100
+    : Math.round(Math.max(0, Math.min(1, iaTotal > 0 ? iaProcesadas / iaTotal : 0)) * 100);
+
   // Render minimizado (burbuja en el borde)
   if (!hidratado) return null;
 
@@ -389,13 +399,13 @@ export default function NotificationPanel({
                   role="progressbar"
                   aria-label={t("ia_bar.titulo")}
                   aria-valuemin={0}
-                  aria-valuemax={iaProgreso.total > 0 ? iaProgreso.total : undefined}
-                  aria-valuenow={iaProgreso.total > 0 ? iaProgreso.procesadas : undefined}
+                  aria-valuemax={iaOk ? 100 : (iaIndeterminado ? undefined : iaTotal)}
+                  aria-valuenow={iaOk ? 100 : (iaIndeterminado ? undefined : iaProcesadas)}
                   className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-500/20 [html[data-tema-claro='1']_&]:bg-violet-600/20"
                 >
                   <div
-                    className={`h-full rounded-full bg-violet-500 [html[data-tema-claro='1']_&]:bg-violet-600 ${iaProgreso.total <= 0 ? "w-full animate-pulse" : "transition-[width] duration-500"}`}
-                    style={iaProgreso.total > 0 ? { width: `${Math.round(Math.max(0, Math.min(1, (iaProgreso.procesadas || 0) / iaProgreso.total)) * 100)}%` } : undefined}
+                    className={`h-full rounded-full bg-violet-500 [html[data-tema-claro='1']_&]:bg-violet-600 ${iaIndeterminado ? "w-full animate-pulse" : "transition-[width] duration-500"}`}
+                    style={iaIndeterminado ? undefined : { width: `${iaPct}%` }}
                   />
                 </div>
               </div>
