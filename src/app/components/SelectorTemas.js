@@ -58,25 +58,19 @@ export default function SelectorTemas({ tema, onTema }) {
                 "transition-all duration-200 ease-out",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
                 activo
-                  ? "border-2 border-[var(--accent)] bg-app-raised/30"
-                  : "border border-app-line bg-app-surface/50 hover:bg-app-raised/40",
+                  ? "border-2 border-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
+                  : "border border-app-line hover:border-[var(--accent)]/60",
               ].join(" ")}
+              style={{
+                backgroundColor: item.claro ? item.bg : `color-mix(in srgb, ${item.bg} 85%, #0a0a0a)`,
+              }}
             >
-              {/* Vista previa circular bicolor: bg del tema + acento */}
-              <span
-                aria-hidden="true"
-                className="relative h-9 w-9 shrink-0 rounded-full border border-app-line/50"
-                style={{
-                  background: `linear-gradient(135deg, ${item.bg} 50%, ${item.accent} 50%)`,
-                }}
-              />
-
-              {/* Nombre del tema y etiqueta de modo (tipografía limpia) */}
+              {/* Nombre del tema y etiqueta de modo */}
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-app-fg">
+                <span className={`block text-sm font-medium ${item.claro ? "text-[#1b2a1f]" : "text-[#e7edf5]"}`}>
                   {item.nombre}
                 </span>
-                <span className="block text-xs text-app-muted">
+                <span className={`block text-xs ${item.claro ? "text-[#5c6850]/80" : "text-[#91a0b5]/80"}`}>
                   {modo}
                 </span>
               </span>
@@ -88,8 +82,8 @@ export default function SelectorTemas({ tema, onTema }) {
                 strokeWidth={2.5}
                 className={
                   activo
-                    ? "shrink-0 text-[var(--accent)]"
-                    : "shrink-0 text-app-muted group-hover:text-app-fg"
+                    ? "shrink-0 text-white drop-shadow-sm"
+                    : `shrink-0 ${item.claro ? "text-[#5c6850]" : "text-[#828a94]"} group-hover:text-white`
                 }
               />
             </button>
