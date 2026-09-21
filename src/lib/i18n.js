@@ -150,6 +150,7 @@ const TEXTOS = {
       agregando: "Agregando...",
       agregada: "¡Agregada!",
       agregar_todas: "Agregar",
+      agregando_todas: "Agregando todas...",
       feeds_agregadas: "{n} fuentes agregadas correctamente",
       feed_ya_existe: "Ya tienes esta fuente",
       error_agregar: "Error al agregar la fuente",

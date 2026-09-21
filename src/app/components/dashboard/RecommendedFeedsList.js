@@ -38,16 +38,17 @@ function LocalFeedCard({ feed, onAdd, adding, added, t }) {
   );
 }
 
-export default function RecommendedFeedsList({ 
-  cargando, 
-  feeds, 
-  total, 
-  totalAgregados, 
-  onAdd, 
-  onAddAll, 
-  feedsAgregando, 
-  feedsAgregados, 
-  t 
+export default function RecommendedFeedsList({
+  cargando,
+  feeds,
+  total,
+  totalAgregados,
+  onAdd,
+  onAddAll,
+  agregandoTodas,
+  feedsAgregando,
+  feedsAgregados,
+  t
 }) {
   if (cargando) {
     return (
@@ -66,8 +67,23 @@ export default function RecommendedFeedsList({
     return <p className="text-center text-app-muted py-8">{t("onboarding.sin_feeds")}</p>;
   }
 
+  const mostrarAgregarTodas = safeTotal > 0 && totalAgregados < safeTotal;
+
   return (
     <>
+      {mostrarAgregarTodas && (
+        <button
+          type="button"
+          onClick={onAddAll}
+          disabled={agregandoTodas || totalAgregados === safeTotal}
+          className="btn-press mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-medium text-[var(--accent-ink)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-50"
+        >
+          {agregandoTodas ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}{" "}
+          {agregandoTodas
+            ? t("onboarding.agregando_todas")
+            : t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
+        </button>
+      )}
       <div className="scroll-oculto max-h-[50vh] space-y-3 overflow-y-auto overscroll-contain pr-1">
         {categorias.map((categoria) => {
           const lista = safeFeeds[categoria];
@@ -100,17 +116,6 @@ export default function RecommendedFeedsList({
           );
         })}
       </div>
-
-      {safeTotal > 0 && totalAgregados < safeTotal && (
-        <button
-          type="button"
-          onClick={onAddAll}
-          disabled={totalAgregados === safeTotal}
-          className="btn-press mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-medium text-[var(--accent-ink)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-50"
-        >
-          <Plus size={16} /> {t("onboarding.agregar_todas", { n: safeTotal - totalAgregados })}
-        </button>
-      )}
     </>
   );
 }

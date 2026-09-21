@@ -67,6 +67,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   const [feedsAgregando, setFeedsAgregando] = useState(new Set());
   const [feedsAgregados, setFeedsAgregados] = useState(new Set());
   const [totalAgregados, setTotalAgregados] = useState(0);
+  const [agregandoTodas, setAgregandoTodas] = useState(false);
   const [completando, setCompletando] = useState(false);
   const cargandoRef = useRef(false);
   const overlayRef = useRef(null);
@@ -174,11 +175,12 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
   };
 
   const handleAgregarTodas = async () => {
+    if (agregandoTodas) return;
     if (!feedsRecomendados || typeof feedsRecomendados !== 'object') return;
-    
+
     const categorias = Object.keys(feedsRecomendados);
     const todas = [];
-    
+
     for (const cat of categorias) {
       const lista = feedsRecomendados[cat];
       if (Array.isArray(lista)) {
@@ -188,12 +190,17 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
       }
     }
 
-    for (const feed of todas) {
-      const feedKey = `${feed.titulo}|${feed.url}`;
-      if (!feedsAgregados.has(feedKey) && !feedsAgregando.has(feedKey)) {
-        await handleAgregarFeed(feed);
-        await new Promise((r) => setTimeout(r, 150));
+    setAgregandoTodas(true);
+    try {
+      for (const feed of todas) {
+        const feedKey = `${feed.titulo}|${feed.url}`;
+        if (!feedsAgregados.has(feedKey) && !feedsAgregando.has(feedKey)) {
+          await handleAgregarFeed(feed);
+          await new Promise((r) => setTimeout(r, 150));
+        }
       }
+    } finally {
+      setAgregandoTodas(false);
     }
   };
 
@@ -354,6 +361,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                  totalAgregados={totalAgregados}
                  onAdd={handleAgregarFeed}
                  onAddAll={handleAgregarTodas}
+                  agregandoTodas={agregandoTodas}
                  feedsAgregando={feedsAgregando}
                  feedsAgregados={feedsAgregados}
                  t={t}
