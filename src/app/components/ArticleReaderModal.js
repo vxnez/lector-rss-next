@@ -154,6 +154,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Copiar enlace y Web Share API
   const [copiado, setCopiado] = useState(false);
+  // Resumen colapsado por defecto (se reinicia por noticia: el modal se
+  // remonta con `key`). Evita que textos largos desfasen el modal y el pie.
+  const [resumenExpandido, setResumenExpandido] = useState(false);
   const compartirArticulo = async () => {
     const url = article?.url_original || article?.link;
     if (!url) return;
@@ -678,15 +681,28 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             </div>
           </div>
 
-          {/* Título completo */}
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-app-fg leading-snug mb-4 break-words">
+          {/* Título con tope de líneas para no desfasar la cabecera */}
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-app-fg leading-snug mb-4 break-words line-clamp-3 overflow-hidden">
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen de la noticia */}
-          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
-            <p>{article.resumen || t("lector.sin_resumen")}</p>
+          {/* Cuerpo / Resumen: truncado por CSS con botón para expandir.
+              El pie (leer/guardar/sitio oficial) queda siempre a la vista. */}
+          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
+            <p className={resumenExpandido ? undefined : "line-clamp-[10]"}>
+              {article.resumen || t("lector.sin_resumen")}
+            </p>
           </div>
+          {article.resumen && article.resumen.length > 400 && (
+            <button
+              type="button"
+              onClick={() => setResumenExpandido((v) => !v)}
+              aria-expanded={resumenExpandido}
+              className="btn-press mt-2 text-xs font-semibold text-[var(--accent-ink)] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            >
+              {resumenExpandido ? t("lector.ver_menos") : t("lector.ver_mas")}
+            </button>
+          )}
         </div>
 
         {actionError && (

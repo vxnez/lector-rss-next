@@ -190,6 +190,8 @@ const TEXTOS = {
       cerrar: "Cerrar lector de noticia",
       posicion: "Noticia {a} de {b}",
       sin_resumen: "Sin resumen disponible para esta noticia.",
+      ver_mas: "Mostrar más",
+      ver_menos: "Mostrar menos",
       marcar: "Marcar como leído",
       guardando: "Guardando...",
       leido: "Leído",
