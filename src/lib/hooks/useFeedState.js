@@ -3,7 +3,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { paramsFeed } from "@/lib/feed-utils";
-import { fetchJson, leerCache, prefetchJson } from "@/lib/fetchCache";
+import { fetchJson, leerCache, prefetchJson, bumpCacheVersion } from "@/lib/fetchCache";
 import {
   sincronizarArticulosOffline,
   obtenerArticulosOffline,
@@ -361,9 +361,15 @@ export function useFeedState({
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || "No se pudo actualizar el estado guardado.");
         }
-        // El listado del backend aún no refleja guardado (lo lee de otra
-        // tabla que el payload): NO refetchear la lista o pisaría la marca.
-        // Se excluye en vista local según pestaña y solo se reconcilian conteos.
+        // NO refetchear la lista actual o pisaría la marca optimista: se
+        // excluye en vista local según pestaña. Pero SÍ se invalida la caché
+        // en memoria (bump): sin esto, al cambiar de pestaña se repinta el
+        // snapshot viejo y el TTL de 30s sirve respuestas obsoletas, de modo
+        // que el item no aparece en Leídas/Guardadas hasta recargar el
+        // navegador. El bump no dispara refetch por sí solo (sin cambio de
+        // nonce), así que el optimismo local se conserva y la próxima
+        // pestaña ya pide datos frescos al backend.
+        bumpCacheVersion();
         if (guardadoNuevo && activeTab !== "guardadas") {
           setArticulos((prev) => prev.filter((art) => art.id !== id));
           setTotalNoticias((prev) => Math.max((Number(prev) || 1) - 1, 0));
