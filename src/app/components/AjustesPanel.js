@@ -28,9 +28,9 @@ import {
   Star,
   TriangleAlert,
 } from "lucide-react";
-import { BellRing as BellRingData, BellOff as BellOffData, Circle as CircleData, CheckCircle2 as CheckCircleData } from "lucide";
+import { BellRing as BellRingData, BellOff as BellOffData } from "lucide";
 import MorphIcon from "./MorphIcon";
-import { TEMAS } from "@/lib/temas";
+import SelectorTemas from "./SelectorTemas";
 import { limpiarRastrosCuenta } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
@@ -469,48 +469,8 @@ export default function AjustesPanel({
           )}
 
           {vista === "apariencia" && (
-            <section className="stagger-in space-y-4">
-              <div className="space-y-2.5">
-                <p className="text-xs font-medium text-gray-400">{t("ajustes.tema_grupo")}</p>
-                <p className="text-xs leading-relaxed text-gray-500">
-                  {t("ajustes.apariencia_nota")}
-                </p>
-                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("ajustes.tema_grupo")}>
-                  {TEMAS.map((item) => {
-                    const activo = tema === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={activo}
-                        onClick={() => onTema(item.id)}
-                        title={`${item.nombre} (${item.claro ? t("ajustes.claro") : t("ajustes.oscuro")})`}
-                        className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
-                          activo
-                            ? "border-sky-500 bg-sky-500/15"
-                            : "border-gray-800 bg-gray-950 hover:border-gray-600"
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{ background: `linear-gradient(135deg, ${item.bg} 50%, ${item.accent} 50%)` }}
-                          className="h-7 w-7 shrink-0 rounded-full border border-gray-700"
-                        />
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-200">
-                          {item.nombre}
-                        </span>
-                        <MorphIcon
-                          icon={activo ? CheckCircleData : CircleData}
-                          size={15}
-                          strokeWidth={2.5}
-                          className={`shrink-0 ${activo ? "text-sky-400" : "text-gray-600"}`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            <section className="stagger-in">
+              <SelectorTemas tema={tema} onTema={onTema} />
             </section>
           )}
 

@@ -3,13 +3,9 @@ import { IdiomaProvider } from "@/lib/i18n";
 import "./globals.css";
 import "./themes.css";
 
-// Aplica tema, densidad y movimiento guardados antes del primer
-// pintado (evita parpadeo). Debe coincidir con lib/temas.js. El idioma es
-// fijo español (lang="es"); el lector_idioma antiguo se ignora.
-const SCRIPT_TEMA_INICIAL = `(function(){try{var validos=["medianoche","duna","mineral","bosque","ebano","celeste","menta","celadon"];var t=localStorage.getItem("lector_tema");if(validos.indexOf(t)<0){t=(window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)?"menta":"medianoche";}var claros={"celeste":1,"menta":1,"celadon":1};document.documentElement.dataset.theme=t;if(claros[t]){document.documentElement.dataset.temaClaro="1";}if(localStorage.getItem("lector_movimiento")==="reducido"){document.documentElement.dataset.motion="reduced";}var d=localStorage.getItem("lector_densidad");if(d==="compacta"){document.documentElement.dataset.densidad="compacta";}document.documentElement.lang="es";}catch(e){}})();`;
-
-
-
+// El script de tema/densidad/movimiento se inyecta imperativamente
+// desde page.js vía useLayoutEffect (evita la advertencia de
+// <script> dentro de componentes React en Turbopack).
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -57,9 +53,6 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        {/* Script plano y bloqueante (primera etiqueta del body): aplica tema y
-            movimiento antes del primer pintado, sin depender del framework. */}
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
         <a href="#contenido" className="skip-link">
           Saltar al contenido
         </a>

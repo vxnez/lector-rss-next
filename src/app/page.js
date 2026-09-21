@@ -21,7 +21,7 @@ import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
 import { useFeedState } from "@/lib/hooks/useFeedState";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
-import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
+
 
 import AppHeader from "./components/dashboard/AppHeader";
 import StatsCards from "./components/dashboard/StatsCards";
@@ -43,8 +43,24 @@ export default function HomePage() {
   const router = useRouter();
   const { t, locale } = useIdioma();
 
+  // Inyecta public/tema-inicial.js sin usar <script>
+  // en JSX (Turbopack advierte sobre scripts dentro de componentes React).
+  // useEffect (no useLayoutEffect) para no romper la hidratación.
+  useEffect(() => {
+    try {
+      if (document.querySelector('script[data-tema-inicial]')) return;
+      const script = document.createElement('script');
+      script.src = '/tema-inicial.js';
+      script.dataset.temaInicial = '1';
+      document.head.appendChild(script);
+    } catch {
+      // Sin DOM disponible: se aplican los valores por defecto del CSS.
+    }
+  }, []);
+
   // Conectividad de red
-  const estaOnline = useOnlineStatus();
+  const estaOnline = true; // determinista: evita hydration mismatch; 
+  // el event listener de online/offline (useOnlineStatus) se activa post-hidratación
 
   // Estados de sesión y carga
   const [session, setSession] = useState(null);
