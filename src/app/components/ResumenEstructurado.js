@@ -69,6 +69,18 @@ export function parseResumen(texto) {
   return bloques.length > 0 ? bloques : [{ tipo: "parrafo", texto: base }];
 }
 
+/** Texto plano para tarjetas: quita marcas Markdown (** , ##, viñetas) y
+    colapsa espacios. Las tarjetas usan line-clamp sobre una sola línea
+    lógica; las marcas crudas se verían como en el bug reportado. */
+export function resumenPlano(texto) {
+  return String(texto || "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/^#{1,3}\s+/gm, "")
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Divide un fragmento en partes normales y en negrita (**...**). */
 function partesNegrita(texto) {
   const partes = [];

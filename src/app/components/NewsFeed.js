@@ -8,6 +8,7 @@ import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { animarEntradaTarjetas } from "@/lib/animaciones";
+import { resumenPlano } from "./ResumenEstructurado";
 import { getCategoryVars } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
@@ -119,7 +120,7 @@ const TarjetaCards = memo(function TarjetaCards({
               atenuada ? "text-app-muted" : "text-app-muted hover:text-app-fg"
             }`}
           >
-            {art.resumen}
+            {resumenPlano(art.resumen)}
           </p>
         </div>
         <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1 text-xs notranslate" translate="no">
@@ -247,7 +248,7 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
             onClick={() => onAbrir(art)}
             className="text-app-muted text-xs leading-relaxed line-clamp-2 cursor-pointer hover:text-app-fg transition"
           >
-            {art.resumen}
+            {resumenPlano(art.resumen)}
           </p>
         </div>
 
@@ -416,6 +417,11 @@ export default function NewsFeed({
   const articlesRef = useRef(articles);
   const [listaModal, setListaModal] = useState(null);
   const seleccionRef = useRef(null);
+  // Firma de la lista visible: solo se re-anima al cambiar el conjunto
+  // (pestaña, página, filtros, búsqueda). Los parches en sitio (p. ej. cada
+  // lote IA sobre los mismos ids) no re-disparan la entrada completa: ese
+  // era el "freeze" visual durante corridas grandes.
+  const idsFirmaRef = useRef("");
 
   useEffect(() => {
     articlesRef.current = articles;
@@ -434,6 +440,9 @@ export default function NewsFeed({
 
   useEffect(() => {
     if (!articles || articles.length === 0) return;
+    const firma = articles.map((a) => a.id).join(",");
+    if (firma === idsFirmaRef.current) return;
+    idsFirmaRef.current = firma;
     const contenedor = rejillaRef.current;
     if (!contenedor) return;
     const marco = requestAnimationFrame(() => {

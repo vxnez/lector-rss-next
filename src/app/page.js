@@ -176,23 +176,6 @@ export default function HomePage() {
     fetchConteos,
   } = useSourcesManager(session);
 
-  // Hook de Clasificación IA
-  const { iaProgreso, handleCategorizarIA, procesarColaClasificacion } =
-    useIACategorizer({ session, recargarDatos, notify, t });
-
-  // Bandeja central de notificaciones (campanita del header + panel lateral).
-  const {
-    items: notificaciones,
-    abierta: notifsAbiertas,
-    fijarAbierta: fijarNotifs,
-    noLeidas: noLeidasNotifs,
-    iaEnCurso: iaEnCursoNotifs,
-    eliminarUna: eliminarNotif,
-    marcarLeida: marcarNotifLeida,
-    marcarTodasLeidas: marcarNotifsLeidas,
-    eliminarSeleccionadas: eliminarNotifsSel,
-  } = useNotificaciones({ toast, onCerrarToast: () => setToast(null), iaProgreso });
-
   // Hook de Estado del Feed
   const {
     activeTab,
@@ -240,6 +223,51 @@ export default function HomePage() {
     notify,
     t,
   });
+
+  // Parche instantáneo por lote IA: actualiza categorías en sitio sin
+  // refetch completo (el dashboard sigue fluido durante la corrida).
+  const aplicarLoteIA = useCallback((resultados) => {
+    if (!Array.isArray(resultados) || resultados.length === 0) return;
+    const mapa = new Map(
+      resultados
+        .filter((r) => r && r.id !== undefined && r.id !== null && r.categoria)
+        .map((r) => [Number(r.id), r])
+    );
+    if (mapa.size === 0) return;
+    setArticulos((prev) =>
+      prev.map((art) => {
+        const r = mapa.get(Number(art.id));
+        if (!r) return art;
+        return {
+          ...art,
+          categoria: r.categoria,
+          clasificacion_metodo: r.metodo || art.clasificacion_metodo,
+          clasificacion_confianza:
+            r.confianza !== undefined && r.confianza !== null
+              ? r.confianza
+              : art.clasificacion_confianza,
+        };
+      })
+    );
+    bumpCacheVersion();
+  }, [setArticulos]);
+
+  // Hook de Clasificación IA
+  const { iaProgreso, handleCategorizarIA, procesarColaClasificacion } =
+    useIACategorizer({ session, recargarDatos, fetchConteos, onLoteClasificado: aplicarLoteIA, notify, t });
+
+  // Bandeja central de notificaciones (campanita del header + panel lateral).
+  const {
+    items: notificaciones,
+    abierta: notifsAbiertas,
+    fijarAbierta: fijarNotifs,
+    noLeidas: noLeidasNotifs,
+    iaEnCurso: iaEnCursoNotifs,
+    eliminarUna: eliminarNotif,
+    marcarLeida: marcarNotifLeida,
+    marcarTodasLeidas: marcarNotifsLeidas,
+    eliminarSeleccionadas: eliminarNotifsSel,
+  } = useNotificaciones({ toast, onCerrarToast: () => setToast(null), iaProgreso });
 
   const algunModalAbierto = Boolean(
     isAddModalOpen ||

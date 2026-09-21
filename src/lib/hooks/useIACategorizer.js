@@ -3,7 +3,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 
-export function useIACategorizer({ session, recargarDatos, notify, t }) {
+export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteClasificado, notify, t }) {
   // null = inactiva; { total, procesadas, pendientes, estado, diag }
   const [iaProgreso, setIaProgreso] = useState(null);
   const iaEnCursoRef = useRef(false);
@@ -69,6 +69,9 @@ export function useIACategorizer({ session, recargarDatos, notify, t }) {
           restantes: Number(data.restantes) || 0,
           lote: Number(data.lote) || 0,
           ids: Array.isArray(data.ids) ? data.ids : [],
+          // Detalle por item para parche instantáneo en sitio (el backend
+          // puede no enviarlo: entonces se cae al refetch final).
+          resultados: Array.isArray(data.resultados) ? data.resultados : null,
           esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 250,
           diag: typeof data.diag === "string" && data.diag ? data.diag : null,
         };
@@ -107,7 +110,12 @@ export function useIACategorizer({ session, recargarDatos, notify, t }) {
             } else if (++rachaCuota >= 3) {
               break;
             }
-            recargarDatos();
+            // Sin refetch completo por lote (era el freeze: refetch + remontaje
+            // de tarjetas por cada uno). Parche instantáneo en sitio si el
+            // backend trae detalle, más conteos ligeros para las tarjetas de
+            // stats. Un solo refetch al cerrar la corrida.
+            if (lote.resultados) onLoteClasificado?.(lote.resultados);
+            fetchConteos?.();
             if (lote.restantes === 0 || lote.lote === 0) break;
             const procesadasVista = total === null ? procesadas : Math.min(procesadas, total);
             setIaProgreso({ total, procesadas: procesadasVista, pendientes: lote.restantes, estado: "en_curso" });
@@ -123,6 +131,9 @@ export function useIACategorizer({ session, recargarDatos, notify, t }) {
           } else {
             setIaProgreso({ total: total ?? 0, procesadas: 0, pendientes: 0, estado: "ok" });
           }
+          // Único refetch de la corrida: reconcilia facetas, totales y la
+          // vista con lo persistido (los parches por lote ya adelantaron).
+          recargarDatos();
         } finally {
           iaEnCursoRef.current = false;
         }
@@ -131,7 +142,7 @@ export function useIACategorizer({ session, recargarDatos, notify, t }) {
         setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
       });
     },
-    [iaProgreso, notify, recargarDatos, t]
+    [iaProgreso, notify, recargarDatos, fetchConteos, onLoteClasificado, t]
   );
 
   // Auto-categorización al iniciar sesión (una vez por cuenta)
