@@ -7,7 +7,7 @@
 import { useState, useEffect } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
-import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
+import { X, Check, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
 
 const TIPOS = {
   info: { icon: Bell, color: "text-sky-400 [html[data-tema-claro='1']_&]:text-sky-600", bg: "bg-sky-500/10 [html[data-tema-claro='1']_&]:bg-sky-600/10", border: "border-sky-500/30 [html[data-tema-claro='1']_&]:border-sky-600/30" },
@@ -22,6 +22,33 @@ function formatearHora(fecha) {
   } catch {
     return "";
   }
+}
+
+// Barra de la corrida IA: terminada = 100 %. El total era una estimación del
+// primer lote y la corrida puede cerrar antes (cuota, tope de intentos, red).
+function BarraProgresoIA({ progreso, t }) {
+  const ok = progreso?.estado === "ok";
+  const total = Number(progreso?.total) || 0;
+  const hechas = Number(progreso?.procesadas) || 0;
+  const indeterminado = !ok && total <= 0;
+  const pct = ok
+    ? 100
+    : Math.round(Math.max(0, Math.min(1, total > 0 ? hechas / total : 0)) * 100);
+  return (
+    <div
+      role="progressbar"
+      aria-label={t("ia_bar.titulo")}
+      aria-valuemin={0}
+      aria-valuemax={ok ? 100 : (indeterminado ? undefined : total)}
+      aria-valuenow={ok ? 100 : (indeterminado ? undefined : hechas)}
+      className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-500/20 [html[data-tema-claro='1']_&]:bg-violet-600/20"
+    >
+      <div
+        className={`h-full rounded-full bg-violet-500 [html[data-tema-claro='1']_&]:bg-violet-600 ${indeterminado ? "w-full animate-pulse" : "transition-[width] duration-500"}`}
+        style={indeterminado ? undefined : { width: `${pct}%` }}
+      />
+    </div>
+  );
 }
 
 function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, onMarcarLeida, t }) {
@@ -49,7 +76,7 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
         <Icon size={16} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-sm font-medium ${leida ? "text-app-muted" : "text-app-fg"}`}>
+        <p className={`truncate text-sm font-medium ${leida && !esFijada ? "text-app-muted" : "text-app-fg"}`}>
           {item.titulo}
         </p>
         <p className="mt-0.5 text-xs text-app-muted line-clamp-1">
@@ -64,6 +91,9 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
             </span>
           )}
         </p>
+        {item.progreso && (
+          <BarraProgresoIA progreso={item.progreso} t={t} />
+        )}
       </div>
       {!esFijada && (
         <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity peer-checked:opacity-100">
@@ -96,8 +126,6 @@ export default function NotificationPanel({
   onCerrar,
   notificaciones,
   noLeidas,
-  iaProgreso,
-  onCerrarIA,
   pushActivado,
   onEliminarUna,
   onMarcarLeida,
@@ -124,16 +152,6 @@ export default function NotificationPanel({
   }, [abierto, onCerrar]);
 
   if (!abierto) return null;
-
-  // Barra IA: corrida terminada = 100 %. El total era una estimación del
-  // primer lote y la corrida puede cerrar antes (cuota, tope de intentos, red).
-  const iaOk = iaProgreso?.estado === "ok";
-  const iaTotal = Number(iaProgreso?.total) || 0;
-  const iaProcesadas = Number(iaProgreso?.procesadas) || 0;
-  const iaIndeterminado = !iaOk && iaTotal <= 0;
-  const iaPct = iaOk
-    ? 100
-    : Math.round(Math.max(0, Math.min(1, iaTotal > 0 ? iaProcesadas / iaTotal : 0)) * 100);
 
   const toggleSeleccion = (id) => {
     setSeleccionadas((prev) => {
@@ -226,58 +244,6 @@ export default function NotificationPanel({
               t={t}
             />
           ))
-        )}
-
-        {/* IA Progress con barra - siempre visible si hay progreso */}
-        {iaProgreso && (
-          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-3">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 shrink-0 text-violet-400 [html[data-tema-claro='1']_&]:text-violet-600" aria-hidden="true">
-                {iaProgreso.estado === "error" ? <AlertCircle size={16} /> : iaProgreso.estado === "ok" ? <CheckCheck size={16} /> : <Sparkles size={16} />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-app-fg">
-                  {iaProgreso.estado === "ok" ? t("ia_bar.ok") : t("ia_bar.titulo")}
-                </p>
-                <p className="mt-0.5 text-xs text-app-muted">
-                  {iaProgreso.estado === "error"
-                    ? (iaProgreso.diag ? t(`avisos.ia_err_${iaProgreso.diag}`) : t("avisos.ia_err"))
-                    : iaProgreso.estado === "ok"
-                    ? (iaProgreso.procesadas > 0 ? t("avisos.ia_ok", { n: iaProgreso.procesadas }) : t("avisos.ia_sin_pendientes"))
-                    : t("ia_bar.avance", {
-                        a: iaProgreso.procesadas || 0,
-                        total: iaProgreso.total || 0,
-                        p: iaProgreso.pendientes || 0
-                      })}
-                </p>
-                <div
-                  role="progressbar"
-                  aria-label={t("ia_bar.titulo")}
-                  aria-valuemin={0}
-                  aria-valuemax={iaOk ? 100 : (iaIndeterminado ? undefined : iaTotal)}
-                  aria-valuenow={iaOk ? 100 : (iaIndeterminado ? undefined : iaProcesadas)}
-                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-500/20 [html[data-tema-claro='1']_&]:bg-violet-600/20"
-                >
-                  <div
-                    className={`h-full rounded-full bg-violet-500 [html[data-tema-claro='1']_&]:bg-violet-600 ${iaIndeterminado ? "w-full animate-pulse" : "transition-[width] duration-500"}`}
-                    style={iaIndeterminado ? undefined : { width: `${iaPct}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col gap-1">
-                {(iaProgreso.estado === "ok" || iaProgreso.estado === "error") && (
-                  <button
-                    type="button"
-                    onClick={onCerrarIA}
-                    className="btn-press rounded-lg p-1 opacity-70 hover:opacity-100"
-                    aria-label={t("ia_bar.cerrar")}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
         )}
 
         {/* Push status */}

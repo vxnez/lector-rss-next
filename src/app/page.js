@@ -176,7 +176,7 @@ export default function HomePage() {
   } = useSourcesManager(session);
 
   // Hook de Clasificación IA
-  const { iaProgreso, setIaProgreso, handleCategorizarIA, procesarColaClasificacion } =
+  const { iaProgreso, handleCategorizarIA, procesarColaClasificacion } =
     useIACategorizer({ session, recargarDatos, notify, t });
 
   // Bandeja central de notificaciones (campanita del header + panel lateral).
@@ -1072,8 +1072,6 @@ export default function HomePage() {
         onCerrar={() => fijarNotifs(false)}
         notificaciones={notificaciones}
         noLeidas={noLeidasNotifs}
-        iaProgreso={iaProgreso}
-        onCerrarIA={() => setIaProgreso(null)}
         pushActivado={pushActivado}
         onEliminarUna={eliminarNotif}
         onMarcarLeida={marcarNotifLeida}
