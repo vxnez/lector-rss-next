@@ -5,6 +5,7 @@ import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, Chevr
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
+import ResumenEstructurado from "./ResumenEstructurado";
 import { getCategoryVars } from "@/lib/categoryStyles";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
@@ -686,12 +687,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen: truncado por CSS con botón para expandir.
-              El pie (leer/guardar/sitio oficial) queda siempre a la vista. */}
-          <div className={`text-app-fg/90 leading-relaxed space-y-3 break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
-            <p className={resumenExpandido ? undefined : "line-clamp-[10]"}>
-              {article.resumen || t("lector.sin_resumen")}
-            </p>
+          {/* Cuerpo / Resumen estructurado (subtítulos, párrafos, viñetas),
+              truncado por CSS con botón para expandir. El pie (leer/guardar/
+              sitio oficial) queda siempre a la vista. */}
+          <div className={`text-app-fg/90 leading-relaxed break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
+            <ResumenEstructurado
+              texto={article.resumen || t("lector.sin_resumen")}
+              expandido={resumenExpandido}
+            />
           </div>
           {article.resumen && article.resumen.length > 400 && (
             <button
