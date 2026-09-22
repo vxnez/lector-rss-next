@@ -31,6 +31,13 @@ export default function KeyboardShortcutsModal({ abierto, onCerrar, t }) {
       ],
     },
     {
+      titulo: "Lector",
+      atajos: [
+        { teclas: ["D", "→"], descripcion: "Siguiente noticia en el lector" },
+        { teclas: ["A", "←"], descripcion: "Noticia anterior en el lector" },
+      ],
+    },
+    {
       titulo: "Acciones de Artículo",
       atajos: [
         { teclas: ["M"], descripcion: "Marcar como leído / no leído" },
