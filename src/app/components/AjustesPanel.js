@@ -83,10 +83,19 @@ function TarjetaAjuste({ icono, fondoIcono, tintaIcono, titulo, descripcion, onA
 
 function FilaDato({ etiqueta, valor }) {
   return (
-    <div className="rounded-xl border border-app-line bg-app-surface/70 px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-app-muted">{etiqueta}</p>
-      <p className="truncate text-sm font-medium text-app-fg">{valor}</p>
+    <div className="border-b border-app-line/60 px-1 py-2.5 last:border-b-0">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">{etiqueta}</p>
+      <p className="mt-0.5 truncate text-sm font-medium text-app-fg">{valor}</p>
     </div>
+  );
+}
+
+// Micro-título de subgrupo dentro de una vista de ajustes.
+function TituloGrupo({ children }) {
+  return (
+    <p className="pt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
+      {children}
+    </p>
   );
 }
 
@@ -720,10 +729,16 @@ export default function AjustesPanel({
                 </>
               ) : (
                 <>
-                  <FilaDato etiqueta={t("ajustes.nombre")} valor={perfil?.nombre || nombreUsuario || "—"} />
-                  <FilaDato etiqueta={t("ajustes.correo")} valor={perfil?.email || emailUsuario || "—"} />
-                  <FilaDato etiqueta={t("ajustes.proveedor")} valor={etiquetasProveedor()} />
-                  <FilaDato etiqueta={t("ajustes.miembro")} valor={fecha(perfil?.creado_en)} />
+                  <TituloGrupo>{t("ajustes.datos_personales")}</TituloGrupo>
+                  <div>
+                    <FilaDato etiqueta={t("ajustes.nombre")} valor={perfil?.nombre || nombreUsuario || "—"} />
+                    <FilaDato etiqueta={t("ajustes.correo")} valor={perfil?.email || emailUsuario || "—"} />
+                  </div>
+                  <TituloGrupo>{t("ajustes.cuenta_grupo")}</TituloGrupo>
+                  <div>
+                    <FilaDato etiqueta={t("ajustes.proveedor")} valor={etiquetasProveedor()} />
+                    <FilaDato etiqueta={t("ajustes.miembro")} valor={fecha(perfil?.creado_en)} />
+                  </div>
                   <button
                     type="button"
                     onClick={onEditarPerfil}
@@ -738,23 +753,19 @@ export default function AjustesPanel({
                   >
                     <LogOut size={15} /> {t("ajustes.cerrar_sesion")}
                   </button>
-                  <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-app-muted">
-                      {t("ajustes.metodos")}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {metodosVinculados().map((m) => (
-                        <span
-                          key={m.id}
-                          className="rounded-full border border-emerald-700 bg-emerald-950/60 px-2.5 py-1 text-xs font-medium text-emerald-300"
-                        >
-                          {m.etiqueta}
-                        </span>
-                      ))}
-                      {metodosVinculados().length === 0 && (
-                        <span className="text-xs text-app-muted">{t("ajustes.cargando_metodos")}</span>
-                      )}
-                    </div>
+                  <TituloGrupo>{t("ajustes.metodos")}</TituloGrupo>
+                  <div className="flex flex-wrap gap-1.5 px-1">
+                    {metodosVinculados().map((m) => (
+                      <span
+                        key={m.id}
+                        className="rounded-full border border-emerald-700 bg-emerald-950/60 px-2.5 py-1 text-xs font-medium text-emerald-300"
+                      >
+                        {m.etiqueta}
+                      </span>
+                    ))}
+                    {metodosVinculados().length === 0 && (
+                      <span className="text-xs text-app-muted">{t("ajustes.cargando_metodos")}</span>
+                    )}
                   </div>
                   {!metodosVinculados().some((m) => m.id === "google") && (
                     <button
@@ -785,16 +796,14 @@ export default function AjustesPanel({
                       {t("ajustes.cambiar_pass")}
                     </Link>
                   )}
-                  <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-app-muted">
-                      {t("ajustes.actividad")}
-                    </p>
-                    <p className="truncate text-sm font-medium text-gray-100">
+                  <TituloGrupo>{t("ajustes.actividad")}</TituloGrupo>
+                  <div className="px-1">
+                    <p className="truncate text-sm font-medium text-app-fg">
                       {actividad?.ultimaFuente
                         ? `${t("ajustes.ultima_fuente")}: ${actividad.ultimaFuente.titulo}`
                         : t("ajustes.sin_fuentes_act")}
                     </p>
-                    <p className="text-xs text-app-muted">
+                    <p className="mt-0.5 text-xs text-app-muted">
                       {actividad?.ultimaFuente
                         ? fecha(actividad.ultimaFuente.creado_en)
                         : t("ajustes.agrega_primero")}
@@ -805,6 +814,7 @@ export default function AjustesPanel({
                       {t("ajustes.noticias_en")}
                     </p>
                   </div>
+                  <TituloGrupo>{t("ajustes.zona_peligro")}</TituloGrupo>
                   <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2.5">
                     <button
                       type="button"
@@ -821,18 +831,16 @@ export default function AjustesPanel({
 
           {vista === "datos" && (
             <section className="stagger-in space-y-2.5">
-              <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
-                <p className="text-[11px] uppercase tracking-wide text-app-muted">{t("ajustes.que_guarda")}</p>
-                <p className="text-xs leading-relaxed text-app-muted">
-                  {t("ajustes.que_guarda_d", {
+              <TituloGrupo>{t("ajustes.que_guarda")}</TituloGrupo>
+              <p className="px-1 text-xs leading-relaxed text-app-muted">
+                {t("ajustes.que_guarda_d", {
                     f: estadisticas?.fuentes || 0,
                     n:
                       (estadisticas?.pendientes || 0) +
                       (estadisticas?.leidas || 0) +
                       (estadisticas?.guardadas || 0),
                   })}
-                </p>
-              </div>
+              </p>
               {esInvitado ? (
                 <>
                   <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200">
@@ -885,10 +893,12 @@ export default function AjustesPanel({
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-sky-100/70" />
               </button>
-              <FilaDato
-                etiqueta={t("ajustes.app")}
-                valor={`RSS Dashboard v${versionTexto}`}
-              />
+              <TituloGrupo>{t("ajustes.ayuda_app")}</TituloGrupo>
+              <div>
+                <FilaDato
+                  etiqueta={t("ajustes.app")}
+                  valor={`RSS Dashboard v${versionTexto}`}
+                />
               <FilaDato
                 etiqueta={t("ajustes.ultimo_cambio")}
                 valor={
@@ -908,6 +918,8 @@ export default function AjustesPanel({
                     (estadisticas?.guardadas || 0),
                 })}
               />
+              </div>
+              <TituloGrupo>{t("ajustes.ayuda_proyecto")}</TituloGrupo>
               <a
                 href={URL_REPOSITORIO}
                 target="_blank"
