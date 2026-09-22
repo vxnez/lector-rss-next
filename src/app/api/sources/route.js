@@ -1,6 +1,6 @@
 // src/app/api/sources/route.js — Proxy a la API interna (sin MySQL directo).
 import { auth } from "@/auth";
-import { createFuente, deleteFuente, deleteFuentesBulk, getFuentes, patchFuente } from "@/lib/api";
+import { createFuente, deleteFuente, deleteFuentesBulk, getFuentes, patchFuente, patchFuentesBulk } from "@/lib/api";
 import { resolverUsuarioId } from "@/lib/invitado";
 import { NextResponse } from "next/server";
 
@@ -80,9 +80,9 @@ export async function PUT(req) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { id, titulo, url_feed, categoria, convertFullPage, convert_full_page } = await req.json();
+    const { id, ids, titulo, url_feed, categoria, convertFullPage, convert_full_page } = await req.json();
 
-    if (!id) {
+    if (!id && (!Array.isArray(ids) || ids.length === 0)) {
       return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
     }
 
@@ -111,6 +111,70 @@ export async function PUT(req) {
     if (flag !== undefined) {
       patch.convert_full_page = flag;
       patch.convertFullPage = flag === 1;
+    }
+
+    // Vía masiva atómica primero: el backend aplica todo-o-nada en una
+    // transacción (mismo patrón del borrado masivo).
+    const idsBulk = Array.isArray(ids)
+      ? [...new Set(ids.map((v) => Number(String(v).trim())).filter((n) => Number.isInteger(n) && n > 0))]
+      : [];
+    if (idsBulk.length > 0 && (id === undefined || id === null)) {
+      if (flag === undefined) {
+        return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
+      }
+      try {
+        const r = await patchFuentesBulk(idsBulk, userId, flag);
+        const actualizadas = Number(r?.actualizadas ?? r?.ok ?? idsBulk.length) || idsBulk.length;
+        return NextResponse.json({
+          message: "Fuentes actualizadas",
+          actualizadas,
+          convertFullPage: flag === 1,
+        });
+      } catch (error) {
+        const status = Number(error?.status);
+        const faltan = Array.isArray(error?.data?.faltan) ? error.data.faltan : null;
+        // 404 CON faltan = atómico real: nada se aplicó, no reintentar.
+        if (status === 404 && faltan) {
+          const detalle = error?.data?.error || error?.message;
+          return NextResponse.json(
+            {
+              error: "Fuente no encontrada o no autorizada",
+              ...(typeof detalle === "string" ? { detalle: detalle.slice(0, 300) } : {}),
+              faltan,
+            },
+            { status: 404 }
+          );
+        }
+        // 404 sin faltan / 405 / 501 = el backend aún no expone el bulk:
+        // repliegue al parche por fuente. Cualquier otro error se propaga.
+        if (status !== 404 && status !== 405 && status !== 501) throw error;
+      }
+
+      let actualizadas = 0;
+      const fallidas = [];
+      for (const fid of idsBulk) {
+        try {
+          await patchFuente(fid, { usuario_id: userId, convert_full_page: flag, convertFullPage: flag === 1 });
+          actualizadas++;
+        } catch (error) {
+          if (Number(error?.status) === 404) {
+            fallidas.push(fid);
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (actualizadas === 0) {
+        return NextResponse.json({ error: "Fuente no encontrada o no autorizada" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        message: "Fuentes actualizadas",
+        actualizadas,
+        convertFullPage: flag === 1,
+        ...(fallidas.length > 0 ? { fallidas } : {}),
+      });
     }
 
     try {

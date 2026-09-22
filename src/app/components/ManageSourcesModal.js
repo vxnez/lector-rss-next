@@ -292,10 +292,10 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   };
 
-  // Página completa masiva para la selección: optimista + PUT por fuente
-  // (la ruta aún no expone bulk PATCH; el loop con repliegue por item es el
-  // mismo patrón del borrado masivo). Sin auto-refresh: N crawlers a la vez
-  // colgarían el presupuesto Vercel; rige desde el próximo refresco.
+  // Página completa masiva para la selección: una sola petición a la ruta
+  // (atómica vía bulk del backend o repliegue por fuente en la ruta).
+  // Sin auto-refresh: N crawlers a la vez colgarían el presupuesto Vercel;
+  // rige desde el próximo refresco.
   const handleFullLote = async () => {
     const ids = seleccionadas;
     if (ids.length === 0 || aplicandoFullLote) return;
@@ -310,30 +310,26 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         ids.includes(s.id) ? { ...s, convertFullPage: objetivo, convert_full_page: objetivo ? 1 : 0 } : s
       )
     );
-    let fallos = 0;
-    for (const id of ids) {
-      try {
-        const res = await fetch("/api/sources", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, convertFullPage: objetivo }),
-        });
-        if (!res.ok) throw new Error();
-      } catch {
-        fallos += 1;
-        const original = previo.find((s) => s.id === id);
-        if (original) {
-          setSources((ants) => ants.map((s) => (s.id === id ? original : s)));
-        }
+    try {
+      const res = await fetch("/api/sources", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, convertFullPage: objetivo }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detalle = data?.detalle || data?.error;
+        throw new Error(detalle || t("fuentes.convert_full_err"));
       }
-    }
-    setAplicandoFullLote(false);
-    if (onChange) onChange();
-    const ok = ids.length - fallos;
-    if (fallos === 0) {
-      onNotify?.(t(objetivo ? "fuentes.full_lote_ok" : "fuentes.full_lote_ok_off", { n: ok }), "success");
-    } else {
-      onNotify?.(t("fuentes.full_lote_err", { ok, fail: fallos }), "error");
+      const n = Number(data?.actualizadas) || ids.length;
+      if (onChange) onChange();
+      onNotify?.(t(objetivo ? "fuentes.full_lote_ok" : "fuentes.full_lote_ok_off", { n }), "success");
+    } catch (err) {
+      console.error("Error al aplicar página completa en lote:", err);
+      setSources(previo);
+      onNotify?.(err.message || t("fuentes.convert_full_err"), "error");
+    } finally {
+      setAplicandoFullLote(false);
     }
   };
 

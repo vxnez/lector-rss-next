@@ -288,6 +288,31 @@ export async function patchFuente(id, patch = {}) {
   });
 }
 
+// Parche masivo atómico del backend: una transacción todo-o-nada.
+// 200 {ok, actualizadas, convert_full_page}; 404 {not_found, faltan} sin
+// aplicar nada (máx 100). Solo reintenta ante 429 (no procesado).
+export async function patchFuentesBulk(ids, usuario_id, convert_full_page) {
+  const lista = [...new Set(
+    (Array.isArray(ids) ? ids : [ids])
+      .map((v) => Number(String(v).trim()))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  )];
+  if (lista.length === 0) {
+    const err = new Error("IDs de fuente requeridos");
+    err.status = 400;
+    throw err;
+  }
+  if (lista.length > 100) {
+    const err = new Error("Máximo 100 fuentes por lote");
+    err.status = 400;
+    throw err;
+  }
+  return api("/api/data/fuentes", {
+    method: "PATCH",
+    body: { usuario_id: String(usuario_id), ids: lista, convert_full_page },
+  });
+}
+
 export async function deleteFuente(id, usuario_id) {
   // Se envía usuario_id por query Y por body: el backend puede leer uno u
   // otro según el handler (algunos solo leen query, otros solo body).
