@@ -282,7 +282,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Scroll con rueda del mouse en PC: al llegar al borde del contenido, el gesto
   // cambia de noticia (abajo = siguiente, arriba = anterior). Solo con puntero
-  // fino para no interferir con el gesto táctil en móvil.
+  // fino para no interferir con el gesto táctil en móvil. Con el resumen
+  // expandido se exige gesto más largo y más pausa: leer no debe saltar de
+  // noticia por accidente.
   useEffect(() => {
     if (!article) return undefined;
     const contenedor = contenedorRef.current;
@@ -295,8 +297,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     }
     if (!punteroFino) return undefined;
 
-    const UMBRAL_PX = 60;
-    const ENFRIAMIENTO_MS = 900;
+    const UMBRAL_PX = resumenExpandido ? 180 : 60;
+    const ENFRIAMIENTO_MS = resumenExpandido ? 1800 : 900;
     let acumulado = 0;
     let temporizadorReposo = null;
 
@@ -334,7 +336,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       contenedor.removeEventListener("wheel", manejarRueda);
       if (temporizadorReposo) clearTimeout(temporizadorReposo);
     };
-  }, [article, navegar, anteriorId, siguienteId]);
+  }, [article, navegar, anteriorId, siguienteId, resumenExpandido]);
 
   // Aviso "desliza" (móvil, 3 primeras noticias por sesión): el estado inicial
   // ya decide si se muestra; el efecto solo cuenta la vista y lo oculta.
@@ -503,10 +505,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         onTouchStart={manejarInicioToque}
         onTouchEnd={manejarFinToque}
       >
-        {/* Barra de progreso de lectura */}
+        {/* Barra de progreso de lectura (estilo scroll-progress): degradado
+            del acento con brillo suave y movimiento amortiguado. */}
         <div className="sticky top-0 left-0 right-0 z-30 h-1 bg-app-raised/40 w-full overflow-hidden">
           <div
-            className="h-full bg-[var(--accent)] transition-[width] duration-100 ease-out"
+            className="h-full rounded-r-full bg-gradient-to-r from-[var(--accent)]/50 via-[var(--accent)] to-[var(--accent-ink)] shadow-[0_0_12px_0_color-mix(in_srgb,var(--accent)_65%,transparent)] transition-[width] duration-300 ease-[cubic-bezier(0.22,0.9,0.28,1)]"
             style={{ width: `${progresoLectura}%` }}
           />
         </div>

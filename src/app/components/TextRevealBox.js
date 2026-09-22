@@ -38,16 +38,31 @@ export default function TextRevealBox({
       candidato && candidato.scrollHeight > candidato.clientHeight + 1
         ? candidato
         : null;
+    // Progreso anclado al recorrido del propio bloque (no al scroll global):
+    // 0 cuando el texto asoma por abajo, 1 al superarlo por arriba. La
+    // lectura avanza más lenta que el desplazamiento del contenedor.
+    const rangoDe = (scrollTop, vh, scrollH, boxTop) => {
+      const denom = Math.max(scrollH - boxTop, 1);
+      return (scrollTop + vh - boxTop) / denom;
+    };
     const actualizar = () => {
       let p = 1;
       if (scroller) {
-        const max = scroller.scrollHeight - scroller.clientHeight;
-        p = max > 0 ? Math.min(Math.max(scroller.scrollTop / max, 0), 1) : 1;
+        const srect = scroller.getBoundingClientRect();
+        const crect = caja.getBoundingClientRect();
+        const boxTop = scroller.scrollTop + (crect.top - srect.top);
+        p = rangoDe(scroller.scrollTop, scroller.clientHeight, scroller.scrollHeight, boxTop);
       } else if (typeof window !== "undefined") {
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 1;
+        const crect = caja.getBoundingClientRect();
+        const boxTop = window.scrollY + crect.top;
+        p = rangoDe(
+          window.scrollY,
+          window.innerHeight,
+          document.documentElement.scrollHeight,
+          boxTop
+        );
       }
-      caja.style.setProperty("--reveal-p", String(p));
+      caja.style.setProperty("--reveal-p", String(Math.min(Math.max(p, 0), 1)));
     };
     actualizar();
     const objetivo = scroller || window;
