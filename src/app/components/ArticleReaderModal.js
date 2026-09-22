@@ -524,7 +524,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           {/* Cuerpo / Resumen estructurado completo (subtítulos, párrafos,
               viñetas) con opacidad uniforme: sin clamp, sin fades, sin botón
               de expansión. El scroll interno lo muestra todo. */}
-          <div className="text-app-fg/90 text-sm md:text-base leading-relaxed break-words">
+          <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
             <ResumenEstructurado
               texto={article.resumen || t("lector.sin_resumen")}
             />
