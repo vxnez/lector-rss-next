@@ -7,7 +7,7 @@ import { traducirCategoria } from "@/lib/categoryStyles";
 import { useIdioma } from "@/lib/i18n";
 
 // Nota: FeedCard se implementa localmente aquí para evitar dependencias circulares o archivos inexistentes
-function LocalFeedCard({ feed, onAdd, adding, added, t }) {
+function LocalFeedCard({ feed, onAdd, adding, added, idioma, t }) {
   return (
     <div className="card-lift rounded-2xl border border-app-line/80 bg-app-bg/60 p-4 hover:border-[var(--accent)]/50">
       <div className="flex items-start justify-between gap-3">
@@ -110,6 +110,7 @@ export default function RecommendedFeedsList({
                       onAdd={() => onAdd(feed)}
                       adding={feedsAgregando.has(key)}
                       added={feedsAgregados.has(key)}
+                      idioma={idioma}
                       t={t}
                     />
                   );
