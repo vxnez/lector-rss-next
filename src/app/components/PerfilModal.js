@@ -197,17 +197,23 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
   const fechaMiembro = formatearFecha(perfil?.creado_en, t, locale, t("perfil.no_disponible"));
 
   return (
-    <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="anim-modal scroll-oculto bg-app-surface border border-app-line p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl relative">
+    <div
+      className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="anim-modal bg-app-surface border border-app-line p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden shadow-2xl relative flex flex-col">
         <button
           onClick={onClose}
           aria-label={t("perfil.cerrar_aria")}
-          className="btn-press absolute top-4 right-4 text-app-muted hover:text-app-fg p-1.5 rounded-lg hover:bg-app-raised/40"
+          className="btn-press absolute top-4 right-4 z-10 text-app-muted hover:text-app-fg p-1.5 rounded-lg hover:bg-app-raised/40"
         >
           <X size={18} />
         </button>
 
-        <div className="flex items-center gap-2 mb-5 pr-8">
+        <div className="flex items-center gap-2 mb-4 pr-8 shrink-0">
           <div className="p-2 bg-[var(--accent)]/15 text-[var(--accent-ink)] rounded-full border border-[var(--accent)]/20">
             <User size={20} />
           </div>
@@ -218,7 +224,7 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
         </div>
 
         {error && (
-          <div className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-4">
+          <div className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-3 shrink-0">
             {error}
           </div>
         )}
@@ -226,7 +232,8 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
         {cargando ? (
           <p className="text-sm text-app-muted py-8 text-center">{t("perfil.cargando")}</p>
         ) : (
-          <form onSubmit={handleGuardar} className="space-y-5">
+          <form onSubmit={handleGuardar} className="flex min-h-0 flex-1 flex-col">
+            <div className="scroll-sutil min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
               {t("ajustes.datos_personales")}
             </p>
@@ -363,8 +370,9 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
               <FilaDatoPerfil etiqueta={t("perfil.acceso")} valor={nombreProveedor} />
               <FilaDatoPerfil etiqueta={t("perfil.miembro")} valor={fechaMiembro} />
             </div>
+            </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3 pt-4 border-t border-app-line">
+            <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-app-line pt-3 sm:flex sm:justify-end sm:gap-3">
               <button
                 type="button"
                 onClick={onClose}

@@ -73,6 +73,42 @@ export function getCategoryInitial(category = "General") {
   return category.trim().charAt(0).toUpperCase() || "G";
 }
 
+// Traducción de visualización ES→EN del catálogo cerrado (25). El backend y
+// la BD conservan los nombres canónicos en español (cero cambios de
+// contrato); las dinámicas desconocidas se muestran con su texto original.
+const CATEGORIA_EN = {
+  "Política": "Politics",
+  "Economía y Finanzas": "Economy & Finance",
+  "Seguridad y Justicia": "Security & Justice",
+  "Tecnología": "Technology",
+  "Developers": "Developers",
+  "Celulares": "Phones",
+  "Computadoras": "Computers",
+  "Videojuegos": "Video Games",
+  "Ciencia y Espacio": "Science & Space",
+  "Salud y Medicina": "Health & Medicine",
+  "Fitness y Nutrición": "Fitness & Nutrition",
+  "Medio Ambiente": "Environment",
+  "Clima y Meteorología": "Weather",
+  "Deportes": "Sports",
+  "Cultura y Arte": "Culture & Art",
+  "Cine y Series": "Movies & Series",
+  "Música": "Music",
+  "Gastronomía": "Food & Dining",
+  "Viajes y Turismo": "Travel",
+  "Motor": "Motoring",
+  "Educación": "Education",
+  "Moda y Belleza": "Fashion & Beauty",
+  "Hogar y Vida Diaria": "Home & Living",
+  "General": "General",
+};
+
+export function traducirCategoria(nombre, idioma) {
+  if (idioma !== "en") return nombre;
+  const clave = String(nombre || "").trim();
+  return CATEGORIA_EN[clave] || nombre;
+}
+
 // "General" (o vacía) = sin clasificar: se pinta neutra para no saturar la
 // vista y dejar que las categorías específicas destaquen.
 export function esCategoriaGeneral(category) {

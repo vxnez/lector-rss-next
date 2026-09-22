@@ -3,6 +3,8 @@
 
 import React from "react";
 import { Loader2, Tag, Plus } from "lucide-react";
+import { traducirCategoria } from "@/lib/categoryStyles";
+import { useIdioma } from "@/lib/i18n";
 
 // Nota: FeedCard se implementa localmente aquí para evitar dependencias circulares o archivos inexistentes
 function LocalFeedCard({ feed, onAdd, adding, added, t }) {
@@ -12,7 +14,7 @@ function LocalFeedCard({ feed, onAdd, adding, added, t }) {
         <div className="flex-1 min-w-0">
           <div className="mb-1 flex items-center gap-2 text-xs text-app-muted">
             <Tag size={12} className="opacity-75" />
-            <span>{feed.categoria}</span>
+            <span>{traducirCategoria(feed.categoria, idioma)}</span>
           </div>
           <h4 className="mb-1 truncate text-base font-semibold text-app-fg">{feed.titulo}</h4>
           <p className="line-clamp-2 text-sm text-app-muted">{feed.descripcion}</p>
@@ -50,6 +52,7 @@ export default function RecommendedFeedsList({
   feedsAgregados,
   t
 }) {
+  const { idioma } = useIdioma();
   if (cargando) {
     return (
       <div className="flex justify-center items-center py-8 text-app-muted gap-2">
@@ -94,7 +97,7 @@ export default function RecommendedFeedsList({
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)]/15">
                   <Tag size={10} className="text-[var(--accent-ink)]" />
                 </span>
-                {categoria} ({lista.length})
+                {traducirCategoria(categoria, idioma)} ({lista.length})
               </h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {lista.map((feed) => {

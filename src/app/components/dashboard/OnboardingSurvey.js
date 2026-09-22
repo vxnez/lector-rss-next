@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
+import { traducirCategoria } from "@/lib/categoryStyles";
 import { animarAperturaModal, animarCierreModal } from "@/lib/animaciones";
 import RecommendedFeedsList from "./RecommendedFeedsList";
 
@@ -35,6 +36,7 @@ const CATEGORY_META = {
 };
 
 function CategoryPill({ category, selected, onClick, t }) {
+  const { idioma } = useIdioma();
   return (
     <button
       type="button"
@@ -47,7 +49,7 @@ function CategoryPill({ category, selected, onClick, t }) {
       aria-pressed={selected}
     >
       <span className="text-lg">{category.icon}</span>
-      <span className="truncate text-sm font-medium">{category.id}</span>
+      <span className="truncate text-sm font-medium">{traducirCategoria(category.id, idioma)}</span>
       {selected && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
     </button>
   );

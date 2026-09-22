@@ -28,6 +28,9 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null);
   // Interruptor "convertir página completa" por fuente (persistido en BD).
   const [togglingFullPageId, setTogglingFullPageId] = useState(null);
+  // Aplicación masiva a la selección (sin auto-refresh: rige en el próximo
+  // refresco; evita N×55s de crawlers simultáneos).
+  const [aplicandoFullLote, setAplicandoFullLote] = useState(false);
   // Selección múltiple para borrado en lote (eco del sistema de filtros).
   const [seleccionadas, setSeleccionadas] = useState([]);
   const [confirmarLote, setConfirmarLote] = useState(false);
@@ -289,6 +292,51 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     }
   };
 
+  // Página completa masiva para la selección: optimista + PUT por fuente
+  // (la ruta aún no expone bulk PATCH; el loop con repliegue por item es el
+  // mismo patrón del borrado masivo). Sin auto-refresh: N crawlers a la vez
+  // colgarían el presupuesto Vercel; rige desde el próximo refresco.
+  const handleFullLote = async () => {
+    const ids = seleccionadas;
+    if (ids.length === 0 || aplicandoFullLote) return;
+    const objetivo = !ids.every((id) => {
+      const s = sources.find((x) => x.id === id);
+      return Number(s?.convert_full_page) === 1 || s?.convertFullPage === true;
+    });
+    const previo = sources;
+    setAplicandoFullLote(true);
+    setSources((ants) =>
+      ants.map((s) =>
+        ids.includes(s.id) ? { ...s, convertFullPage: objetivo, convert_full_page: objetivo ? 1 : 0 } : s
+      )
+    );
+    let fallos = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch("/api/sources", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, convertFullPage: objetivo }),
+        });
+        if (!res.ok) throw new Error();
+      } catch {
+        fallos += 1;
+        const original = previo.find((s) => s.id === id);
+        if (original) {
+          setSources((ants) => ants.map((s) => (s.id === id ? original : s)));
+        }
+      }
+    }
+    setAplicandoFullLote(false);
+    if (onChange) onChange();
+    const ok = ids.length - fallos;
+    if (fallos === 0) {
+      onNotify?.(t(objetivo ? "fuentes.full_lote_ok" : "fuentes.full_lote_ok_off", { n: ok }), "success");
+    } else {
+      onNotify?.(t("fuentes.full_lote_err", { ok, fail: fallos }), "error");
+    }
+  };
+
   // Recalcula los contadores por fuente y los fusiona en vivo, sin cerrar
   // el modal ni forzar un refresco general (punto 2: el toggle de página
   // completa y el refresco individual actualizan su contador al instante).
@@ -429,6 +477,14 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
     : sources;
 
   const todasSeleccionadas = visibleSources.length > 0 && visibleSources.every((s) => seleccionadas.includes(s.id));
+
+  // Toda la selección ya en página completa → el botón masivo la quita.
+  const todasFullSel =
+    seleccionadas.length > 0 &&
+    seleccionadas.every((id) => {
+      const s = sources.find((x) => x.id === id);
+      return Number(s?.convert_full_page) === 1 || s?.convertFullPage === true;
+    });
 
   const alternarTodas = () => {
     setSeleccionadas((prev) => {
@@ -678,6 +734,17 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                 className={eliminandoLote ? "animate-spin" : ""}
               />
               {t("fuentes.eliminar_sel", { n: seleccionadas.length })}
+            </button>
+            <button
+              type="button"
+              onClick={handleFullLote}
+              disabled={seleccionadas.length === 0 || aplicandoFullLote}
+              title={t("fuentes.convert_full_hint")}
+              className="btn-press flex items-center gap-1.5 rounded-xl border border-sky-800 bg-sky-950 px-3 py-1.5 text-xs font-medium text-sky-300 hover:border-sky-600 disabled:opacity-40"
+            >
+              {todasFullSel
+                ? t("fuentes.full_lote_off", { n: seleccionadas.length })
+                : t("fuentes.full_lote_on", { n: seleccionadas.length })}
             </button>
           </div>
         )}

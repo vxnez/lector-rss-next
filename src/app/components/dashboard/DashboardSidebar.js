@@ -22,6 +22,8 @@ import {
 } from "lucide";
 import MorphIcon from "../MorphIcon";
 import { dominioDeUrl } from "@/lib/formato";
+import { traducirCategoria } from "@/lib/categoryStyles";
+import { useIdioma } from "@/lib/i18n";
 
 function IconoFuentePildora({ fuente }) {
   const [fallo, setFallo] = useState(false);
@@ -89,6 +91,7 @@ export default function DashboardSidebar({
   const [fuentesExpandidas, setFuentesExpandidas] = useState(false);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
   const filtroFuenteRef = useRef(null);
+  const { idioma } = useIdioma();
 
   return (
     <aside
@@ -489,8 +492,7 @@ export default function DashboardSidebar({
               </span>
             </div>
             <div
-              translate="no"
-              className={`notranslate flex flex-wrap gap-1.5 ${
+              className={`flex flex-wrap gap-1.5 ${
                 categoriasExpandidas ? "" : "[&>*:nth-child(n+9)]:max-lg:hidden"
               }`}
             >
@@ -514,7 +516,7 @@ export default function DashboardSidebar({
                       strokeWidth={2.5}
                       className="shrink-0"
                     />
-                    {categoria}
+                    {traducirCategoria(categoria, idioma)}
                   </button>
                 );
               })}

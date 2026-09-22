@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import ResumenEstructurado from "./ResumenEstructurado";
-import { confianzaIAVisible } from "@/lib/categoryStyles";
+import { confianzaIAVisible, traducirCategoria } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
@@ -31,7 +31,7 @@ function esFechaEstimada(article) {
 }
 
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
-  const { t, locale } = useIdioma();
+  const { t, locale, idioma } = useIdioma();
   const [savingAction, setSavingAction] = useState("");
   const [actionError, setActionError] = useState("");
   const [editandoCategoria, setEditandoCategoria] = useState(false);
@@ -448,7 +448,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   >
                     {categorias.map((nombre) => (
                       <option key={nombre} value={nombre} className="bg-gray-900">
-                        {nombre}
+                        {traducirCategoria(nombre, idioma)}
                       </option>
                     ))}
                   </select>
