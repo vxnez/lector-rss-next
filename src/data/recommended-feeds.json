@@ -4,609 +4,708 @@
       {
         "titulo": "Congreso Chihuahua",
         "url": "https://congresochihuahua.gob.mx/rss.php",
-        "descripcion": "Congreso del Estado"
+        "descripcion": "Congreso del Estado",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Política",
         "url": "https://diariopresente.mx/feedgooglenews/politica",
-        "descripcion": "Política nacional"
+        "descripcion": "Política nacional",
+        "idioma": "es"
       },
       {
         "titulo": "Europa Press - Política",
         "url": "https://www.europapress.es/rss/rss.aspx?ch=001",
-        "descripcion": "Agencia de noticias - Política"
+        "descripcion": "Agencia de noticias - Política",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Capital",
         "url": "https://www.jornada.com.mx/rss/capital.xml?v=1",
-        "descripcion": "Noticias de la CDMX"
+        "descripcion": "Noticias de la CDMX",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Estados",
         "url": "https://www.jornada.com.mx/rss/estados.xml?v=1",
-        "descripcion": "Noticias de los estados de México"
+        "descripcion": "Noticias de los estados de México",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Mundo",
         "url": "https://www.jornada.com.mx/rss/mundo.xml?v=1",
-        "descripcion": "Noticias internacionales"
+        "descripcion": "Noticias internacionales",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Opinión",
         "url": "https://www.jornada.com.mx/rss/opinion.xml?v=1",
-        "descripcion": "Columnas de opinión y editoriales"
+        "descripcion": "Columnas de opinión y editoriales",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Política",
         "url": "https://www.jornada.com.mx/rss/politica.xml?v=1",
-        "descripcion": "Política nacional"
+        "descripcion": "Política nacional",
+        "idioma": "es"
       }
     ],
     "Economía y Finanzas": [
       {
         "titulo": "Bloomberg",
         "url": "https://feeds.bloomberg.com/markets/news.rss",
-        "descripcion": "Mercados globales y finanzas"
+        "descripcion": "Mercados globales y finanzas",
+        "idioma": "en"
       },
       {
         "titulo": "Expansión",
         "url": "https://www.expansion.com/rss/mercados.xml",
-        "descripcion": "Mercados financieros y bolsa"
+        "descripcion": "Mercados financieros y bolsa",
+        "idioma": "es"
       },
       {
         "titulo": "Financial Times",
         "url": "https://www.ft.com/rss/home",
-        "descripcion": "Noticias financieras globales"
+        "descripcion": "Noticias financieras globales",
+        "idioma": "en"
       },
       {
         "titulo": "La Jornada - Economía",
         "url": "https://www.jornada.com.mx/rss/economia.xml?v=1",
-        "descripcion": "Economía y finanzas"
+        "descripcion": "Economía y finanzas",
+        "idioma": "es"
+      },
+      {
+        "titulo": "Coindesk",
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "descripcion": "Criptomonedas y finanzas digitales",
+        "idioma": "en"
       }
     ],
     "Seguridad y Justicia": [
       {
         "titulo": "CEDH Chihuahua",
         "url": "https://cedhchihuahua.org.mx/wp/feed",
-        "descripcion": "Derechos humanos Chihuahua"
+        "descripcion": "Derechos humanos Chihuahua",
+        "idioma": "es"
       },
       {
         "titulo": "Contra Línea",
         "url": "https://contralinea.com.mx/feed",
-        "descripcion": "Periodismo de investigación"
+        "descripcion": "Periodismo de investigación",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Humano",
         "url": "https://diariohumano.com.mx/feed",
-        "descripcion": "Derechos humanos"
+        "descripcion": "Derechos humanos",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Sucesos",
         "url": "https://diariopresente.mx/feedgooglenews/sucesos",
-        "descripcion": "Sucesos y justicia"
+        "descripcion": "Sucesos y justicia",
+        "idioma": "es"
       }
     ],
     "Tecnología": [
       {
         "titulo": "Gizmodo España",
         "url": "https://es.gizmodo.com/rss",
-        "descripcion": "Tecnología, ciencia y cultura digital"
+        "descripcion": "Tecnología, ciencia y cultura digital",
+        "idioma": "es"
       },
       {
         "titulo": "MIT Technology Review",
         "url": "https://www.technologyreview.com/feed/",
-        "descripcion": "Tecnología emergente y ciencia"
+        "descripcion": "Tecnología emergente y ciencia",
+        "idioma": "en"
       },
       {
         "titulo": "WWWhatsnew",
         "url": "https://wwwhatsnew.com/feed/",
-        "descripcion": "Herramientas web, apps y recursos digitales"
+        "descripcion": "Herramientas web, apps y recursos digitales",
+        "idioma": "es"
+      },
+      {
+        "titulo": "The Verge",
+        "url": "https://www.theverge.com/rss/index.xml",
+        "descripcion": "Noticias de tecnología y cultura digital",
+        "idioma": "en"
+      },
+      {
+        "titulo": "Ars Technica",
+        "url": "https://feeds.arstechnica.com/arstechnica/index",
+        "descripcion": "Análisis profundo de tecnología y ciencia",
+        "idioma": "en"
       }
     ],
     "Celulares": [
       {
         "titulo": "Android Authority",
         "url": "https://www.androidauthority.com/feed/",
-        "descripcion": "Noticias Android y análisis"
+        "descripcion": "Noticias Android y análisis",
+        "idioma": "en"
       }
     ],
     "Computadoras": [
       {
         "titulo": "PCWorld",
         "url": "https://www.pcworld.com/index.rss",
-        "descripcion": "PC, laptops, hardware y software"
+        "descripcion": "PC, laptops, hardware y software",
+        "idioma": "en"
       },
       {
         "titulo": "Tom's Hardware",
         "url": "https://www.tomshardware.com/feeds/all",
-        "descripcion": "Hardware, reviews y guías PC"
+        "descripcion": "Hardware, reviews y guías PC",
+        "idioma": "en"
       }
     ],
     "Videojuegos": [
       {
         "titulo": "Agenda Mediática",
         "url": "https://agendamediatica.com.mx/feed",
-        "descripcion": "Análisis mediático"
+        "descripcion": "Análisis mediático",
+        "idioma": "es"
       },
       {
         "titulo": "GameSpot",
         "url": "https://www.gamespot.com/feeds/mashup/",
-        "descripcion": "Reseñas, noticias y videos de juegos"
+        "descripcion": "Reseñas, noticias y videos de juegos",
+        "idioma": "en"
       },
       {
         "titulo": "GamesRadar+",
         "url": "https://www.gamesradar.com/rss/",
-        "descripcion": "Noticias y guías de videojuegos"
+        "descripcion": "Noticias y guías de videojuegos",
+        "idioma": "en"
       },
       {
         "titulo": "HobbyConsolas",
         "url": "https://www.hobbyconsolas.com/rss",
-        "descripcion": "Videojuegos, consolas y análisis"
+        "descripcion": "Videojuegos, consolas y análisis",
+        "idioma": "es"
       }
     ],
     "Ciencia y Espacio": [
       {
         "titulo": "NASA Breaking News",
         "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss",
-        "descripcion": "Noticias oficiales de la NASA"
+        "descripcion": "Noticias oficiales de la NASA",
+        "idioma": "en"
       },
       {
         "titulo": "Quanta Magazine",
         "url": "https://www.quantamagazine.org/feed/",
-        "descripcion": "Matemáticas, física, biología"
+        "descripcion": "Matemáticas, física, biología",
+        "idioma": "en"
       },
       {
-        "titulo": "Space.com",
-        "url": "https://www.space.com/feeds/all",
-        "descripcion": "Exploración espacial y astronomía"
+        "titulo": "Nature",
+        "url": "https://www.nature.com/nature.rss",
+        "descripcion": "Investigación científica de alto impacto",
+        "idioma": "en"
+      },
+      {
+        "titulo": "ScienceDaily",
+        "url": "https://www.sciencedaily.com/rss/all.xml",
+        "descripcion": "Noticias de ciencia al día",
+        "idioma": "en"
       }
     ],
     "Salud y Medicina": [
       {
         "titulo": "Consultor Salud",
         "url": "https://consultorsalud.com.mx/feed",
-        "descripcion": "Salud y medicina"
-      },
-      {
-        "titulo": "WHO News",
-        "url": "https://www.who.int/rss-feeds/news-english.xml",
-        "descripcion": "Organización Mundial de la Salud"
+        "descripcion": "Salud y medicina",
+        "idioma": "es"
       }
     ],
     "Fitness y Nutrición": [
       {
         "titulo": "Men's Health",
         "url": "https://www.menshealth.com/rss/health.xml",
-        "descripcion": "Salud, fitness y nutrición masculina"
+        "descripcion": "Salud, fitness y nutrición masculina",
+        "idioma": "en"
       },
       {
         "titulo": "Women's Health",
         "url": "https://www.womenshealthmag.com/rss/health.xml",
-        "descripcion": "Salud, fitness y nutrición femenina"
+        "descripcion": "Salud, fitness y nutrición femenina",
+        "idioma": "en"
       }
     ],
     "Medio Ambiente": [
       {
         "titulo": "Diario Ecología",
         "url": "https://diarioecologia.com/feed",
-        "descripcion": "Ecología y medio ambiente"
+        "descripcion": "Ecología y medio ambiente",
+        "idioma": "es"
+      },
+      {
+        "titulo": "Mongabay Latam",
+        "url": "https://es.mongabay.com/feed/",
+        "descripcion": "Periodismo ambiental en español",
+        "idioma": "es"
       }
     ],
     "Deportes": [
       {
         "titulo": "BBC Sport",
         "url": "https://feeds.bbci.co.uk/sport/rss.xml",
-        "descripcion": "Deportes internacionales (BBC)"
+        "descripcion": "Deportes internacionales (BBC)",
+        "idioma": "en"
+      },
+      {
+        "titulo": "ESPN",
+        "url": "https://www.espn.com/espn/rss/news",
+        "descripcion": "Deportes internacionales",
+        "idioma": "en"
       },
       {
         "titulo": "La Jornada - Deportes",
         "url": "https://www.jornada.com.mx/rss/deportes.xml?v=1",
-        "descripcion": "Deportes nacionales e internacionales"
+        "descripcion": "Deportes nacionales e internacionales",
+        "idioma": "es"
+      },
+      {
+        "titulo": "Marca",
+        "url": "https://e00-marca.uecdn.es/rss/portada.xml",
+        "descripcion": "Deporte español e internacional",
+        "idioma": "es"
       }
     ],
     "Cultura y Arte": [
       {
         "titulo": "Diario Presente - Cultura",
         "url": "https://diariopresente.mx/feedgooglenews/cultura",
-        "descripcion": "Cultura y arte"
+        "descripcion": "Cultura y arte",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Cultura",
         "url": "https://www.jornada.com.mx/rss/cultura.xml?v=1",
-        "descripcion": "Cultura, arte y espectáculos"
+        "descripcion": "Cultura, arte y espectáculos",
+        "idioma": "es"
+      },
+      {
+        "titulo": "El País Cultura",
+        "url": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/cultura/portada",
+        "descripcion": "Cultura en español",
+        "idioma": "es"
       }
     ],
     "Cine y Series": [
       {
         "titulo": "Diario Presente - Espectáculos",
         "url": "https://diariopresente.mx/feedgooglenews/espectaculos",
-        "descripcion": "Espectáculos y entretenimiento"
+        "descripcion": "Espectáculos y entretenimiento",
+        "idioma": "es"
       },
       {
         "titulo": "IGN España",
         "url": "https://es.ign.com/rss",
-        "descripcion": "Videojuegos, cine y cómics"
+        "descripcion": "Videojuegos, cine y cómics",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Espectáculos",
         "url": "https://www.jornada.com.mx/rss/espectaculos.xml?v=1",
-        "descripcion": "Cine, teatro, música y espectáculos"
+        "descripcion": "Cine, teatro, música y espectáculos",
+        "idioma": "es"
       }
     ],
     "Música": [
       {
         "titulo": "Consequence",
         "url": "https://consequence.net/feed/",
-        "descripcion": "Música, cine, TV y cultura pop"
+        "descripcion": "Música, cine, TV y cultura pop",
+        "idioma": "en"
       },
       {
         "titulo": "Mondosonoro",
         "url": "https://www.mondosonoro.com/feed/",
-        "descripcion": "Música independiente y alternativa"
+        "descripcion": "Música independiente y alternativa",
+        "idioma": "es"
       },
       {
         "titulo": "NME",
         "url": "https://www.nme.com/feed/",
-        "descripcion": "Noticias musicales y cultura pop"
+        "descripcion": "Noticias musicales y cultura pop",
+        "idioma": "en"
       },
       {
         "titulo": "Pitchfork",
         "url": "https://pitchfork.com/rss/news/",
-        "descripcion": "Críticas y noticias musicales"
+        "descripcion": "Críticas y noticias musicales",
+        "idioma": "en"
       },
       {
         "titulo": "Rolling Stone",
         "url": "https://www.rollingstone.com/music/music-news/feed/",
-        "descripcion": "Noticias de la industria musical"
+        "descripcion": "Noticias de la industria musical",
+        "idioma": "en"
       },
       {
         "titulo": "Stereogum",
         "url": "https://www.stereogum.com/feed/",
-        "descripcion": "Música indie, rock y alternativa"
+        "descripcion": "Música indie, rock y alternativa",
+        "idioma": "en"
       }
     ],
     "Gastronomía": [
       {
         "titulo": "Cocina Familiar",
         "url": "https://www.cocina-familiar.com/feed/",
-        "descripcion": "Recetas caseras y trucos de cocina"
+        "descripcion": "Recetas caseras y trucos de cocina",
+        "idioma": "es"
       },
       {
         "titulo": "Gastronomía y Cía",
         "url": "https://www.gastronomiaycia.com/feed/",
-        "descripcion": "Gastronomía, vinos y restaurantes"
+        "descripcion": "Gastronomía, vinos y restaurantes",
+        "idioma": "es"
       }
     ],
     "Motor": [
       {
         "titulo": "Autofácil",
         "url": "https://www.autofacil.es/rss",
-        "descripcion": "Coches, pruebas y novedades"
+        "descripcion": "Coches, pruebas y novedades",
+        "idioma": "es"
       }
     ],
     "Educación": [
       {
         "titulo": "COLNAL",
         "url": "https://colnal.mx/feed",
-        "descripcion": "Colegio Nacional"
+        "descripcion": "Colegio Nacional",
+        "idioma": "es"
       },
       {
         "titulo": "Conéctate UM",
         "url": "https://conectate.um.edu.mx/rss",
-        "descripcion": "Universidad de Morelia"
+        "descripcion": "Universidad de Morelia",
+        "idioma": "es"
       }
     ],
     "General": [
       {
         "titulo": "24 Horas Quintana Roo",
         "url": "https://24horasqroo.mx/feed",
-        "descripcion": "Noticias de Quintana Roo"
+        "descripcion": "Noticias de Quintana Roo",
+        "idioma": "es"
       },
       {
         "titulo": "24 Horas Yucatán",
         "url": "https://24horasyucatan.mx/feed",
-        "descripcion": "Noticias de Yucatán"
+        "descripcion": "Noticias de Yucatán",
+        "idioma": "es"
       },
       {
         "titulo": "8 Columnas",
         "url": "https://8columnas.com.mx/feed",
-        "descripcion": "Noticias de San Luis Potosí"
+        "descripcion": "Noticias de San Luis Potosí",
+        "idioma": "es"
       },
       {
         "titulo": "889 Noticias",
         "url": "https://889noticias.mx/feed",
-        "descripcion": "Noticias de Jalisco"
+        "descripcion": "Noticias de Jalisco",
+        "idioma": "es"
       },
       {
         "titulo": "ADN Informativo",
         "url": "https://adninformativo.mx/feed",
-        "descripcion": "Noticias de Veracruz"
+        "descripcion": "Noticias de Veracruz",
+        "idioma": "es"
       },
       {
         "titulo": "Agencia de Prensa Online",
         "url": "https://agenciadeprensaonline.mx/feed",
-        "descripcion": "Agencia de noticias"
+        "descripcion": "Agencia de noticias",
+        "idioma": "es"
       },
       {
         "titulo": "Al Chile",
         "url": "https://alchile.com.mx/feed",
-        "descripcion": "Noticias y opinión"
+        "descripcion": "Noticias y opinión",
+        "idioma": "es"
       },
       {
         "titulo": "Al Día Noticias",
         "url": "https://aldianoticias.mx/feed",
-        "descripcion": "Noticias del día"
+        "descripcion": "Noticias del día",
+        "idioma": "es"
       },
       {
         "titulo": "Al Diálogo",
         "url": "https://aldialogo.mx/api/rss-ultimas-noticias",
-        "descripcion": "Diálogo y noticias"
+        "descripcion": "Diálogo y noticias",
+        "idioma": "es"
       },
       {
         "titulo": "Al Momento",
         "url": "https://almomento.mx/feed",
-        "descripcion": "Noticias al momento"
+        "descripcion": "Noticias al momento",
+        "idioma": "es"
       },
       {
         "titulo": "America Retail",
         "url": "https://americaretail-malls.com/feed",
-        "descripcion": "Retail y centros comerciales"
+        "descripcion": "Retail y centros comerciales",
+        "idioma": "es"
       },
       {
         "titulo": "América y Ya",
         "url": "https://americayya.net/feed",
-        "descripcion": "Noticias de América"
+        "descripcion": "Noticias de América",
+        "idioma": "es"
       },
       {
         "titulo": "B15",
         "url": "https://b15.com.mx/feed",
-        "descripcion": "Noticias de Baja California"
+        "descripcion": "Noticias de Baja California",
+        "idioma": "es"
       },
       {
         "titulo": "Banderas News",
         "url": "https://banderasnews.com/feed",
-        "descripcion": "Noticias de Puerto Vallarta"
+        "descripcion": "Noticias de Puerto Vallarta",
+        "idioma": "es"
       },
       {
         "titulo": "Billie Parker Noticias",
         "url": "https://billieparkernoticias.com/feed",
-        "descripcion": "Noticias y reportajes"
+        "descripcion": "Noticias y reportajes",
+        "idioma": "es"
       },
       {
         "titulo": "Blog UDLA",
         "url": "https://blog.udlap.mx/feed",
-        "descripcion": "Blog de la UDLA Puebla"
+        "descripcion": "Blog de la UDLA Puebla",
+        "idioma": "es"
       },
       {
         "titulo": "Cadena Noticias",
         "url": "https://cadenanoticias.com/feed/principal",
-        "descripcion": "Noticias en cadena"
+        "descripcion": "Noticias en cadena",
+        "idioma": "es"
       },
       {
         "titulo": "Capital Coahuila",
         "url": "https://capitalcoahuila.com.mx/feed",
-        "descripcion": "Noticias de Coahuila"
+        "descripcion": "Noticias de Coahuila",
+        "idioma": "es"
       },
       {
         "titulo": "Carmen Minuto a Minuto",
         "url": "https://carmenminutoaminuto.com/feed",
-        "descripcion": "Noticias de Carmen"
+        "descripcion": "Noticias de Carmen",
+        "idioma": "es"
       },
       {
         "titulo": "Central Electoral INE",
         "url": "https://centralelectoral.ine.mx/feed",
-        "descripcion": "Información electoral"
+        "descripcion": "Información electoral",
+        "idioma": "es"
       },
       {
         "titulo": "Central Municipal",
         "url": "https://centralmunicipal.mx/feed",
-        "descripcion": "Noticias municipales"
-      },
-      {
-        "titulo": "Central San Luis",
-        "url": "https://centralsanluis.mx/feed",
-        "descripcion": "Noticias de San Luis"
+        "descripcion": "Noticias municipales",
+        "idioma": "es"
       },
       {
         "titulo": "Chihuahua Noticias",
         "url": "https://chihuahuanoticias.mx/feed",
-        "descripcion": "Noticias de Chihuahua"
+        "descripcion": "Noticias de Chihuahua",
+        "idioma": "es"
       },
       {
         "titulo": "CIESAS Repositorio Atom",
         "url": "https://ciesas.repositorioinstitucional.mx/jspui/feed/atom_1.0/site",
-        "descripcion": "Repositorio CIESAS"
+        "descripcion": "Repositorio CIESAS",
+        "idioma": "es"
       },
       {
         "titulo": "CIESAS Repositorio RSS",
         "url": "https://ciesas.repositorioinstitucional.mx/jspui/feed/rss_2.0/site",
-        "descripcion": "Repositorio CIESAS"
+        "descripcion": "Repositorio CIESAS",
+        "idioma": "es"
       },
       {
         "titulo": "Cimac Noticias",
         "url": "https://cimacnoticias.com.mx/feed",
-        "descripcion": "Noticias con perspectiva de género"
+        "descripcion": "Noticias con perspectiva de género",
+        "idioma": "es"
       },
       {
         "titulo": "Ciudadanos al Día",
         "url": "https://ciudadanosaldia.com.mx/feed",
-        "descripcion": "Noticias ciudadanas"
+        "descripcion": "Noticias ciudadanas",
+        "idioma": "es"
       },
       {
         "titulo": "Claudia Guerrero",
         "url": "https://claudiaguerrero.mx/feed",
-        "descripcion": "Noticias y opinión"
+        "descripcion": "Noticias y opinión",
+        "idioma": "es"
       },
       {
         "titulo": "Close Up",
         "url": "https://closeup.mx/feed",
-        "descripcion": "Fotoperiodismo y noticias"
+        "descripcion": "Fotoperiodismo y noticias",
+        "idioma": "es"
       },
       {
         "titulo": "CNT Tamaulipas",
         "url": "https://cntamaulipas.mx/feed",
-        "descripcion": "Noticias de Tamaulipas"
+        "descripcion": "Noticias de Tamaulipas",
+        "idioma": "es"
       },
       {
         "titulo": "Códices Oaxaca",
         "url": "https://codicesoaxaca.mx/feed",
-        "descripcion": "Noticias de Oaxaca"
-      },
-      {
-        "titulo": "COLSAN Repositorio Atom",
-        "url": "https://colsan.repositorioinstitucional.mx/jspui/feed/atom_1.0/site",
-        "descripcion": "Repositorio COLSAN"
-      },
-      {
-        "titulo": "COLSAN Repositorio RSS",
-        "url": "https://colsan.repositorioinstitucional.mx/jspui/feed/rss_2.0/site",
-        "descripcion": "Repositorio COLSAN"
+        "descripcion": "Noticias de Oaxaca",
+        "idioma": "es"
       },
       {
         "titulo": "Con Acento",
         "url": "https://conacento.com.mx/feed",
-        "descripcion": "Noticias con acento"
+        "descripcion": "Noticias con acento",
+        "idioma": "es"
       },
       {
         "titulo": "Consulta Monterrey",
         "url": "https://consultamonterrey.mx/rss",
-        "descripcion": "Noticias de Monterrey"
-      },
-      {
-        "titulo": "Diario Censura",
-        "url": "https://diariocensura.com.mx/feed",
-        "descripcion": "Noticias sin censura"
+        "descripcion": "Noticias de Monterrey",
+        "idioma": "es"
       },
       {
         "titulo": "Diario de Palenque",
         "url": "https://diariodepalenque.com.mx/rss",
-        "descripcion": "Noticias de Palenque"
-      },
-      {
-        "titulo": "Diario de Puebla",
-        "url": "https://www.diariodepuebla.org/rss",
-        "descripcion": "Noticias de Puebla y región"
+        "descripcion": "Noticias de Palenque",
+        "idioma": "es"
       },
       {
         "titulo": "Diario del Sur",
         "url": "https://diariodelsur.com.mx/rss",
-        "descripcion": "Noticias del sur"
+        "descripcion": "Noticias del sur",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Judío",
         "url": "https://diariojudio.com/feed",
-        "descripcion": "Noticias judías y de Israel"
+        "descripcion": "Noticias judías y de Israel",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Actualidad",
         "url": "https://diariopresente.mx/feedgooglenews/actualidad",
-        "descripcion": "Actualidad general"
+        "descripcion": "Actualidad general",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - México",
         "url": "https://diariopresente.mx/feedgooglenews/mexico",
-        "descripcion": "Noticias de México"
+        "descripcion": "Noticias de México",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Mundo",
         "url": "https://diariopresente.mx/feedgooglenews/mundo",
-        "descripcion": "Noticias internacionales"
+        "descripcion": "Noticias internacionales",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Tabasco",
         "url": "https://diariopresente.mx/feedgooglenews/tabasco",
-        "descripcion": "Noticias de Tabasco"
+        "descripcion": "Noticias de Tabasco",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Presente - Villahermosa",
         "url": "https://diariopresente.mx/feedgooglenews/villahermosa",
-        "descripcion": "Noticias de Villahermosa"
+        "descripcion": "Noticias de Villahermosa",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Puntual",
         "url": "https://diario-puntual.com.mx/feed",
-        "descripcion": "Noticias puntuales"
+        "descripcion": "Noticias puntuales",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Tijuana",
         "url": "https://diariotijuana.info/feed",
-        "descripcion": "Noticias de Tijuana"
+        "descripcion": "Noticias de Tijuana",
+        "idioma": "es"
       },
       {
         "titulo": "Diario Vía Libre",
         "url": "https://diariovialibre.com.mx/feed",
-        "descripcion": "Noticias de transporte"
+        "descripcion": "Noticias de transporte",
+        "idioma": "es"
       },
       {
         "titulo": "La Jornada - Edición",
         "url": "https://www.jornada.com.mx/rss/edicion.xml?v=1",
-        "descripcion": "Edición completa del periódico"
+        "descripcion": "Edición completa del periódico",
+        "idioma": "es"
       }
     ],
     "Developers": [
       {
-        "titulo": "GitHub Blog - Lo último",
-        "url": "https://github.blog/latest/",
-        "descripcion": "Novedades y lanzamientos recientes de GitHub (página completa)",
-        "categoria": "Developers",
-        "forzar_conversion": true
-      },
-      {
-        "titulo": "GitHub Blog - Ingeniería",
-        "url": "https://github.blog/engineering/",
-        "descripcion": "Cómo se construye GitHub: arquitectura, plataforma e ingeniería (página completa)",
-        "categoria": "Developers",
-        "forzar_conversion": true
-      },
-      {
-        "titulo": "GitHub Blog - Noticias",
-        "url": "https://github.blog/news-insights/",
-        "descripcion": "Noticias de producto, empresa y comunidad GitHub (página completa)",
-        "categoria": "Developers",
-        "forzar_conversion": true
-      },
-      {
         "titulo": "GitHub Blog",
         "url": "https://github.blog/feed/",
-        "descripcion": "Producto, ingeniería y código abierto (GitHub)"
+        "descripcion": "Producto, ingeniería y código abierto (GitHub)",
+        "idioma": "es"
       },
       {
         "titulo": "Hacker News",
         "url": "https://news.ycombinator.com/rss",
-        "descripcion": "Comunidad tech: programación y startups"
+        "descripcion": "Comunidad tech: programación y startups",
+        "idioma": "en"
       },
       {
         "titulo": "DEV Community",
         "url": "https://dev.to/feed",
-        "descripcion": "Artículos de desarrolladores para desarrolladores"
+        "descripcion": "Artículos de desarrolladores para desarrolladores",
+        "idioma": "en"
       },
       {
         "titulo": "Stack Overflow Blog",
         "url": "https://stackoverflow.blog/feed/",
-        "descripcion": "Ingeniería, IA y cultura dev"
+        "descripcion": "Ingeniería, IA y cultura dev",
+        "idioma": "en"
       },
       {
         "titulo": "CSS-Tricks",
         "url": "https://css-tricks.com/feed/",
-        "descripcion": "Frontend, CSS y desarrollo web"
+        "descripcion": "Frontend, CSS y desarrollo web",
+        "idioma": "en"
       },
       {
         "titulo": "Smashing Magazine",
         "url": "https://www.smashingmagazine.com/feed/",
-        "descripcion": "Diseño y desarrollo web profesional"
+        "descripcion": "Diseño y desarrollo web profesional",
+        "idioma": "en"
       },
       {
         "titulo": "Martin Fowler",
         "url": "https://martinfowler.com/feed.atom",
-        "descripcion": "Arquitectura y métodos de desarrollo"
+        "descripcion": "Arquitectura y métodos de desarrollo",
+        "idioma": "en"
       }
     ]
   },
   "metadata": {
     "fuente": "Curated from vxnez/rssfeeds and verified Spanish/Mexican RSS sources",
-    "actualizado": "2026-09-18",
-    "total_feeds": 111,
-    "verificado": "2026-09-16T00:23:36.244Z",
-    "nota": "Categorías asignadas automáticamente por palabras clave (título + descripción) según las 24 categorías del dashboard"
+    "actualizado": "2026-09-22",
+    "total_feeds": 110,
+    "verificado": "2026-09-22T09:47:15.223Z",
+    "nota": "Auditoría backend 2026-09-22: purga de 10 feeds muertos + 9 altas; campo idioma por fila (es/en)"
   }
 }
