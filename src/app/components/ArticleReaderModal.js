@@ -16,12 +16,8 @@ import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const TAMANOS_LECTURA = {
-  normal: "text-sm md:text-base",
-  grande: "text-base md:text-lg",
-  extra: "text-lg md:text-xl leading-relaxed",
-};
-const ORDEN_TAMANOS = ["normal", "grande", "extra"];
+// El cuerpo usa tamaño fijo "normal": la escala global la da --font-size-base
+// (slider de Ajustes > Lectura), así que el lector no necesita estados.
 
 // Dirección de la última navegación entre noticias (1 = siguiente, -1 = anterior, 0 = apertura).
 // Vive a nivel de módulo porque el modal se remontan con `key` por noticia y el estado se pierde.
@@ -81,16 +77,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // Si la optimización next/image falla (CDN que bloquea al servidor),
   // se reintenta con <img> directo al origen antes de darla por rota.
   const [sinOptimizar, setSinOptimizar] = useState(false);
-  // Tamaño de letra del cuerpo: se configura en Ajustes > Lectura y se lee
-  // al abrir cada noticia (el modal se remonta por noticia vía `key`).
-  const [tamanoLectura] = useState(() => {
-    try {
-      const guardado = window.localStorage.getItem("lector_tamano_fuente");
-      return ORDEN_TAMANOS.includes(guardado) ? guardado : "normal";
-    } catch {
-      return "normal";
-    }
-  });
+  // El cuerpo usa tamaño fijo: la escala global la da --font-size-base.
 
   // Barra de progreso de lectura
   const [progresoLectura, setProgresoLectura] = useState(0);
@@ -655,7 +642,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               revelado palabra por palabra ligado al scroll (TextRevealBox,
               equivalente nativo de skiper70). El pie (leer/guardar/sitio
               oficial) queda siempre a la vista. */}
-          <div className={`text-app-fg/90 leading-relaxed break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
+          <div className="text-app-fg/90 text-sm md:text-base leading-relaxed break-words overflow-hidden">
             {resumenExpandido && esResumenTruncado(article) ? (
               <TextRevealBox
                 texto={resumenPlano(article.resumen)}

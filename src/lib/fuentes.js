@@ -13,6 +13,40 @@ export const FUENTES = [
 export const FUENTE_POR_DEFECTO = "momo";
 const CLAVE_FUENTE = "lector_fuente_app";
 
+// Tamaño base global de texto (px): escala toda la app porque las
+// utilidades tipográficas usan rem anclado al font-size del <html>.
+export const FUENTE_PX_DEFECTO = 16;
+export const FUENTE_PX_MIN = 12;
+export const FUENTE_PX_MAX = 24;
+const CLAVE_FUENTE_PX = "lector_fuente_px";
+
+export function normalizarFuentePx(valor) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return FUENTE_PX_DEFECTO;
+  return Math.min(Math.max(Math.round(n), FUENTE_PX_MIN), FUENTE_PX_MAX);
+}
+
+export function fuentePxInicial() {
+  try {
+    return normalizarFuentePx(window.localStorage.getItem(CLAVE_FUENTE_PX));
+  } catch {
+    return FUENTE_PX_DEFECTO;
+  }
+}
+
+// Aplica el tamaño base al <html> (los rem de Tailwind escalan con él) +
+// persistencia. No dispara refetch: es solo presentación.
+export function aplicarFuentePx(px) {
+  const normalizado = normalizarFuentePx(px);
+  try {
+    document.documentElement.style.setProperty("--font-size-base", `${normalizado}px`);
+    window.localStorage.setItem(CLAVE_FUENTE_PX, String(normalizado));
+  } catch {
+    // Sin DOM/almacenamiento: no se puede aplicar ni persistir.
+  }
+  return normalizado;
+}
+
 export function esFuenteValida(id) {
   return FUENTES.some((f) => f.id === id);
 }

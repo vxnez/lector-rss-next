@@ -31,7 +31,7 @@ import {
   AlignJustify,
 } from "lucide-react";
 import SelectorTemas from "./SelectorTemas";
-import { FUENTES } from "@/lib/fuentes";
+import { FUENTES, FUENTE_PX_MIN, FUENTE_PX_MAX } from "@/lib/fuentes";
 import { limpiarRastrosCuenta, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
@@ -100,7 +100,7 @@ function Interruptor({ activado, onCambiar, etiqueta, descripcion }) {
     >
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-app-fg">{etiqueta}</span>
-        {descripcion && <span className="block text-xs text-app-muted">{descripcion}</span>}
+        {descripcion && <span className="block break-words text-xs leading-relaxed text-app-muted">{descripcion}</span>}
       </span>
       <span
         aria-hidden="true"
@@ -125,8 +125,8 @@ export default function AjustesPanel({
   onTema,
   fuente,
   onFuente,
-  tamanoFuente,
-  onTamanoFuente,
+  fuentePx,
+  onFuentePx,
   modoVista,
   onModoVista,
   tamanoPagina,
@@ -475,17 +475,22 @@ export default function AjustesPanel({
           )}
 
           {vista === "lectura" && (
-            <section className="stagger-in space-y-4">
+            <section className="stagger-in space-y-5">
               <div className="space-y-2.5 border-t border-app-line pt-4">
                 <p className="text-xs font-medium text-app-muted">{t("ajustes.lectura_sub")}</p>
-                <div>
-                  <span id="ajustes-fuente" className="mb-1.5 block text-xs font-medium text-app-muted">
+
+                {/* Grupo: tipografía */}
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
+                  {t("ajustes.grupo_tipo")}
+                </p>
+                <div className="min-w-0">
+                  <span id="ajustes-fuente" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
                     {t("ajustes.fuente_grupo")}
                   </span>
                   <p className="mb-2 text-xs leading-relaxed text-app-muted">
                     {t("ajustes.fuente_nota")}
                   </p>
-                  <div className="grid gap-1.5" role="radiogroup" aria-labelledby="ajustes-fuente">
+                  <div className="grid min-w-0 gap-1.5" role="radiogroup" aria-labelledby="ajustes-fuente">
                     {FUENTES.map((item) => {
                       const activo = fuente === item.id;
                       return (
@@ -496,7 +501,7 @@ export default function AjustesPanel({
                           aria-checked={activo}
                           onClick={() => onFuente(item.id)}
                           style={{ fontFamily: `var(${item.variable}), sans-serif` }}
-                          className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          className={`min-w-0 break-words rounded-lg border px-3 py-2 text-left text-sm leading-snug transition ${
                             activo
                               ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
                               : "border-transparent bg-transparent text-app-fg hover:bg-app-raised/40"
@@ -508,41 +513,43 @@ export default function AjustesPanel({
                     })}
                   </div>
                 </div>
-                <div>
-                  <span id="ajustes-tamano-lectura" className="mb-1.5 block text-xs font-medium text-app-muted">
-                    {t("ajustes.tamano_lectura")}
-                  </span>
-                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-lectura">
-                    {[
-                      { id: "normal", etiqueta: t("ajustes.tamano_normal") },
-                      { id: "grande", etiqueta: t("ajustes.tamano_grande") },
-                      { id: "extra", etiqueta: t("ajustes.tamano_extra") },
-                    ].map((op) => {
-                      const activo = tamanoFuente === op.id;
-                      return (
-                        <button
-                          key={op.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={activo}
-                          onClick={() => onTamanoFuente(op.id)}
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                            activo
-                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
-                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
-                          }`}
-                        >
-                          {op.etiqueta}
-                        </button>
-                      );
-                    })}
+                <div className="min-w-0">
+                  <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2">
+                    <span id="ajustes-tamano-px" className="min-w-0 truncate text-xs font-medium text-app-muted">
+                      {t("ajustes.tamano_lectura")}
+                    </span>
+                    <span
+                      aria-live="polite"
+                      className="shrink-0 rounded-md border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-2 py-0.5 text-xs font-bold tabular-nums text-[var(--accent-ink)]"
+                    >
+                      {fuentePx} px
+                    </span>
                   </div>
+                  <input
+                    type="range"
+                    min={FUENTE_PX_MIN}
+                    max={FUENTE_PX_MAX}
+                    step={1}
+                    value={fuentePx}
+                    onChange={(event) => onFuentePx(Number(event.target.value))}
+                    aria-labelledby="ajustes-tamano-px"
+                    style={{ "--slider-pct": `${((fuentePx - FUENTE_PX_MIN) / (FUENTE_PX_MAX - FUENTE_PX_MIN)) * 100}%` }}
+                    className="ajuste-slider w-full"
+                  />
+                  <p className="mt-1 text-xs leading-relaxed text-app-muted">
+                    {t("ajustes.tamano_px_nota")}
+                  </p>
                 </div>
-                <div>
-                  <span id="ajustes-vista" className="mb-1.5 block text-xs font-medium text-app-muted">
+
+                {/* Grupo: vista */}
+                <p className="border-t border-app-line pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
+                  {t("ajustes.grupo_vista")}
+                </p>
+                <div className="min-w-0">
+                  <span id="ajustes-vista" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
                     {t("ajustes.vista_grupo")}
                   </span>
-                  <div className="grid gap-1.5" role="radiogroup" aria-labelledby="ajustes-vista">
+                  <div className="grid min-w-0 gap-1.5" role="radiogroup" aria-labelledby="ajustes-vista">
                     {[
                       { id: "cards", etiqueta: t("ajustes.vista_cards"), icono: <LayoutGrid size={15} /> },
                       { id: "magazine", etiqueta: t("ajustes.vista_magazine"), icono: <Rows size={15} /> },
@@ -556,21 +563,26 @@ export default function AjustesPanel({
                           role="radio"
                           aria-checked={activo}
                           onClick={() => onModoVista(op.id)}
-                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition ${
+                          className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition ${
                             activo
                               ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
                               : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
                           }`}
                         >
                           <span className="shrink-0">{op.icono}</span>
-                          {op.etiqueta}
+                          <span className="min-w-0 flex-1 truncate">{op.etiqueta}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
-                <div>
-                  <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-app-muted">
+
+                {/* Grupo: contenido */}
+                <p className="border-t border-app-line pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
+                  {t("ajustes.grupo_contenido")}
+                </p>
+                <div className="min-w-0">
+                  <span id="ajustes-tamano-pagina" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
                     {t("ajustes.pagina")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-pagina">
@@ -583,7 +595,7 @@ export default function AjustesPanel({
                           role="radio"
                           aria-checked={activo}
                           onClick={() => onTamanoPagina(n)}
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          className={`min-w-0 flex-1 truncate rounded-lg border px-2 py-1.5 text-xs font-medium tabular-nums transition ${
                             activo
                               ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
                               : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
@@ -595,8 +607,8 @@ export default function AjustesPanel({
                     })}
                   </div>
                 </div>
-                <div>
-                  <span id="ajustes-densidad" className="mb-1.5 block text-xs font-medium text-app-muted">
+                <div className="min-w-0">
+                  <span id="ajustes-densidad" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
                     {t("ajustes.densidad")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-densidad">
@@ -612,7 +624,7 @@ export default function AjustesPanel({
                           role="radio"
                           aria-checked={activo}
                           onClick={() => onDensidad(op.id)}
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          className={`min-w-0 flex-1 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
                             activo
                               ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
                               : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
@@ -624,6 +636,11 @@ export default function AjustesPanel({
                     })}
                   </div>
                 </div>
+
+                {/* Grupo: comportamiento */}
+                <p className="border-t border-app-line pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
+                  {t("ajustes.grupo_comportamiento")}
+                </p>
                 <Interruptor
                   activado={autoMarcarLeida}
                   onCambiar={onAutoMarcar}

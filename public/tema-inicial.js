@@ -23,6 +23,10 @@
     var fuentes = ["momo", "line", "readex", "calsans", "pressstart"];
     var f = localStorage.getItem("lector_fuente_app");
     document.documentElement.dataset.fuente = fuentes.indexOf(f) >= 0 ? f : "momo";
+    var px = parseInt(localStorage.getItem("lector_fuente_px"), 10);
+    if (!isFinite(px)) px = 16;
+    px = Math.min(Math.max(px, 12), 24);
+    document.documentElement.style.setProperty("--font-size-base", px + "px");
     document.documentElement.lang = "es";
   } catch (e) {
     // Sin almacenamiento/DOM: se conservan los valores por defecto del CSS.

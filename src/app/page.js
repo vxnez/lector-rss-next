@@ -12,7 +12,7 @@ import { Plus, Search, LayoutGrid, Rows, AlignJustify, Keyboard, WifiOff, Search
 import { Filter as FilterData, X as XData } from "lucide";
 
 import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
-import { FUENTE_POR_DEFECTO, aplicarFuente, fuenteInicial } from "@/lib/fuentes";
+import { FUENTE_POR_DEFECTO, FUENTE_PX_DEFECTO, FUENTE_PX_MIN, FUENTE_PX_MAX, aplicarFuente, aplicarFuentePx, fuenteInicial, fuentePxInicial } from "@/lib/fuentes";
 import { useIdioma } from "@/lib/i18n";
 import { urlBase64ToUint8Array } from "@/lib/feed-utils";
 import { bumpCacheVersion } from "@/lib/fetchCache";
@@ -149,12 +149,11 @@ export default function HomePage() {
       return FUENTE_POR_DEFECTO;
     }
   });
-  const [tamanoFuente, setTamanoFuente] = useState(() => {
+  const [fuentePx, setFuentePx] = useState(() => {
     try {
-      const g = window.localStorage.getItem("lector_tamano_fuente");
-      return ["normal", "grande", "extra"].includes(g) ? g : "normal";
+      return fuentePxInicial();
     } catch {
-      return "normal";
+      return FUENTE_PX_DEFECTO;
     }
   });
   const [autoMarcarLeida, setAutoMarcarLeida] = useState(() => {
@@ -485,14 +484,8 @@ export default function HomePage() {
     setFuenteApp(aplicarFuente(id).id);
   }, []);
 
-  const cambiarTamanoFuente = useCallback((valor) => {
-    const normalizado = ["normal", "grande", "extra"].includes(valor) ? valor : "normal";
-    try {
-      window.localStorage.setItem("lector_tamano_fuente", normalizado);
-    } catch {
-      // Ignorar
-    }
-    setTamanoFuente(normalizado);
+  const cambiarFuentePx = useCallback((valor) => {
+    setFuentePx(aplicarFuentePx(valor));
   }, []);
 
   const cambiarAutoMarcar = (valor) => {
@@ -1090,8 +1083,8 @@ export default function HomePage() {
         onTema={cambiarTema}
         fuente={fuenteApp}
         onFuente={cambiarFuente}
-        tamanoFuente={tamanoFuente}
-        onTamanoFuente={cambiarTamanoFuente}
+        fuentePx={fuentePx}
+        onFuentePx={cambiarFuentePx}
         modoVista={modoVista}
         onModoVista={cambiarModoVista}
         tamanoPagina={tamanoPagina}
