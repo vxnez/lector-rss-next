@@ -9,7 +9,7 @@ import { CLAVES_NOTIFICACIONES } from "@/lib/hooks/useNotificaciones";
 
 export const AJUSTES_POR_DEFECTO = {
   lector_tema: null, // null = preferencia del sistema (ver temas.temaPreferidoSistema)
-  lector_fuente_app: null, // null = Momo Trust Display (ver fuentes.FUENTE_POR_DEFECTO)
+  lector_fuente_app: null, // null = Readex Pro (ver fuentes.FUENTE_POR_DEFECTO)
   lector_fuente_px: null, // null = 16 px base (ver fuentes.FUENTE_PX_DEFECTO)
   lector_familia_fuente: null, // legado del lector (botón Sans eliminado): se purga
   lector_tamano_fuente: null, // legado del lector (botones Normal/Grande/Extra): se purga

@@ -20,9 +20,9 @@
     if (d === "compacta") {
       document.documentElement.dataset.densidad = "compacta";
     }
-    var fuentes = ["momo", "line", "readex", "calsans", "pressstart"];
+    var fuentes = ["readex", "momo", "line", "calsans", "pressstart"];
     var f = localStorage.getItem("lector_fuente_app");
-    document.documentElement.dataset.fuente = fuentes.indexOf(f) >= 0 ? f : "momo";
+    document.documentElement.dataset.fuente = fuentes.indexOf(f) >= 0 ? f : "readex";
     var px = parseInt(localStorage.getItem("lector_fuente_px"), 10);
     if (!isFinite(px)) px = 16;
     px = Math.min(Math.max(px, 12), 24);

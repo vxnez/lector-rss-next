@@ -29,6 +29,8 @@ import {
   LayoutGrid,
   Rows,
   AlignJustify,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import SelectorTemas from "./SelectorTemas";
 import { FUENTES, FUENTE_PX_MIN, FUENTE_PX_MAX } from "@/lib/fuentes";
@@ -157,6 +159,8 @@ export default function AjustesPanel({
   const [infoRepo, setInfoRepo] = useState(null);
   const [exportando, setExportando] = useState(false);
   const [pasoEliminar, setPasoEliminar] = useState("idle");
+  const [fuenteAbierta, setFuenteAbierta] = useState(false);
+  const fuenteActiva = FUENTES.find((f) => f.id === fuente) || FUENTES[0];
   const cerrarRef = useRef(null);
   const { t } = useIdioma();
 
@@ -490,27 +494,66 @@ export default function AjustesPanel({
                   <p className="mb-2 text-xs leading-relaxed text-app-muted">
                     {t("ajustes.fuente_nota")}
                   </p>
-                  <div className="grid min-w-0 gap-1.5" role="radiogroup" aria-labelledby="ajustes-fuente">
-                    {FUENTES.map((item) => {
-                      const activo = fuente === item.id;
-                      return (
+                  <div className="relative min-w-0" onKeyDown={(e) => { if (e.key === "Escape") setFuenteAbierta(false); }}>
+                    <button
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded={fuenteAbierta}
+                      aria-labelledby="ajustes-fuente"
+                      onClick={() => setFuenteAbierta((v) => !v)}
+                      className="flex w-full min-w-0 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-left transition hover:bg-app-raised/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      <span
+                        style={{ fontFamily: `var(${fuenteActiva.variable}), sans-serif` }}
+                        className="min-w-0 flex-1 truncate text-sm text-app-fg"
+                      >
+                        {fuenteActiva.nombre}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        className={`shrink-0 text-app-muted transition-transform duration-200 ${fuenteAbierta ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {fuenteAbierta && (
+                      <>
                         <button
-                          key={item.id}
                           type="button"
-                          role="radio"
-                          aria-checked={activo}
-                          onClick={() => onFuente(item.id)}
-                          style={{ fontFamily: `var(${item.variable}), sans-serif` }}
-                          className={`min-w-0 break-words rounded-lg border px-3 py-2 text-left text-sm leading-snug transition ${
-                            activo
-                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
-                              : "border-transparent bg-transparent text-app-fg hover:bg-app-raised/40"
-                          }`}
+                          aria-hidden="true"
+                          tabIndex={-1}
+                          onClick={() => setFuenteAbierta(false)}
+                          className="fixed inset-0 z-10 cursor-default bg-transparent"
+                        />
+                        <ul
+                          role="listbox"
+                          aria-labelledby="ajustes-fuente"
+                          className="anim-fondo-fundido absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-app-line bg-app-raised p-1 shadow-2xl"
                         >
-                          {item.nombre}
-                        </button>
-                      );
-                    })}
+                          {FUENTES.map((item) => {
+                            const activo = fuente === item.id;
+                            return (
+                              <li key={item.id} role="option" aria-selected={activo}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onFuente(item.id);
+                                    setFuenteAbierta(false);
+                                  }}
+                                  style={{ fontFamily: `var(${item.variable}), sans-serif` }}
+                                  className={`flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm leading-snug transition ${
+                                    activo
+                                      ? "text-[var(--accent-ink)]"
+                                      : "text-app-fg hover:bg-app-surface"
+                                  }`}
+                                >
+                                  <span className="min-w-0 flex-1 break-words">{item.nombre}</span>
+                                  {activo && <Check size={15} className="shrink-0" />}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="min-w-0">

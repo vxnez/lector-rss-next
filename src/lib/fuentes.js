@@ -3,14 +3,14 @@
 // las 5 desde Ajustes > Lectura. Se aplica vía dataset.fuente en <html> +
 // --fuente-app en CSS (ver globals.css). Patrón espejo de lib/temas.js.
 export const FUENTES = [
+  { id: "readex", nombre: "Readex Pro", variable: "--font-readex", weights: [400, 500, 600, 700] },
   { id: "momo", nombre: "Momo Trust Display", variable: "--font-momo", weights: [400] },
   { id: "line", nombre: "LINE Seed JP", variable: "--font-line", weights: [400, 700] },
-  { id: "readex", nombre: "Readex Pro", variable: "--font-readex", weights: [400, 500, 600, 700] },
   { id: "calsans", nombre: "Cal Sans", variable: "--font-calsans", weights: [400] },
   { id: "pressstart", nombre: "Press Start 2P", variable: "--font-pressstart", weights: [400] },
 ];
 
-export const FUENTE_POR_DEFECTO = "momo";
+export const FUENTE_POR_DEFECTO = "readex";
 const CLAVE_FUENTE = "lector_fuente_app";
 
 // Tamaño base global de texto (px): escala toda la app porque las

@@ -60,9 +60,12 @@ body {
   overflow-x: hidden;
 }
 
-/* Tipografía seleccionable (Ajustes > Lectura). Momo Trust Display es la
+/* Tipografía seleccionable (Ajustes > Lectura). Readex Pro es la
    predeterminada absoluta; el dataset lo fija aplicarFuente() + pre-pintado. */
 :root,
+[data-fuente="readex"] {
+  --fuente-app: var(--font-readex);
+}
 [data-fuente="momo"] {
   --fuente-app: var(--font-momo);
 }

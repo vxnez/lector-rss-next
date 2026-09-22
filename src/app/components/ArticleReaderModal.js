@@ -10,7 +10,7 @@ import TextRevealBox from "./TextRevealBox";
 import { esCategoriaGeneral } from "@/lib/categoryStyles";
 import { confianzaIAVisible } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
-import { tiempoLecturaMinutos } from "@/lib/lectura";
+import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
@@ -110,7 +110,17 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     }
     const texto = `${article?.titulo || ""}. ${article?.resumen || ""}`;
     const utterance = new SpeechSynthesisUtterance(texto);
-    utterance.lang = locale === "en" ? "en-US" : "es-ES";
+    // Idioma de la NOTICIA (no de la app): si fue traducida se locuta en el
+    // idioma destino detectado por stopwords.
+    const idiomaTexto = detectarIdiomaTexto(article?.titulo, article?.resumen);
+    utterance.lang = idiomaTexto === "en" ? "en-US" : "es-ES";
+    try {
+      const voces = window.speechSynthesis.getVoices?.() || [];
+      const voz = voces.find((v) => String(v.lang || "").toLowerCase().startsWith(idiomaTexto));
+      if (voz) utterance.voice = voz;
+    } catch {
+      // Sin voces enumerables: el navegador elige por lang.
+    }
     utterance.rate = 1.0;
     utterance.onend = () => setHablando(false);
     utterance.onerror = () => setHablando(false);
@@ -632,11 +642,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen estructurado (subtítulos, párrafos, viñetas),
-              truncado por CSS con botón para expandir. Expandido y largo:
-              revelado palabra por palabra ligado al scroll (TextRevealBox,
-              equivalente nativo de skiper70). El pie (leer/guardar/sitio
-              oficial) queda siempre a la vista. */}
+          {/* Cuerpo / Resumen estructurado (subtítulos, párrafos, viñetas).
+              Colapsado: clamp + desvanecido uniforme hasta el corte + botón.
+              Expandido y largo: revelado palabra por palabra ligado al scroll.
+              El pie queda siempre a la vista. */}
           <div className="text-app-fg/90 text-sm md:text-base leading-relaxed break-words overflow-hidden">
             {resumenExpandido && esResumenTruncado(article) ? (
               <TextRevealBox
@@ -645,10 +654,18 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 scrollerRef={contenedorRef}
               />
             ) : (
-              <ResumenEstructurado
-                texto={article.resumen || t("lector.sin_resumen")}
-                expandido={resumenExpandido}
-              />
+              <div className="relative">
+                <ResumenEstructurado
+                  texto={article.resumen || t("lector.sin_resumen")}
+                  expandido={false}
+                />
+                {esResumenTruncado(article) && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 -bottom-1 h-24 bg-gradient-to-b from-transparent via-[var(--surface)]/60 to-[var(--surface)]"
+                  />
+                )}
+              </div>
             )}
           </div>
           {esResumenTruncado(article) && (
