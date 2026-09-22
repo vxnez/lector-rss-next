@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, Clock, Share2, Volume2, VolumeX, Check } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -145,19 +145,58 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     () => Boolean(article?.url_original) && !article?.imagen_url && !article?.video_url
   );
   const clicIniciadoEnFondo = useRef(false);
+  const toqueInicial = useRef(null);
   const contenedorRef = useRef(null);
+  // Se calcula en el init (el modal se remonta por noticia vía `key`): móvil,
+  // cupo de 3 vistas por sesión y noticia no vista. Sin setState en efectos.
+  const [mostrarAyudaDeslizar, setMostrarAyudaDeslizar] = useState(() => {
+    try {
+      if (typeof window === "undefined") return false;
+      if (!window.matchMedia("(max-width: 639px)").matches) return false;
+      const id = String(article?.id ?? article?.url_original ?? "");
+      if (window.sessionStorage.getItem("lector_aviso_deslizar_ultimo_id") === id) return false;
+      const vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
+      return vistas < 3;
+    } catch {
+      return false;
+    }
+  });
+  const ultimoAvisoContadoId = useRef(null);
   // Dirección con la que se entró a esta noticia: define la animación de entrada.
   const [direccionEntrada] = useState(() => direccionNavegacion);
   // La página de fondo no se desplaza mientras el lector está abierto.
   useBloquearScroll(Boolean(article));
 
   // Navegación centralizada: registra la dirección para animar la entrada.
-  // Solo por teclado (flechas o A/D) o botones: sin gestos de scroll/táctil.
+  // Teclado (flechas o A/D) y botones en PC; gesto táctil lateral en móvil.
+  // La rueda del mouse queda libre para leer (sin saltos por scroll).
   const navegar = useCallback((direccion, id) => {
     if (id == null) return false;
     direccionNavegacion = direccion;
     return onIrAId(id);
   }, [onIrAId]);
+
+  // Gesto táctil solo-móvil: deslizar horizontal cambia de noticia. No
+  // interfiere con el scroll vertical del texto (se exige predominancia
+  // horizontal 1.5x) ni con la edición de categoría.
+  const manejarInicioToque = (event) => {
+    const toque = event.touches?.[0];
+    if (toque) toqueInicial.current = { x: toque.clientX, y: toque.clientY };
+  };
+
+  const manejarFinToque = (event) => {
+    const inicio = toqueInicial.current;
+    toqueInicial.current = null;
+    if (!inicio || editandoCategoria) return;
+    const toque = event.changedTouches?.[0];
+    if (!toque) return;
+    const dx = toque.clientX - inicio.x;
+    const dy = toque.clientY - inicio.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && siguienteId != null) navegar(1, siguienteId);
+      else if (dx > 0 && anteriorId != null) navegar(-1, anteriorId);
+    }
+  };
 
   const manejarClickFondo = (event) => {
     if (clicIniciadoEnFondo.current && event.target === event.currentTarget) {
@@ -192,8 +231,28 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [article, onClose, navegar, anteriorId, siguienteId, editandoCategoria]);
 
-  // Sin gestos de scroll ni táctil para cambiar de noticia: solo teclado
-  // (flechas o A/D) y botones laterales. El scroll queda libre para leer.
+  // Sin gestos de rueda para cambiar de noticia: solo teclado (flechas o
+  // A/D), botones laterales y gesto táctil en móvil. El scroll con rueda
+  // queda libre para leer.
+
+  // Aviso "desliza" (móvil, 3 primeras noticias por sesión): el estado inicial
+  // ya decide si se muestra; el efecto solo cuenta la vista y lo oculta.
+  // El setState en el callback del timeout es asíncrono y está permitido.
+  useEffect(() => {
+    if (!article || !mostrarAyudaDeslizar) return undefined;
+    const idNoticia = String(article.id ?? article.url_original ?? posicion ?? "");
+    if (ultimoAvisoContadoId.current === idNoticia) return undefined;
+    ultimoAvisoContadoId.current = idNoticia;
+    try {
+      const vistas = Number(window.sessionStorage.getItem("lector_aviso_deslizar_vistas") || "0") || 0;
+      window.sessionStorage.setItem("lector_aviso_deslizar_vistas", String(vistas + 1));
+      window.sessionStorage.setItem("lector_aviso_deslizar_ultimo_id", idNoticia);
+    } catch {
+      // Sin almacenamiento disponible: el aviso igual se oculta por timeout.
+    }
+    const temporizador = setTimeout(() => setMostrarAyudaDeslizar(false), 2500);
+    return () => clearTimeout(temporizador);
+  }, [article, mostrarAyudaDeslizar, posicion]);
 
   useEffect(() => {
     // Solo se descubre bajo demanda cuando el artículo no trae medios:
@@ -338,6 +397,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               : "anim-articulo-apertura"
         }`}
         onClick={(event) => event.stopPropagation()}
+        onTouchStart={manejarInicioToque}
+        onTouchEnd={manejarFinToque}
       >
         {/* Barra de progreso de lectura: relleno sólido del acento (el
             degradado translúcido anterior se veía como un corte/bug). */}
@@ -438,7 +499,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap max-w-full">
               {posicion && total ? (
                 <span className="text-xs text-gray-500 tabular-nums pr-1" aria-label={t("lector.posicion", { a: posicion, b: total })}>
                   {posicion} / {total}
@@ -545,7 +606,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           <button
             onClick={handleMarcarLeido}
             disabled={Boolean(savingAction)}
-            className={`btn-press px-1.5 sm:px-3 py-2 sm:py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
+            className={`btn-press px-1.5 sm:px-3 py-2 sm:py-2 min-h-[44px] rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.leido
                 ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -558,7 +619,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           <button
             onClick={handleGuardar}
             disabled={Boolean(savingAction)}
-            className={`btn-press px-1.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
+            className={`btn-press px-1.5 sm:px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0 ${
               article.guardado
                 ? "bg-amber-500/15 border border-amber-500/40 text-amber-400"
                 : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
@@ -572,7 +633,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             href={article.url_original}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-press group px-1.5 sm:px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0"
+            className="btn-press group px-1.5 sm:px-3 py-2 min-h-[44px] bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-center min-w-0"
           >
             <span className="leading-tight">{t("lector.sitio")}</span>
             <ExternalLink size={14} className="shrink-0 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -633,6 +694,19 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         </div>
       )}
       </div>
+      {mostrarAyudaDeslizar && (
+        <div className="sm:hidden fixed top-8 inset-x-0 z-20 flex justify-center px-4 pointer-events-none">
+          <div
+            role="status"
+            aria-live="polite"
+            translate="no"
+            className="animate-swipe-hint flex max-w-full items-center gap-2 bg-gray-800/95 border border-gray-700 text-gray-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-sm whitespace-nowrap notranslate"
+          >
+            <MoveHorizontal size={16} className="animate-swipe-hint-icon text-sky-400 shrink-0" />
+            <span>{t("lector.desliza")}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
