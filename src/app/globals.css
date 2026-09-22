@@ -489,6 +489,24 @@ textarea:focus-visible {
   font-weight: 500;
 }
 
+/* Revelado palabra por palabra ligado al scroll (TextRevealBox,
+   equivalente nativo de skiper70). --reveal-p lo escribe JS (0..1);
+   cada palabra interpola su opacidad en puro CSS, sin re-renders. */
+.reveal-box {
+  --reveal-p: 1;
+}
+.reveal-word {
+  opacity: clamp(0.14, calc(var(--reveal-p) * var(--n) - var(--i)), 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-word {
+    opacity: 1;
+  }
+}
+[data-motion="reduced"] .reveal-word {
+  opacity: 1 !important;
+}
+
 /* Tipografía editorial: evita viudas/huérfanas sin tocar copy. */
 .text-balance {
   text-wrap: balance;

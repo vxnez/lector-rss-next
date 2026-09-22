@@ -5,7 +5,9 @@ import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, Chevr
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
-import ResumenEstructurado from "./ResumenEstructurado";
+import ResumenEstructurado, { resumenPlano } from "./ResumenEstructurado";
+import TextRevealBox from "./TextRevealBox";
+import { esCategoriaGeneral } from "@/lib/categoryStyles";
 import { confianzaIAVisible } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
@@ -702,13 +704,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </h2>
 
           {/* Cuerpo / Resumen estructurado (subtítulos, párrafos, viñetas),
-              truncado por CSS con botón para expandir. El pie (leer/guardar/
-              sitio oficial) queda siempre a la vista. */}
+              truncado por CSS con botón para expandir. Expandido y largo:
+              revelado palabra por palabra ligado al scroll (TextRevealBox,
+              equivalente nativo de skiper70). El pie (leer/guardar/sitio
+              oficial) queda siempre a la vista. */}
           <div className={`text-app-fg/90 leading-relaxed break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
-            <ResumenEstructurado
-              texto={article.resumen || t("lector.sin_resumen")}
-              expandido={resumenExpandido}
-            />
+            {resumenExpandido && esResumenTruncado(article) ? (
+              <TextRevealBox
+                texto={resumenPlano(article.resumen)}
+                highlight={esCategoriaGeneral(categoriaMostrada) ? "" : categoriaMostrada}
+                scrollerRef={contenedorRef}
+              />
+            ) : (
+              <ResumenEstructurado
+                texto={article.resumen || t("lector.sin_resumen")}
+                expandido={resumenExpandido}
+              />
+            )}
           </div>
           {esResumenTruncado(article) && (
             <button
