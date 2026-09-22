@@ -72,3 +72,21 @@ export function getCategoryVars(category = "General") {
 export function getCategoryInitial(category = "General") {
   return category.trim().charAt(0).toUpperCase() || "G";
 }
+
+// "General" (o vacía) = sin clasificar: se pinta neutra para no saturar la
+// vista y dejar que las categorías específicas destaquen.
+export function esCategoriaGeneral(category) {
+  const s = String(category || "").trim().toLowerCase();
+  return s === "" || s === "general";
+}
+
+// Confianza IA visible (80-100 %, como muestra la interfaz): solo veredictos
+// de proveedor (gemini/groq/local), nunca manual ni pendientes. Devuelve el
+// porcentaje entero o null si no debe mostrarse badge.
+export function confianzaIAVisible(art) {
+  const metodo = String(art?.clasificacion_metodo || "").trim().toLowerCase();
+  if (metodo !== "gemini" && metodo !== "groq" && metodo !== "local") return null;
+  const conf = Number(art?.clasificacion_confianza);
+  if (!Number.isFinite(conf) || conf < 0.8) return null;
+  return Math.round(conf * 100);
+}

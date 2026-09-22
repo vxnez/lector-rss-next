@@ -3,13 +3,14 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Trash2, ExternalLink, Tag, Globe, Calendar, Clock } from "lucide-react";
+import { Trash2, ExternalLink, Globe, Calendar, Clock } from "lucide-react";
 import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { animarEntradaTarjetas } from "@/lib/animaciones";
 import { resumenPlano } from "./ResumenEstructurado";
-import { getCategoryVars } from "@/lib/categoryStyles";
+import { confianzaIAVisible } from "@/lib/categoryStyles";
+import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
 import { useIdioma } from "@/lib/i18n";
@@ -23,8 +24,6 @@ const pillDominioStyle = {
   color: "var(--accent-ink)",
   borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
 };
-
-const getCategoryColor = (categoria) => getCategoryVars(categoria);
 
 // 1. MODO TARJETAS (Cards) — Cuadrícula tradicional con efecto Spotlight
 const TarjetaCards = memo(function TarjetaCards({
@@ -132,15 +131,12 @@ const TarjetaCards = memo(function TarjetaCards({
             <ExternalLink size={12} />
           </button>
           <div className="flex items-center gap-1.5">
-            {art.categoria && (
-              <span
-                style={getCategoryColor(art.categoria)}
-                className="cat-pill px-2 py-1 rounded text-[11px] flex items-center gap-1 font-medium"
-              >
-                <Tag size={10} className="opacity-75" />
-                <span>{art.categoria}</span>
-              </span>
-            )}
+            <InsigniaCategoria
+              categoria={art.categoria}
+              confianza={confianzaIAVisible(art)}
+              t={t}
+              className="flex px-2 py-1 text-[11px]"
+            />
             <button
               onClick={() => onToggleRead(art.id, isLeido)}
               aria-label={isLeido ? t("tarjeta.desmarcar") : t("tarjeta.marcar")}
@@ -225,14 +221,12 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
               <Clock size={11} className="opacity-70" />
               {t("tarjeta.min", { n: minutosLectura })}
             </span>
-            {art.categoria && (
-              <span
-                style={getCategoryColor(art.categoria)}
-                className="border px-2 py-0.5 rounded text-[10px] font-medium"
-              >
-                {art.categoria}
-              </span>
-            )}
+            <InsigniaCategoria
+              categoria={art.categoria}
+              confianza={confianzaIAVisible(art)}
+              t={t}
+              className="inline-flex px-2 py-0.5 text-[10px]"
+            />
           </div>
 
           <h3
@@ -347,14 +341,12 @@ const TarjetaCompact = memo(function TarjetaCompact({
           {art.titulo}
         </h3>
 
-        {art.categoria && (
-          <span
-            style={getCategoryColor(art.categoria)}
-            className="cat-pill hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] shrink-0"
-          >
-            {art.categoria}
-          </span>
-        )}
+        <InsigniaCategoria
+          categoria={art.categoria}
+          confianza={confianzaIAVisible(art)}
+          t={t}
+          className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] shrink-0"
+        />
 
         {fechaFormateada && (
           <span className="hidden md:inline-block text-[11px] text-app-muted shrink-0 tabular-nums text-right min-w-[118px]">

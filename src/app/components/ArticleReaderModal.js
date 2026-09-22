@@ -6,7 +6,8 @@ import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import ResumenEstructurado from "./ResumenEstructurado";
-import { getCategoryVars } from "@/lib/categoryStyles";
+import { confianzaIAVisible } from "@/lib/categoryStyles";
+import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
@@ -32,11 +33,6 @@ const ORDEN_FAMILIAS = ["sans", "serif", "mono"];
 let direccionNavegacion = 0;
 // Marca temporal del último cambio por rueda para evitar saltos múltiples con un solo gesto.
 let ultimoCambioRueda = 0;
-
-// Fuente única de verdad: lib/categoryStyles. (Se eliminó el switch duplicado muerto.)
-const getCategoryColor = (categoria) => getCategoryVars(categoria);
-
-
 
 // Fecha legible con cache compartido en lib/formato.
 const formatFechaArticulo = (fechaStr, t, locale) => formatFecha(fechaStr, t("tarjeta.reciente"), locale);
@@ -564,12 +560,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 </span>
               ) : (
                 <>
-                  {categoriaMostrada && (
-                    <span style={getCategoryColor(categoriaMostrada)} className="cat-pill flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium whitespace-nowrap">
-                      <Tag size={12} className="opacity-75 shrink-0" />
-                      {categoriaMostrada}
-                    </span>
-                  )}
+                  <InsigniaCategoria
+                    categoria={categoriaMostrada}
+                    confianza={confianzaIAVisible({ clasificacion_metodo: metodoMostrado, clasificacion_confianza: confianzaMostrada })}
+                    t={t}
+                    className="flex px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md font-medium whitespace-nowrap"
+                  />
                   <button
                     onClick={iniciarEdicionCategoria}
                     title={t("lector.corregir_cat")}

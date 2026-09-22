@@ -478,6 +478,17 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+/* Insignia "General"/sin clasificar: neutra en ambos temas para que las
+   categorías específicas destaquen (ver esCategoriaGeneral). */
+.cat-pill-general {
+  background-color: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+[data-tema-claro="1"] .cat-pill-general {
+  font-weight: 500;
+}
+
 /* Tipografía editorial: evita viudas/huérfanas sin tocar copy. */
 .text-balance {
   text-wrap: balance;

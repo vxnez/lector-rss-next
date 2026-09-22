@@ -177,6 +177,7 @@ const TEXTOS = {
     },
     tarjeta: {
       leer: "Leer noticia",
+      confianza_titulo: "Confianza IA: {n}%",
       descartar_aria: "Descartar noticia",
       descartar_titulo: "No me interesa esta noticia",
       marcar: "Marcar como leído",

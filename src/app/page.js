@@ -225,7 +225,9 @@ export default function HomePage() {
   });
 
   // Parche instantáneo por lote IA: actualiza categorías en sitio sin
-  // refetch completo (el dashboard sigue fluido durante la corrida).
+  // refetch completo (el dashboard sigue fluido durante la corrida). Bajo el
+  // filtro "Pendientes de IA", lo recién clasificado con categoría real se
+  // excluye en vista local (mismo optimismo que guardado), con su total.
   const aplicarLoteIA = useCallback((resultados) => {
     if (!Array.isArray(resultados) || resultados.length === 0) return;
     const mapa = new Map(
@@ -234,11 +236,24 @@ export default function HomePage() {
         .map((r) => [Number(r.id), r])
     );
     if (mapa.size === 0) return;
-    setArticulos((prev) =>
-      prev.map((art) => {
+    const esReal = (c) => {
+      const s = String(c || "").trim().toLowerCase();
+      return s !== "" && s !== "general";
+    };
+    let excluidos = 0;
+    setArticulos((prev) => {
+      const next = [];
+      for (const art of prev) {
         const r = mapa.get(Number(art.id));
-        if (!r) return art;
-        return {
+        if (!r) {
+          next.push(art);
+          continue;
+        }
+        if (filtroIA === "sin_ia" && esReal(r.categoria)) {
+          excluidos += 1;
+          continue;
+        }
+        next.push({
           ...art,
           categoria: r.categoria,
           clasificacion_metodo: r.metodo || art.clasificacion_metodo,
@@ -246,11 +261,15 @@ export default function HomePage() {
             r.confianza !== undefined && r.confianza !== null
               ? r.confianza
               : art.clasificacion_confianza,
-        };
-      })
-    );
+        });
+      }
+      return next;
+    });
+    if (excluidos > 0) {
+      setTotalNoticias((prev) => Math.max((Number(prev) || excluidos) - excluidos, 0));
+    }
     bumpCacheVersion();
-  }, [setArticulos]);
+  }, [setArticulos, setTotalNoticias, filtroIA]);
 
   // Hook de Clasificación IA
   const { iaProgreso, handleCategorizarIA, procesarColaClasificacion } =
