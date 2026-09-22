@@ -5,9 +5,7 @@ import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, Chevr
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
-import ResumenEstructurado, { resumenPlano } from "./ResumenEstructurado";
-import TextRevealBox from "./TextRevealBox";
-import { esCategoriaGeneral } from "@/lib/categoryStyles";
+import ResumenEstructurado from "./ResumenEstructurado";
 import { confianzaIAVisible } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
@@ -27,15 +25,6 @@ let ultimoCambioRueda = 0;
 
 // Fecha legible con cache compartido en lib/formato.
 const formatFechaArticulo = (fechaStr, t, locale) => formatFecha(fechaStr, t("tarjeta.reciente"), locale);
-
-// Resumen truncado en origen (post-DDL: resumen_completo=1) o, si el flag
-// aún no viene (caché vieja, offline), heurística por longitud.
-function esResumenTruncado(article) {
-  const marca = article?.resumen_completo;
-  if (marca === 1 || marca === "1" || marca === true) return true;
-  if (marca === 0 || marca === "0" || marca === false) return false;
-  return String(article?.resumen || "").length > 400;
-}
 
 // Fecha estimada por el servidor cuando el feed no trae fecha válida.
 function esFechaEstimada(article) {
@@ -131,9 +120,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Copiar enlace y Web Share API
   const [copiado, setCopiado] = useState(false);
-  // Resumen colapsado por defecto (se reinicia por noticia: el modal se
-  // remonta con `key`). Evita que textos largos desfasen el modal y el pie.
-  const [resumenExpandido, setResumenExpandido] = useState(false);
   const compartirArticulo = async () => {
     const url = article?.url_original || article?.link;
     if (!url) return;
@@ -260,8 +246,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     }
     if (!punteroFino) return undefined;
 
-    const UMBRAL_PX = resumenExpandido ? 180 : 60;
-    const ENFRIAMIENTO_MS = resumenExpandido ? 1800 : 900;
+    const UMBRAL_PX = 60;
+    const ENFRIAMIENTO_MS = 900;
     let acumulado = 0;
     let temporizadorReposo = null;
 
@@ -299,7 +285,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       contenedor.removeEventListener("wheel", manejarRueda);
       if (temporizadorReposo) clearTimeout(temporizadorReposo);
     };
-  }, [article, navegar, anteriorId, siguienteId, resumenExpandido]);
+  }, [article, navegar, anteriorId, siguienteId]);
 
   // Aviso "desliza" (móvil, 3 primeras noticias por sesión): el estado inicial
   // ya decide si se muestra; el efecto solo cuenta la vista y lo oculta.
@@ -455,9 +441,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronRight size={22} />
       </button>
       <div
-        ref={contenedorRef}
-        onScroll={manejarScroll}
-        className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-hidden overscroll-contain flex flex-col ${
           direccionEntrada > 0
             ? "anim-articulo-siguiente"
             : direccionEntrada < 0
@@ -470,14 +454,22 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       >
         {/* Barra de progreso de lectura (estilo scroll-progress): degradado
             del acento con brillo suave y movimiento amortiguado. */}
-        <div className="sticky top-0 left-0 right-0 z-30 h-1 bg-app-raised/40 w-full overflow-hidden">
+        <div className="h-1 shrink-0 bg-app-raised/40 w-full overflow-hidden">
           <div
             className="h-full rounded-r-full bg-gradient-to-r from-[var(--accent)]/50 via-[var(--accent)] to-[var(--accent-ink)] shadow-[0_0_12px_0_color-mix(in_srgb,var(--accent)_65%,transparent)] transition-[width] duration-300 ease-[cubic-bezier(0.22,0.9,0.28,1)]"
             style={{ width: `${progresoLectura}%` }}
           />
         </div>
 
-      <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between relative z-10">
+      {/* Zona de texto con scroll interno sutil: título, resumen completo
+          (opacidad uniforme, sin fades ni recortes) y errores. El pie queda
+          fijo fuera del scroll. */}
+      <div
+        ref={contenedorRef}
+        onScroll={manejarScroll}
+        className="scroll-sutil min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+      >
+      <div className="min-w-0 p-4 sm:p-6 md:p-8 relative z-10">
         {/* Cabecera del modal */}
         <div>
           {/* Píldoras y acciones del chrome: no traducibles (la app ya tiene
@@ -642,42 +634,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen estructurado (subtítulos, párrafos, viñetas).
-              Colapsado: clamp + desvanecido uniforme hasta el corte + botón.
-              Expandido y largo: revelado palabra por palabra ligado al scroll.
-              El pie queda siempre a la vista. */}
-          <div className="text-app-fg/90 text-sm md:text-base leading-relaxed break-words overflow-hidden">
-            {resumenExpandido && esResumenTruncado(article) ? (
-              <TextRevealBox
-                texto={resumenPlano(article.resumen)}
-                highlight={esCategoriaGeneral(categoriaMostrada) ? "" : categoriaMostrada}
-                scrollerRef={contenedorRef}
-              />
-            ) : (
-              <div className="relative">
-                <ResumenEstructurado
-                  texto={article.resumen || t("lector.sin_resumen")}
-                  expandido={false}
-                />
-                {esResumenTruncado(article) && (
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 -bottom-1 h-24 bg-gradient-to-b from-transparent via-[var(--surface)]/60 to-[var(--surface)]"
-                  />
-                )}
-              </div>
-            )}
+          {/* Cuerpo / Resumen estructurado completo (subtítulos, párrafos,
+              viñetas) con opacidad uniforme: sin clamp, sin fades, sin botón
+              de expansión. El scroll interno lo muestra todo. */}
+          <div className="text-app-fg/90 text-sm md:text-base leading-relaxed break-words">
+            <ResumenEstructurado
+              texto={article.resumen || t("lector.sin_resumen")}
+            />
           </div>
-          {esResumenTruncado(article) && (
-            <button
-              type="button"
-              onClick={() => setResumenExpandido((v) => !v)}
-              aria-expanded={resumenExpandido}
-              className="btn-press mt-2 text-xs font-semibold text-[var(--accent-ink)] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
-            >
-              {resumenExpandido ? t("lector.ver_menos") : t("lector.ver_mas")}
-            </button>
-          )}
         </div>
 
         {actionError && (
@@ -685,9 +649,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {actionError}
           </p>
         )}
+      </div>
+      </div>
 
-        {/* Acciones del pie */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-6 pt-4 border-t border-app-line notranslate" translate="no">
+        {/* Pie fijo fuera del scroll */}
+        <div className="relative z-10 shrink-0 border-t border-app-line bg-app-surface px-4 py-3 sm:px-6 sm:py-4 md:px-8 notranslate" translate="no">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           <button
             onClick={handleMarcarLeido}
             disabled={Boolean(savingAction)}
@@ -724,7 +691,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             <ExternalLink size={14} className="shrink-0 transition-transform duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
         </div>
-      </div>
+        </div>
       {medioVisible && (
         <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden rounded-t-2xl sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:h-auto sm:w-1/2 sm:rounded-none sm:rounded-r-2xl" aria-hidden="true">
           {videoVisible ? (

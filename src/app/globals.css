@@ -230,12 +230,6 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.08);
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
 /* Aviso "Desliza para cambiar de noticia": entra desde la derecha y sale hacia la izquierda */
 @keyframes swipe-hint-enter-exit {
   0% {
@@ -525,22 +519,24 @@ textarea:focus-visible {
   font-weight: 500;
 }
 
-/* Revelado palabra por palabra ligado al scroll (TextRevealBox,
-   equivalente nativo de skiper70). --reveal-p lo escribe JS (0..1);
-   cada palabra interpola su opacidad en puro CSS, sin re-renders. */
-.reveal-box {
-  --reveal-p: 1;
+/* Barra de scroll sutil para zonas de texto internas (lector): fina,
+   pulgar con el borde del tema, pista transparente. */
+.scroll-sutil {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
-.reveal-word {
-  opacity: clamp(0.14, calc(var(--reveal-p) * var(--n) - var(--i)), 1);
+.scroll-sutil::-webkit-scrollbar {
+  width: 6px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .reveal-word {
-    opacity: 1;
-  }
+.scroll-sutil::-webkit-scrollbar-track {
+  background: transparent;
 }
-[data-motion="reduced"] .reveal-word {
-  opacity: 1 !important;
+.scroll-sutil::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+.scroll-sutil::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 /* Slider de ajustes (tamaño de texto): pista con relleno por --slider-pct

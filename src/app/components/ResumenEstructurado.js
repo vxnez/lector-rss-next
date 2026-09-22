@@ -110,11 +110,11 @@ function conNegrita(texto, clave) {
   );
 }
 
-export default function ResumenEstructurado({ texto, expandido }) {
+export default function ResumenEstructurado({ texto }) {
   const bloques = useMemo(() => parseResumen(texto), [texto]);
 
   return (
-    <div className={`space-y-2.5 ${expandido ? undefined : "line-clamp-[10]"}`}>
+    <div className="space-y-2.5">
       {bloques.map((bloque, i) => {
         if (bloque.tipo === "subtitulo") {
           return (
