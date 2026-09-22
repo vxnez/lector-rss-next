@@ -13,10 +13,10 @@ export default function InsigniaCategoria({ categoria, confianza = null, t, clas
   return (
     <span
       style={general ? undefined : getCategoryVars(categoria)}
-      className={`${general ? "cat-pill-general" : "cat-pill"} items-center gap-1 font-medium rounded ${className}`}
+      className={`${general ? "cat-pill-general" : "cat-pill"} min-w-0 max-w-full overflow-hidden items-center gap-1 font-medium rounded ${className}`}
     >
       <Tag size={10} className="opacity-75 shrink-0" />
-      <span>{categoria}</span>
+      <span className="min-w-0 flex-1 truncate">{categoria}</span>
       {confianza != null && (
         <span
           className="opacity-80 tabular-nums"

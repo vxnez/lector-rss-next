@@ -9,7 +9,6 @@ import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lu
 import MorphIcon from "./MorphIcon";
 import { animarEntradaTarjetas } from "@/lib/animaciones";
 import { resumenPlano } from "./ResumenEstructurado";
-import { confianzaIAVisible } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
@@ -122,26 +121,25 @@ const TarjetaCards = memo(function TarjetaCards({
             {resumenPlano(art.resumen)}
           </p>
         </div>
-        <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1 text-xs notranslate" translate="no">
+        <div className="flex items-center justify-between pt-3 border-t border-app-line/80 gap-1.5 text-xs notranslate" translate="no">
           <button
             onClick={() => onAbrir(art)}
-            className="btn-press text-[var(--accent)] hover:underline flex items-center gap-1.5 font-medium text-xs rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="btn-press text-[var(--accent)] hover:underline flex items-center gap-1.5 font-medium text-xs rounded-md whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <span>{t("tarjeta.leer")}</span>
-            <ExternalLink size={12} />
+            <ExternalLink size={12} className="shrink-0" />
           </button>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0 shrink">
             <InsigniaCategoria
               categoria={art.categoria}
-              confianza={confianzaIAVisible(art)}
               t={t}
-              className="flex px-2 py-1 text-[11px]"
+              className="flex px-2 py-1 text-[11px] shrink min-w-0"
             />
             <button
               onClick={() => onToggleRead(art.id, isLeido)}
               aria-label={isLeido ? t("tarjeta.desmarcar") : t("tarjeta.marcar")}
               aria-pressed={isLeido}
-              className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+              className={`btn-press p-1.5 rounded-lg border shrink-0 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
                 isLeido
                   ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
                   : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
@@ -154,7 +152,7 @@ const TarjetaCards = memo(function TarjetaCards({
               onClick={() => onToggleSave(art.id, isGuardado)}
               aria-label={isGuardado ? t("tarjeta.guardar_quitar") : t("tarjeta.guardar_nuevo")}
               aria-pressed={isGuardado}
-              className={`btn-press p-1.5 rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+              className={`btn-press p-1.5 rounded-lg border shrink-0 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
                 isGuardado
                   ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
                   : "bg-app-raised/80 border-app-line text-app-muted hover:text-app-fg"
@@ -223,7 +221,6 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
             </span>
             <InsigniaCategoria
               categoria={art.categoria}
-              confianza={confianzaIAVisible(art)}
               t={t}
               className="inline-flex px-2 py-0.5 text-[10px]"
             />
@@ -343,7 +340,6 @@ const TarjetaCompact = memo(function TarjetaCompact({
 
         <InsigniaCategoria
           categoria={art.categoria}
-          confianza={confianzaIAVisible(art)}
           t={t}
           className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] shrink-0"
         />
