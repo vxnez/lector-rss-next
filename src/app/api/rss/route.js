@@ -748,7 +748,7 @@ export async function GET(req) {
       const fuentesFiltro = (searchParams.get("fuentes") || "").split(",").map((s) => s.trim()).filter(Boolean);
       const ia = searchParams.get("ia") || "todas";
       const base = filtrosDesdeTab(tab);
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...base });
+      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base });
       let { items } = extraerLista(res);
       if (fuentesFiltro.length > 0) {
         const set = new Set(fuentesFiltro.map(String));
@@ -786,13 +786,13 @@ export async function GET(req) {
     const necesitaLocal = fuentesFiltro.length > 0 || categorias.length > 1 || ia !== "todas";
 
     if (!usaPaginacion && !necesitaLocal && categorias.length === 0) {
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...base, order, dir });
+      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base, order, dir });
       const { items } = extraerLista(res);
       return NextResponse.json(items.map(repararFilaArticulo));
     }
 
     if (necesitaLocal) {
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, categoria: categoriaUnica, ...base, order, dir });
+      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), categoria: categoriaUnica, ...base, order, dir });
       let { items, exacto } = extraerLista(res);
       // El bulk va topado en 1000: si vino lleno, el total filtrado es cota
       // inferior y puede haber más páginas (el frontend retrocede solo si la
@@ -826,6 +826,7 @@ export async function GET(req) {
       limit: limite,
       offset: desplazamiento,
       q: q || undefined,
+      ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}),
       categoria: categoriaUnica,
       ...base,
       order,

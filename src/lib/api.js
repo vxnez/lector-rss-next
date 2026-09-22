@@ -338,6 +338,11 @@ export async function refreshFuentes(usuario_id, fuente_id, { timeoutMs = 55000 
 }
 
 // ---- Artículos ----
+function listaVacia(res) {
+  const items = Array.isArray(res) ? res : res?.articulos || res?.articles || res?.data || [];
+  return !Array.isArray(items) || items.length === 0;
+}
+
 export async function getArticulos({
   usuario_id,
   limit = 30,
@@ -348,17 +353,38 @@ export async function getArticulos({
   guardado,
   order = "fecha_publicacion",
   dir = "DESC",
+  modo_busqueda,
+  reintentarSinFulltext = false,
 } = {}) {
-  const query = { usuario_id: String(usuario_id) };
-  if (limit !== undefined) query.limit = String(limit);
-  if (offset !== undefined) query.offset = String(offset);
-  if (q) query.q = q;
-  if (categoria) query.categoria = categoria;
-  if (leido !== undefined && leido !== null && leido !== "") query.leido = String(leido);
-  if (guardado !== undefined && guardado !== null && guardado !== "") query.guardado = String(guardado);
-  if (order) query.order = order;
-  if (dir) query.dir = dir;
-  return api("/api/data/articulos", { query });
+  const armarQuery = (conFulltext) => {
+    const query = { usuario_id: String(usuario_id) };
+    if (limit !== undefined) query.limit = String(limit);
+    if (offset !== undefined) query.offset = String(offset);
+    if (q) query.q = q;
+    if (categoria) query.categoria = categoria;
+    if (leido !== undefined && leido !== null && leido !== "") query.leido = String(leido);
+    if (guardado !== undefined && guardado !== null && guardado !== "") query.guardado = String(guardado);
+    if (order) query.order = order;
+    if (dir) query.dir = dir;
+    if (conFulltext && modo_busqueda) query.modo_busqueda = modo_busqueda;
+    return query;
+  };
+  const usaFulltext = reintentarSinFulltext && modo_busqueda === "fulltext" && Boolean(q);
+  if (!usaFulltext) {
+    return api("/api/data/articulos", { query: armarQuery(Boolean(modo_busqueda)) });
+  }
+  // Fulltext con fallback LIKE pre-DDL: si el backend falla o devuelve vacío
+  // (p. ej. palabras ≤3 letras o subcadenas que NATURAL LANGUAGE no matchea),
+  // se reintenta una vez sin el parámetro. Resultado final idéntico.
+  try {
+    const res = await api("/api/data/articulos", { query: armarQuery(true) });
+    if (listaVacia(res)) {
+      return api("/api/data/articulos", { query: armarQuery(false) });
+    }
+    return res;
+  } catch {
+    return api("/api/data/articulos", { query: armarQuery(false) });
+  }
 }
 
 export async function marcarArticulo(articulo_id, usuario_id, patch = {}) {
