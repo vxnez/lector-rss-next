@@ -21,37 +21,37 @@ export default function KeyboardShortcutsModal({ abierto, onCerrar, t }) {
 
   const grupos = [
     {
-      titulo: "Navegación",
+      titulo: t("atajos.g_nav"),
       atajos: [
-        { teclas: ["J", "↓"], descripcion: "Siguiente artículo en la lista" },
-        { teclas: ["K", "↑"], descripcion: "Artículo anterior en la lista" },
-        { teclas: ["Enter", "O"], descripcion: "Abrir lector del artículo seleccionado" },
-        { teclas: ["/"], descripcion: "Enfocar barra de búsqueda" },
-        { teclas: ["Esc"], descripcion: "Cerrar modal o quitar selección" },
+        { teclas: ["J", "↓"], descripcion: t("atajos.nav_siguiente") },
+        { teclas: ["K", "↑"], descripcion: t("atajos.nav_anterior") },
+        { teclas: ["Enter", "O"], descripcion: t("atajos.nav_abrir") },
+        { teclas: ["/"], descripcion: t("atajos.nav_buscar") },
+        { teclas: ["Esc"], descripcion: t("atajos.nav_esc") },
       ],
     },
     {
-      titulo: "Lector",
+      titulo: t("atajos.g_lector"),
       atajos: [
-        { teclas: ["D", "→"], descripcion: "Siguiente noticia en el lector" },
-        { teclas: ["A", "←"], descripcion: "Noticia anterior en el lector" },
+        { teclas: ["D", "→"], descripcion: t("atajos.lector_siguiente") },
+        { teclas: ["A", "←"], descripcion: t("atajos.lector_anterior") },
       ],
     },
     {
-      titulo: "Acciones de Artículo",
+      titulo: t("atajos.g_acciones"),
       atajos: [
-        { teclas: ["M"], descripcion: "Marcar como leído / no leído" },
-        { teclas: ["S"], descripcion: "Guardar en favoritos / quitar" },
-        { teclas: ["X"], descripcion: "Descartar / eliminar artículo" },
+        { teclas: ["M"], descripcion: t("atajos.acc_leer") },
+        { teclas: ["S"], descripcion: t("atajos.acc_guardar") },
+        { teclas: ["X"], descripcion: t("atajos.acc_descartar") },
       ],
     },
     {
-      titulo: "Secciones y Vistas",
+      titulo: t("atajos.g_secciones"),
       atajos: [
-        { teclas: ["1"], descripcion: "Ir a 'Pendientes'" },
-        { teclas: ["2"], descripcion: "Ir a 'Leídas'" },
-        { teclas: ["3"], descripcion: "Ir a 'Guardadas'" },
-        { teclas: ["?"], descripcion: "Abrir / cerrar esta guía de atajos" },
+        { teclas: ["1"], descripcion: t("atajos.sec_pendientes") },
+        { teclas: ["2"], descripcion: t("atajos.sec_leidas") },
+        { teclas: ["3"], descripcion: t("atajos.sec_guardadas") },
+        { teclas: ["?"], descripcion: t("atajos.sec_guia") },
       ],
     },
   ];
@@ -76,14 +76,14 @@ export default function KeyboardShortcutsModal({ abierto, onCerrar, t }) {
               </span>
               <div>
                 <h2 id="titulo-atajos" className="text-base font-bold text-app-fg">
-                  Atajos de Teclado
+                  {t("atajos.titulo")}
                 </h2>
-                <p className="text-xs text-app-muted">Navega y gestiona tus feeds a máxima velocidad</p>
+                <p className="text-xs text-app-muted">{t("atajos.subtitulo")}</p>
               </div>
             </div>
             <button
               onClick={onCerrar}
-              aria-label="Cerrar guía de atajos"
+              aria-label={t("atajos.cerrar")}
               className="btn-press rounded-lg p-1.5 text-app-muted hover:bg-app-raised hover:text-app-fg transition"
             >
               <X size={18} />

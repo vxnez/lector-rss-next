@@ -27,7 +27,9 @@
     if (!isFinite(px)) px = 16;
     px = Math.min(Math.max(px, 12), 24);
     document.documentElement.style.setProperty("--font-size-base", px + "px");
-    document.documentElement.lang = "es";
+    var idiomas = ["es", "en"];
+    var lang = localStorage.getItem("lector_idioma");
+    document.documentElement.lang = idiomas.indexOf(lang) >= 0 ? lang : "es";
   } catch (e) {
     // Sin almacenamiento/DOM: se conservan los valores por defecto del CSS.
   }

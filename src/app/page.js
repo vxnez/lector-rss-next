@@ -744,7 +744,7 @@ export default function HomePage() {
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 flex items-center justify-center gap-2 text-center text-xs text-amber-200 shadow-sm">
             <WifiOff size={14} className="shrink-0 text-amber-400" />
             <span>
-              <strong>Modo sin conexión:</strong> Estás navegando sin internet. Tus artículos guardados siguen disponibles en la pestaña <em>Guardadas</em> gracias a IndexedDB.
+              <strong>{t("comun.sin_conexion_titulo")}</strong> {t("comun.sin_conexion_d")}
             </span>
           </div>
         </div>
@@ -807,8 +807,8 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => cambiarModoVista("cards")}
-                      title="Vista cuadrícula de tarjetas"
-                      aria-label="Vista cuadrícula de tarjetas"
+                      title={t("controles.vista_cards_t")}
+                      aria-label={t("controles.vista_cards_t")}
                       className={`btn-press p-1.5 rounded-lg transition ${
                         modoVista === "cards"
                           ? "bg-[var(--accent)]/15 text-[var(--accent-ink)] font-bold shadow-sm"
@@ -820,8 +820,8 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => cambiarModoVista("magazine")}
-                      title="Vista revista (horizontal)"
-                      aria-label="Vista revista (horizontal)"
+                      title={t("controles.vista_magazine_t")}
+                      aria-label={t("controles.vista_magazine_t")}
                       className={`btn-press p-1.5 rounded-lg transition ${
                         modoVista === "magazine"
                           ? "bg-[var(--accent)]/15 text-[var(--accent-ink)] font-bold shadow-sm"
@@ -833,8 +833,8 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => cambiarModoVista("compact")}
-                      title="Vista titulares compactos"
-                      aria-label="Vista titulares compactos"
+                      title={t("controles.vista_compact_t")}
+                      aria-label={t("controles.vista_compact_t")}
                       className={`btn-press p-1.5 rounded-lg transition ${
                         modoVista === "compact"
                           ? "bg-[var(--accent)]/15 text-[var(--accent-ink)] font-bold shadow-sm"
@@ -848,8 +848,8 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setAyudaAtajosAbierta(true)}
-                    title="Atajos de teclado (?)"
-                    aria-label="Atajos de teclado"
+                    title={t("controles.atajos_titulo")}
+                    aria-label={t("controles.atajos_titulo")}
                     className="btn-press flex items-center gap-1 px-2.5 py-2 rounded-xl border border-app-line bg-app-surface text-app-muted hover:text-app-fg hover:border-[var(--accent)]/60 transition text-xs"
                   >
                     <Keyboard size={15} />

@@ -8,8 +8,10 @@ import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
 import MorphIcon from "../components/MorphIcon";
 import { signIn } from "next-auth/react";
 import { restablecerAjustesLocales } from "@/lib/ajustesPorDefecto";
+import { useIdioma } from "@/lib/i18n";
 
 export default function RegisterPage() {
+  const { t } = useIdioma();
   const [form, setForm] = useState({ nombre: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,7 @@ export default function RegisterPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al registrarse");
+      if (!res.ok) throw new Error(data.error || t("register.err_registro"));
 
       // Cuenta nueva = perfil limpio: si el navegador guardaba ajustes
       // huérfanos de una cuenta eliminada antes (mismo dispositivo),
@@ -48,7 +50,7 @@ export default function RegisterPage() {
       <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
         <div className="bezel-inner p-8 shadow-2xl">
           <p className="eyebrow mx-auto flex w-fit">RSS Dashboard</p>
-          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">Crear Cuenta</h2>
+          <h2 className="text-balance text-2xl font-bold text-center mt-3 mb-6 tracking-tighter text-app-fg">{t("register.titulo")}</h2>
         
           {error && (
             <div className="anim-toast bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl mb-4 text-sm">
@@ -58,7 +60,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Nombre</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">{t("register.nombre")}</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <User size={18} />
@@ -66,7 +68,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 required
-                placeholder="Tu Nombre"
+                placeholder={t("register.nombre_ph")}
                 className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
@@ -74,7 +76,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">{t("register.correo")}</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Mail size={18} />
@@ -82,7 +84,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 required
-                placeholder="correo@ejemplo.com"
+                placeholder={t("register.correo_ph")}
                 className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
@@ -90,7 +92,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Contraseña</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">{t("register.password")}</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Lock size={18} />
@@ -106,8 +108,8 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setVerPassword((visible) => !visible)}
-                title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                title={verPassword ? t("login.ocultar") : t("login.mostrar")}
+                aria-label={verPassword ? t("login.ocultar") : t("login.mostrar")}
                 aria-pressed={verPassword}
                 className="btn-press absolute inset-y-0 right-0 flex items-center pr-3 text-app-muted hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
@@ -121,13 +123,13 @@ export default function RegisterPage() {
             disabled={loading}
             className="btn-press group w-full bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium py-2.5 rounded-full transition hover:shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--accent)_70%,transparent)] text-sm mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? "Registrando..." : "Registrarse"}
+            {loading ? t("register.registrando") : t("register.registrarse")}
           </button>
         </form>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-app-line"></div></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">O regístrate con</span></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">{t("register.o_registrate")}</span></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -155,9 +157,9 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-xs text-app-muted mt-6">
-          ¿Ya tienes cuenta?{" "}
+          {t("register.tienes")}{" "}
           <Link href="/login" className="text-[var(--accent)] hover:underline font-medium">
-            Inicia sesión
+            {t("register.entra")}
           </Link>
         </p>
         </div>

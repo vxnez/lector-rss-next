@@ -171,7 +171,7 @@ export default function AjustesPanel({
   const [fuenteAbierta, setFuenteAbierta] = useState(false);
   const fuenteActiva = FUENTES.find((f) => f.id === fuente) || FUENTES[0];
   const cerrarRef = useRef(null);
-  const { t } = useIdioma();
+  const { t, idioma, setIdioma } = useIdioma();
 
   const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
 
@@ -496,6 +496,38 @@ export default function AjustesPanel({
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-app-muted/70">
                   {t("ajustes.grupo_tipo")}
                 </p>
+                <div className="min-w-0">
+                  <span id="ajustes-idioma" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
+                    {t("ajustes.idioma_grupo")}
+                  </span>
+                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-idioma">
+                    {[
+                      { id: "es", etiqueta: "Español" },
+                      { id: "en", etiqueta: "English" },
+                    ].map((op) => {
+                      const activo = idioma === op.id;
+                      return (
+                        <button
+                          key={op.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => setIdioma(op.id)}
+                          className={`min-w-0 flex-1 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                            activo
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                          }`}
+                        >
+                          {op.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-app-muted">
+                    {t("ajustes.idioma_nota")}
+                  </p>
+                </div>
                 <div className="min-w-0">
                   <span id="ajustes-fuente" className="mb-1.5 block truncate text-xs font-medium text-app-muted">
                     {t("ajustes.fuente_grupo")}

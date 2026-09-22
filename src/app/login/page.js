@@ -99,7 +99,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+            <label className="block text-xs font-medium text-app-muted mb-1.5 uppercase tracking-wider">{t("login.correo")}</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
                 <Mail size={18} />
@@ -109,7 +109,7 @@ export default function LoginPage() {
                 required
                 value={form.email}
                 autoComplete="email"
-                placeholder="Correo electrónico"
+                placeholder={t("login.correo_ph")}
                 className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-4 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
@@ -118,8 +118,8 @@ export default function LoginPage() {
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-medium text-app-muted uppercase tracking-wider">Contraseña</label>
-              <Link href="/recuperar" className="text-xs text-[var(--accent)] hover:underline">¿Olvidaste tu contraseña?</Link>
+              <label className="text-xs font-medium text-app-muted uppercase tracking-wider">{t("login.password")}</label>
+              <Link href="/recuperar" className="text-xs text-[var(--accent)] hover:underline">{t("login.olvidaste")}</Link>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
@@ -130,15 +130,15 @@ export default function LoginPage() {
                 required
                 value={form.password}
                 autoComplete="current-password"
-                placeholder="Contraseña"
+                placeholder={t("login.password_ph")}
                 className="field-focus w-full bg-app-bg border border-app-line rounded-xl pl-10 pr-11 py-2.5 text-app-fg text-sm placeholder:text-app-muted focus:outline-none"
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
               <button
                 type="button"
                 onClick={() => setVerPassword((v) => !v)}
-                title={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                title={verPassword ? t("login.ocultar") : t("login.mostrar")}
+                aria-label={verPassword ? t("login.ocultar") : t("login.mostrar")}
                 aria-pressed={verPassword}
                 className="btn-press absolute inset-y-0 right-0 pr-3 flex items-center text-app-muted hover:text-app-fg"
               >
@@ -168,7 +168,7 @@ export default function LoginPage() {
                   }`}
                 />
               </span>
-              <span className="text-xs text-app-muted group-hover:text-app-fg transition">Recordarme</span>
+              <span className="text-xs text-app-muted group-hover:text-app-fg transition">{t("login.recordarme")}</span>
             </button>
           </div>
 
@@ -183,7 +183,7 @@ export default function LoginPage() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-app-line"></div></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">O continúa con</span></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-app-surface px-3 text-app-muted font-medium">{t("login.o_continua")}</span></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
