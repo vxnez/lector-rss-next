@@ -199,6 +199,8 @@ const TEXTOS = {
       sin_resumen: "Sin resumen disponible para esta noticia.",
       ver_mas: "Mostrar más",
       ver_menos: "Mostrar menos",
+      ver_original: "Ver original",
+      ver_traduccion: "Ver traducción",
       fecha_estimada: "Fecha estimada por el servidor (el feed no trae fecha válida)",
       marcar: "Marcar como leído",
       guardando: "Guardando...",

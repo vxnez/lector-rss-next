@@ -88,6 +88,16 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     };
   }, [article?.id]);
 
+  // Traducción backend (titulo_es/resumen_es/idioma, NULL = pendiente):
+  // si hay traducción real se muestra en español con toggle al original.
+  // El modal se remonta por noticia vía `key`: el toggle se reinicia solo.
+  const hayTraduccion =
+    (article?.titulo_es && article.titulo_es !== article?.titulo) ||
+    (article?.resumen_es && article.resumen_es !== article?.resumen);
+  const [verOriginal, setVerOriginal] = useState(false);
+  const tituloMostrado = !verOriginal && article?.titulo_es ? article.titulo_es : article?.titulo;
+  const resumenMostrado = !verOriginal && article?.resumen_es ? article.resumen_es : article?.resumen;
+
   const alternarVoz = () => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     if (hablando) {
@@ -95,15 +105,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       setHablando(false);
       return;
     }
-    const texto = `${article?.titulo || ""}. ${article?.resumen || ""}`;
+    const texto = `${tituloMostrado || ""}. ${resumenMostrado || ""}`;
     const utterance = new SpeechSynthesisUtterance(texto);
-    // Idioma de la NOTICIA (no de la app): si fue traducida se locuta en el
-    // idioma destino detectado por stopwords.
-    const idiomaTexto = detectarIdiomaTexto(article?.titulo, article?.resumen);
-    utterance.lang = idiomaTexto === "en" ? "en-US" : "es-ES";
+    // Idioma de voz: lo mostrado manda. Traducción = español; original =
+    // columna `idioma` del backend o heurística local como respaldo.
+    const idiomaVoz = !verOriginal
+      ? "es"
+      : String(article?.idioma || "").trim().toLowerCase() ||
+        detectarIdiomaTexto(article?.titulo, article?.resumen);
+    utterance.lang =
+      idiomaVoz === "en" ? "en-US"
+      : idiomaVoz === "fr" ? "fr-FR"
+      : idiomaVoz === "pt" ? "pt-BR"
+      : idiomaVoz === "de" ? "de-DE"
+      : "es-ES";
     try {
       const voces = window.speechSynthesis.getVoices?.() || [];
-      const voz = voces.find((v) => String(v.lang || "").toLowerCase().startsWith(idiomaTexto));
+      const voz = voces.find((v) => String(v.lang || "").toLowerCase().startsWith(idiomaVoz));
       if (voz) utterance.voice = voz;
     } catch {
       // Sin voces enumerables: el navegador elige por lang.
@@ -353,7 +371,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   };
 
   const fechaFormateada = formatFechaArticulo(article.fecha_publicacion, t, locale);
-  const minutosLectura = tiempoLecturaMinutos(article.titulo, article.resumen);
+  const minutosLectura = tiempoLecturaMinutos(tituloMostrado, resumenMostrado);
 
   return (
     <div
@@ -521,6 +539,24 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 {hablando ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
 
+              {/* ES / Original (solo si el backend trae traducción real) */}
+              {hayTraduccion && (
+                <button
+                  type="button"
+                  onClick={() => setVerOriginal((v) => !v)}
+                  title={verOriginal ? t("lector.ver_traduccion") : t("lector.ver_original")}
+                  aria-label={verOriginal ? t("lector.ver_traduccion") : t("lector.ver_original")}
+                  aria-pressed={verOriginal}
+                  className={`btn-press rounded-lg px-2 py-1.5 text-[11px] font-bold transition shrink-0 ${
+                    verOriginal
+                      ? "bg-[var(--accent)]/15 text-[var(--accent-ink)] border border-[var(--accent)]/40"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800 border border-transparent"
+                  }`}
+                >
+                  {verOriginal ? "ORIG" : "ES"}
+                </button>
+              )}
+
               {/* Compartir o copiar enlace */}
               <button
                 type="button"
@@ -579,7 +615,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
           {/* Título con tope de líneas para no desfasar la cabecera */}
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-app-fg leading-snug mb-4 break-words line-clamp-3 overflow-hidden">
-            {article.titulo}
+            {tituloMostrado}
           </h2>
 
           {/* Cuerpo / Resumen estructurado completo (subtítulos, párrafos,
@@ -587,7 +623,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               de expansión. El scroll interno lo muestra todo. */}
           <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
             <ResumenEstructurado
-              texto={article.resumen || t("lector.sin_resumen")}
+              texto={resumenMostrado || t("lector.sin_resumen")}
             />
           </div>
         </div>
