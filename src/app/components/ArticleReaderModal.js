@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Type, Share2, Volume2, VolumeX, Check } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -22,13 +22,6 @@ const TAMANOS_LECTURA = {
   extra: "text-lg md:text-xl leading-relaxed",
 };
 const ORDEN_TAMANOS = ["normal", "grande", "extra"];
-
-const FAMILIAS_LECTURA = {
-  sans: "font-sans",
-  serif: "[font-family:Georgia,Cambria,serif] tracking-wide",
-  mono: "font-mono text-[0.95em]",
-};
-const ORDEN_FAMILIAS = ["sans", "serif", "mono"];
 
 // Dirección de la última navegación entre noticias (1 = siguiente, -1 = anterior, 0 = apertura).
 // Vive a nivel de módulo porque el modal se remontan con `key` por noticia y el estado se pierde.
@@ -88,8 +81,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // Si la optimización next/image falla (CDN que bloquea al servidor),
   // se reintenta con <img> directo al origen antes de darla por rota.
   const [sinOptimizar, setSinOptimizar] = useState(false);
-  // Tamaño de letra del cuerpo (persistido por navegador).
-  const [tamanoLectura, setTamanoLectura] = useState(() => {
+  // Tamaño de letra del cuerpo: se configura en Ajustes > Lectura y se lee
+  // al abrir cada noticia (el modal se remonta por noticia vía `key`).
+  const [tamanoLectura] = useState(() => {
     try {
       const guardado = window.localStorage.getItem("lector_tamano_fuente");
       return ORDEN_TAMANOS.includes(guardado) ? guardado : "normal";
@@ -97,34 +91,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       return "normal";
     }
   });
-  const ciclarTamanoLectura = () => {
-    const siguiente = ORDEN_TAMANOS[(ORDEN_TAMANOS.indexOf(tamanoLectura) + 1) % ORDEN_TAMANOS.length];
-    try {
-      window.localStorage.setItem("lector_tamano_fuente", siguiente);
-    } catch {
-      // Sin almacenamiento disponible: solo cambia en esta vista.
-    }
-    setTamanoLectura(siguiente);
-  };
-
-  // Familia tipográfica del cuerpo (sans / serif / mono)
-  const [familiaLectura, setFamiliaLectura] = useState(() => {
-    try {
-      const guardado = window.localStorage.getItem("lector_familia_fuente");
-      return ORDEN_FAMILIAS.includes(guardado) ? guardado : "sans";
-    } catch {
-      return "sans";
-    }
-  });
-  const ciclarFamiliaLectura = () => {
-    const siguiente = ORDEN_FAMILIAS[(ORDEN_FAMILIAS.indexOf(familiaLectura) + 1) % ORDEN_FAMILIAS.length];
-    try {
-      window.localStorage.setItem("lector_familia_fuente", siguiente);
-    } catch {
-      // Sin almacenamiento
-    }
-    setFamiliaLectura(siguiente);
-  };
 
   // Barra de progreso de lectura
   const [progresoLectura, setProgresoLectura] = useState(0);
@@ -623,28 +589,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 {hablando ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
 
-              {/* Selector de Familia Tipográfica */}
-              <button
-                type="button"
-                onClick={ciclarFamiliaLectura}
-                title={`Tipografía: ${familiaLectura.toUpperCase()} (clic para alternar)`}
-                aria-label={`Cambiar tipografía: actual ${familiaLectura}`}
-                className="btn-press text-[11px] font-mono font-bold text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 border border-gray-700/60 shrink-0 uppercase"
-              >
-                {familiaLectura}
-              </button>
-
-              {/* Tamaño de letra */}
-              <button
-                type="button"
-                onClick={ciclarTamanoLectura}
-                title={t("lector.letra_t", { t: tamanoLectura })}
-                aria-label={t("lector.letra_aria", { t: tamanoLectura })}
-                className="btn-press text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 shrink-0"
-              >
-                <Type size={16} />
-              </button>
-
               {/* Compartir o copiar enlace */}
               <button
                 type="button"
@@ -711,7 +655,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               revelado palabra por palabra ligado al scroll (TextRevealBox,
               equivalente nativo de skiper70). El pie (leer/guardar/sitio
               oficial) queda siempre a la vista. */}
-          <div className={`text-app-fg/90 leading-relaxed break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal} ${FAMILIAS_LECTURA[familiaLectura] || FAMILIAS_LECTURA.sans}`}>
+          <div className={`text-app-fg/90 leading-relaxed break-words overflow-hidden ${TAMANOS_LECTURA[tamanoLectura] || TAMANOS_LECTURA.normal}`}>
             {resumenExpandido && esResumenTruncado(article) ? (
               <TextRevealBox
                 texto={resumenPlano(article.resumen)}

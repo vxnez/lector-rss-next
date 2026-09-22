@@ -26,8 +26,12 @@ import {
   HelpCircle,
   Star,
   TriangleAlert,
+  LayoutGrid,
+  Rows,
+  AlignJustify,
 } from "lucide-react";
 import SelectorTemas from "./SelectorTemas";
+import { FUENTES } from "@/lib/fuentes";
 import { limpiarRastrosCuenta, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
@@ -57,7 +61,7 @@ function TarjetaAjuste({ icono, fondoIcono, tintaIcono, titulo, descripcion, onA
     <button
       type="button"
       onClick={onAbrir}
-      className="btn-press card-lift group flex min-h-[4.75rem] w-full items-center gap-3 overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 px-3.5 py-3 text-left hover:border-[var(--accent)]/60 hover:bg-app-raised/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="btn-press card-lift group flex min-h-[4.75rem] w-full items-center gap-3 overflow-hidden rounded-2xl border border-transparent bg-transparent px-3.5 py-3 text-left hover:bg-app-raised/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <span
         aria-hidden="true"
@@ -92,7 +96,7 @@ function Interruptor({ activado, onCambiar, etiqueta, descripcion }) {
       aria-checked={activado}
       aria-label={etiqueta}
       onClick={() => onCambiar(!activado)}
-      className="btn-press flex w-full items-center justify-between gap-3 rounded-2xl border border-app-line bg-app-surface/70 px-3 py-2.5 text-left hover:border-[var(--accent)]/60 hover:bg-app-raised/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="btn-press flex w-full items-center justify-between gap-3 rounded-2xl border border-transparent bg-transparent px-3 py-2.5 text-left hover:bg-app-raised/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-app-fg">{etiqueta}</span>
@@ -119,6 +123,12 @@ export default function AjustesPanel({
   onCerrar,
   tema,
   onTema,
+  fuente,
+  onFuente,
+  tamanoFuente,
+  onTamanoFuente,
+  modoVista,
+  onModoVista,
   tamanoPagina,
   onTamanoPagina,
   autoMarcarLeida,
@@ -356,18 +366,18 @@ export default function AjustesPanel({
         aria-label={vista ? titulos[vista] : t("ajustes.titulo")}
         className="anim-panel-izquierda fixed inset-y-0 left-0 z-50 flex w-[min(22rem,88vw)] flex-col border-r border-app-line bg-app-surface shadow-2xl"
       >
-        <div className="flex items-center gap-2 border-b border-gray-800 px-3 py-3">
+        <div className="flex items-center gap-2 border-b border-app-line px-3 py-3">
           {vista ? (
             <button
               type="button"
               onClick={atras}
               aria-label="Volver a ajustes"
-              className="rounded-lg p-1.5 text-gray-300 transition hover:bg-gray-800 hover:text-white"
+              className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
             >
               <ChevronLeft size={20} />
             </button>
           ) : null}
-          <h2 className="min-w-0 flex-1 truncate text-base font-bold text-white">
+          <h2 className="min-w-0 flex-1 truncate text-base font-bold text-app-fg">
             {vista ? titulos[vista] : t("ajustes.titulo")}
           </h2>
           <button
@@ -375,7 +385,7 @@ export default function AjustesPanel({
             type="button"
             onClick={cerrar}
             aria-label={t("ajustes.cerrar")}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
+            className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
           >
             <X size={18} />
           </button>
@@ -466,10 +476,101 @@ export default function AjustesPanel({
 
           {vista === "lectura" && (
             <section className="stagger-in space-y-4">
-              <div className="space-y-2.5 border-t border-gray-800 pt-4">
-                <p className="text-xs font-medium text-gray-400">{t("ajustes.lectura_sub")}</p>
+              <div className="space-y-2.5 border-t border-app-line pt-4">
+                <p className="text-xs font-medium text-app-muted">{t("ajustes.lectura_sub")}</p>
                 <div>
-                  <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-gray-400">
+                  <span id="ajustes-fuente" className="mb-1.5 block text-xs font-medium text-app-muted">
+                    {t("ajustes.fuente_grupo")}
+                  </span>
+                  <p className="mb-2 text-xs leading-relaxed text-app-muted">
+                    {t("ajustes.fuente_nota")}
+                  </p>
+                  <div className="grid gap-1.5" role="radiogroup" aria-labelledby="ajustes-fuente">
+                    {FUENTES.map((item) => {
+                      const activo = fuente === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => onFuente(item.id)}
+                          style={{ fontFamily: `var(${item.variable}), sans-serif` }}
+                          className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            activo
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-fg hover:bg-app-raised/40"
+                          }`}
+                        >
+                          {item.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <span id="ajustes-tamano-lectura" className="mb-1.5 block text-xs font-medium text-app-muted">
+                    {t("ajustes.tamano_lectura")}
+                  </span>
+                  <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-lectura">
+                    {[
+                      { id: "normal", etiqueta: t("ajustes.tamano_normal") },
+                      { id: "grande", etiqueta: t("ajustes.tamano_grande") },
+                      { id: "extra", etiqueta: t("ajustes.tamano_extra") },
+                    ].map((op) => {
+                      const activo = tamanoFuente === op.id;
+                      return (
+                        <button
+                          key={op.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => onTamanoFuente(op.id)}
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            activo
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                          }`}
+                        >
+                          {op.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <span id="ajustes-vista" className="mb-1.5 block text-xs font-medium text-app-muted">
+                    {t("ajustes.vista_grupo")}
+                  </span>
+                  <div className="grid gap-1.5" role="radiogroup" aria-labelledby="ajustes-vista">
+                    {[
+                      { id: "cards", etiqueta: t("ajustes.vista_cards"), icono: <LayoutGrid size={15} /> },
+                      { id: "magazine", etiqueta: t("ajustes.vista_magazine"), icono: <Rows size={15} /> },
+                      { id: "compact", etiqueta: t("ajustes.vista_compact"), icono: <AlignJustify size={15} /> },
+                    ].map((op) => {
+                      const activo = modoVista === op.id;
+                      return (
+                        <button
+                          key={op.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={activo}
+                          onClick={() => onModoVista(op.id)}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition ${
+                            activo
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                          }`}
+                        >
+                          <span className="shrink-0">{op.icono}</span>
+                          {op.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <span id="ajustes-tamano-pagina" className="mb-1.5 block text-xs font-medium text-app-muted">
                     {t("ajustes.pagina")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-tamano-pagina">
@@ -484,8 +585,8 @@ export default function AjustesPanel({
                           onClick={() => onTamanoPagina(n)}
                           className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                             activo
-                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
                           }`}
                         >
                           {n}
@@ -495,7 +596,7 @@ export default function AjustesPanel({
                   </div>
                 </div>
                 <div>
-                  <span id="ajustes-densidad" className="mb-1.5 block text-xs font-medium text-gray-400">
+                  <span id="ajustes-densidad" className="mb-1.5 block text-xs font-medium text-app-muted">
                     {t("ajustes.densidad")}
                   </span>
                   <div className="flex gap-1.5" role="radiogroup" aria-labelledby="ajustes-densidad">
@@ -513,8 +614,8 @@ export default function AjustesPanel({
                           onClick={() => onDensidad(op.id)}
                           className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                             activo
-                              ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                              : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                              ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                              : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
                           }`}
                         >
                           {op.etiqueta}
@@ -535,7 +636,7 @@ export default function AjustesPanel({
                   etiqueta={t("ajustes.movimiento")}
                   descripcion={t("ajustes.movimiento_d")}
                 />
-                <p className="text-xs leading-relaxed text-gray-500">
+                <p className="text-xs leading-relaxed text-app-muted">
                   {t("ajustes.letra_nota")}
                 </p>
               </div>
@@ -552,7 +653,7 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onCerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                   >
                     <LogOut size={15} /> {t("ajustes.salir_datos")}
                   </button>
@@ -566,19 +667,19 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onEditarPerfil}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                   >
                     <User size={15} /> {t("ajustes.editar_perfil")}
                   </button>
                   <button
                     type="button"
                     onClick={cerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                   >
                     <LogOut size={15} /> {t("ajustes.cerrar_sesion")}
                   </button>
-                  <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                  <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-app-muted">
                       {t("ajustes.metodos")}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -591,7 +692,7 @@ export default function AjustesPanel({
                         </span>
                       ))}
                       {metodosVinculados().length === 0 && (
-                        <span className="text-xs text-gray-500">{t("ajustes.cargando_metodos")}</span>
+                        <span className="text-xs text-app-muted">{t("ajustes.cargando_metodos")}</span>
                       )}
                     </div>
                   </div>
@@ -599,7 +700,7 @@ export default function AjustesPanel({
                     <button
                       type="button"
                       onClick={() => signIn("google", { callbackUrl: "/" })}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                     >
                       {t("ajustes.conectar_google")}
                     </button>
@@ -608,24 +709,24 @@ export default function AjustesPanel({
                     <button
                       type="button"
                       onClick={() => signIn("github", { callbackUrl: "/" })}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                     >
                       {t("ajustes.conectar_github")}
                     </button>
                   )}
-                  <p className="text-xs leading-relaxed text-gray-500">
+                  <p className="text-xs leading-relaxed text-app-muted">
                     {t("ajustes.vincular_nota")}
                   </p>
                   {metodosVinculados().some((m) => m.id === "correo") && (
                     <Link
                       href="/recuperar"
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                     >
                       {t("ajustes.cambiar_pass")}
                     </Link>
                   )}
-                  <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                  <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-app-muted">
                       {t("ajustes.actividad")}
                     </p>
                     <p className="truncate text-sm font-medium text-gray-100">
@@ -633,7 +734,7 @@ export default function AjustesPanel({
                         ? `${t("ajustes.ultima_fuente")}: ${actividad.ultimaFuente.titulo}`
                         : t("ajustes.sin_fuentes_act")}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-app-muted">
                       {actividad?.ultimaFuente
                         ? fecha(actividad.ultimaFuente.creado_en)
                         : t("ajustes.agrega_primero")}
@@ -660,9 +761,9 @@ export default function AjustesPanel({
 
           {vista === "datos" && (
             <section className="stagger-in space-y-2.5">
-              <div className="rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">{t("ajustes.que_guarda")}</p>
-                <p className="text-xs leading-relaxed text-gray-400">
+              <div className="rounded-xl border border-transparent bg-transparent px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-wide text-app-muted">{t("ajustes.que_guarda")}</p>
+                <p className="text-xs leading-relaxed text-app-muted">
                   {t("ajustes.que_guarda_d", {
                     f: estadisticas?.fuentes || 0,
                     n:
@@ -680,7 +781,7 @@ export default function AjustesPanel({
                   <button
                     type="button"
                     onClick={onCerrarSesion}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
                   >
                     <Trash2 size={15} /> {t("ajustes.borrar_salir")}
                   </button>
@@ -691,7 +792,7 @@ export default function AjustesPanel({
                     type="button"
                     onClick={exportarDatos}
                     disabled={exportando}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40 disabled:opacity-50"
                   >
                     <Download size={15} /> {exportando ? t("ajustes.exportando") : t("ajustes.exportar")}
                   </button>
@@ -751,7 +852,7 @@ export default function AjustesPanel({
                 href={URL_REPOSITORIO}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
               >
                 <GitHubIcon size={15} /> {t("ajustes.repositorio")}
               </a>
@@ -759,7 +860,7 @@ export default function AjustesPanel({
                 href={URL_APP}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
               >
                 {t("ajustes.abrir_app")}
               </a>
@@ -774,11 +875,11 @@ export default function AjustesPanel({
               <button
                 type="button"
                 onClick={compartirApp}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-200 btn-press hover:border-gray-500 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-app-fg btn-press hover:bg-app-raised/40"
               >
                 <Share2 size={15} /> {t("ajustes.compartir")}
               </button>
-              <p className="text-xs leading-relaxed text-gray-500">
+              <p className="text-xs leading-relaxed text-app-muted">
                 {t("ajustes.apoyo_nota")}
               </p>
             </section>
@@ -808,7 +909,7 @@ export default function AjustesPanel({
             <h3 id="titulo-eliminar-cuenta" className="text-center text-xl font-bold text-white">
               {t("ajustes.modal_titulo")}
             </h3>
-            <p className="mt-2 text-center text-sm text-gray-400">
+            <p className="mt-2 text-center text-sm text-app-muted">
               {t("ajustes.modal_que")}
             </p>
             <ul className="mx-auto mt-3 max-w-xs list-disc space-y-1 pl-5 text-sm text-gray-300">

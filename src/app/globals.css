@@ -36,7 +36,7 @@
   --color-app-muted: var(--muted);
   --color-app-fg: var(--foreground);
   --color-app-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--fuente-app, var(--font-geist-sans));
   --font-mono: var(--font-geist-mono);
 }
 
@@ -49,9 +49,36 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--fuente-app, var(--font-geist-sans)), sans-serif;
   min-width: 320px;
   overflow-x: hidden;
+}
+
+/* Tipografía seleccionable (Ajustes > Lectura). Momo Trust Display es la
+   predeterminada absoluta; el dataset lo fija aplicarFuente() + pre-pintado. */
+:root,
+[data-fuente="momo"] {
+  --fuente-app: var(--font-momo);
+}
+[data-fuente="line"] {
+  --fuente-app: var(--font-line);
+}
+[data-fuente="readex"] {
+  --fuente-app: var(--font-readex);
+}
+[data-fuente="calsans"] {
+  --fuente-app: var(--font-calsans);
+}
+[data-fuente="pressstart"] {
+  --fuente-app: var(--font-pressstart);
+}
+
+/* Jerarquía estricta títulos/subtítulos/cuerpo sobre la fuente activa. */
+h1 {
+  letter-spacing: -0.02em;
+}
+h2 {
+  letter-spacing: -0.01em;
 }
 
 html,

@@ -9,6 +9,8 @@ import { CLAVES_NOTIFICACIONES } from "@/lib/hooks/useNotificaciones";
 
 export const AJUSTES_POR_DEFECTO = {
   lector_tema: null, // null = preferencia del sistema (ver temas.temaPreferidoSistema)
+  lector_fuente_app: null, // null = Momo Trust Display (ver fuentes.FUENTE_POR_DEFECTO)
+  lector_familia_fuente: null, // legado del lector (botón Sans eliminado): se purga
   lector_tamano_pagina: "30",
   lector_auto_leido: "0",
   lector_movimiento: "completo",

@@ -1,6 +1,6 @@
-// Script plano y bloqueante: aplica tema, movimiento y densidad
+// Script plano y bloqueante: aplica tema, movimiento, densidad y fuente
 // antes del primer pintado, sin depender del framework.
-// Coincide con lib/temas.js y el pre-pintado del RootLayout.
+// Coincide con lib/temas.js, lib/fuentes.js y el pre-pintado del RootLayout.
 (function () {
   try {
     var validos = ["medianoche", "duna", "mineral", "bosque", "ebano", "celeste", "menta", "celadon"];
@@ -20,6 +20,9 @@
     if (d === "compacta") {
       document.documentElement.dataset.densidad = "compacta";
     }
+    var fuentes = ["momo", "line", "readex", "calsans", "pressstart"];
+    var f = localStorage.getItem("lector_fuente_app");
+    document.documentElement.dataset.fuente = fuentes.indexOf(f) >= 0 ? f : "momo";
     document.documentElement.lang = "es";
   } catch (e) {
     // Sin almacenamiento/DOM: se conservan los valores por defecto del CSS.
