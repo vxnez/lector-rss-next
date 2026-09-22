@@ -58,6 +58,7 @@ function CategoryPill({ category, selected, onClick, t }) {
 
 
 export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente }) {
+  const { idioma, setIdioma } = useIdioma();
   const [paso, setPaso] = useState(1); // 1: categorías, 2: feeds, 3: completado
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
@@ -312,6 +313,33 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         {/* Paso 1: Selección de categorías */}
         {paso === 1 && (
           <div className="space-y-4">
+            <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
+              <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.idioma_titulo")}</h4>
+              <div className="flex gap-1.5" role="radiogroup" aria-label={t("onboarding.idioma_titulo")}>
+                {[
+                  { id: "es", etiqueta: "Español" },
+                  { id: "en", etiqueta: "English" },
+                ].map((op) => {
+                  const activo = idioma === op.id;
+                  return (
+                    <button
+                      key={op.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={activo}
+                      onClick={() => setIdioma(op.id)}
+                      className={`min-w-0 flex-1 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                        activo
+                          ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                          : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                      }`}
+                    >
+                      {op.etiqueta}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
               <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.categorias_titulo")}</h4>
               <p className="text-xs text-app-muted mb-4">{t("onboarding.categorias_subtitulo")}</p>

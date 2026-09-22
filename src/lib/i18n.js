@@ -177,6 +177,7 @@ const TEXTOS_ES = {
       completado_titulo: "¡Ya estás listo!",
       completado_texto: "Tus fuentes se están sincronizando. En unos instantes verás las primeras noticias.",
       ver_dashboard: "Abrir",
+      idioma_titulo: "Idioma de la app",
     },
     eliminar: {
       titulo: "Eliminar todas las publicaciones",
@@ -360,6 +361,8 @@ const TEXTOS_ES = {
     },
     perfil: {
       titulo: "Editar perfil",
+      subtitulo: "Nombre, foto y género de tu cuenta.",
+      peso_nota: "La imagen no debe pesar más de 5 MB.",
       cerrar_aria: "Cerrar perfil",
       cargando: "Cargando perfil...",
       subir: "Subir imagen",
@@ -866,6 +869,7 @@ const TEXTOS_EN = {
       completado_titulo: "You're all set!",
       completado_texto: "Your feeds are syncing. You'll see the first news in a moment.",
       ver_dashboard: "Open",
+      idioma_titulo: "App language",
     },
     eliminar: {
       titulo: "Delete all posts",
@@ -1049,6 +1053,8 @@ const TEXTOS_EN = {
     },
     perfil: {
       titulo: "Edit profile",
+      subtitulo: "Your account name, photo and gender.",
+      peso_nota: "Images must not exceed 5 MB.",
       cerrar_aria: "Close profile",
       cargando: "Loading profile...",
       subir: "Upload image",

@@ -9,7 +9,8 @@ Aplicación web full-stack para centralizar, organizar y leer noticias de fuente
 | Framework | Next.js 16 (App Router), React 19, JavaScript |
 | Estilos | Tailwind CSS 4, tema oscuro editorial, 8 temas configurables |
 | Iconos | lucide-react + morphicons (iconos animados) |
-| Tipografía | Geist / Geist Mono (`next/font`) |
+| Tipografía | 5 Google Fonts (`next/font`): Momo Trust Display, LINE Seed JP, Readex Pro (predeterminada), Cal Sans, Press Start 2P + slider global 12–24px |
+| Interfaz | Bilingüe ES/EN nativa con switch en bienvenida y ajustes (`src/lib/i18n.js`) |
 | Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `bcryptjs`, `animejs`) vía `src/lib/api.js` a la API interna |
 | Autenticación | NextAuth 5 beta: credenciales, Google OAuth, GitHub OAuth |
 | Base de datos | MySQL 8.4 en servidor local Ubuntu Server, acceso solo vía API interna (`https://servxn-mysql.duckdns.org`, header `x-api-key`). Sin `mysql2`, sin `DATABASE_URL`, sin credenciales MySQL en el frontend |
@@ -63,7 +64,7 @@ Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto /
 - Marcado automático como leído al pasar a la siguiente noticia (opcional)
 - Edición de categoría inline con catálogo desplegable
 - Badge IA / Manual / Sin IA con confianza
-- Tamaño de fuente persistido (3 niveles)
+- Tamaño de texto global (slider 12–24px en ajustes, escala toda la app)
 - Imagen del artículo como fondo lateral (gradiente, máscara, solo visual)
 
 ### 8. Onboarding de nuevos usuarios
@@ -124,7 +125,7 @@ src/
 │   ├── feed-utils.js            # Utilidades puras (params, VAPID, paginación)
 │   ├── formato.js               # Formato fecha, dominio, truncado
 │   ├── lectura.js               # Estimación tiempo de lectura
-│   ├── i18n.js                  # Solo español con diccionario plano
+│   ├── i18n.js                  # Interfaz bilingüe ES/EN con switch nativo
 │   ├── temas.js                 # 8 temas (oscuros + claros) + aplicador
 │   ├── useBloquearScroll.js     # Hook: bloquea scroll body al abrir modal
 │   ├── opml.js                  # Export/import OPML
@@ -151,6 +152,21 @@ scripts/
 ├── recategorizar-feeds.js       # Reclasificación masiva
 └── generar-iconos.mjs           # Genera favicons para fuentes
 ```
+
+## Idiomas de la interfaz / Interface languages
+
+La app es **bilingüe nativa**: español (`es`, por defecto) e inglés (`en`), con switch en la bienvenida y en Ajustes > Lectura. La traducción de *noticias* la hace el navegador de cada usuario; aquí solo vive el idioma de la *interfaz*.
+
+The app is **natively bilingual**: Spanish (`es`, default) and English (`en`), switchable from onboarding and Settings > Reading. *News* translation is left to each user's browser; only the *interface* lives here.
+
+### Colaborar con traducciones / Contributing translations
+
+¿Hablas otro idioma? ¡Súmalo! / Speak another language? Add it!
+
+1. En `src/lib/i18n.js`, duplica el objeto `TEXTOS_EN` como `TEXTOS_XX` (mismas claves, tus traducciones) / duplicate the `TEXTOS_EN` object as `TEXTOS_XX` (same keys, your translations).
+2. Regístralo: añade `"xx"` a `IDIOMAS_VALIDOS`, `"xx": "xx-XX"` a `LOCALES` y `"xx"` al array `idiomas` de `public/tema-inicial.js` (pre-pintado).
+3. Agrega el botón en el selector de bienvenida (`OnboardingSurvey.js`) y en Ajustes > Lectura (`AjustesPanel.js`), siguiendo el patrón ES/EN existente.
+4. Verifica con `npm run build` + `npm run lint` y abre un PR con el idioma / verify and open a PR.
 
 ## Comandos y entorno
 

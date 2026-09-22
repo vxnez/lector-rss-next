@@ -111,6 +111,33 @@ export default function HomePage() {
 
   // Atajos de teclado y selección activa
   const searchInputRef = useRef(null);
+  const busquedaZonaRef = useRef(null);
+  const [busquedaVisible, setBusquedaVisible] = useState(true);
+
+  // La lupa del header aparece solo cuando la barra de búsqueda sale de vista.
+  useEffect(() => {
+    const el = busquedaZonaRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const obs = new IntersectionObserver(
+      ([entrada]) => setBusquedaVisible(entrada.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [session, loading]);
+
+  const irABusqueda = useCallback(() => {
+    try {
+      busquedaZonaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => searchInputRef.current?.focus({ preventScroll: true }), 450);
+    } catch {
+      try {
+        searchInputRef.current?.focus();
+      } catch {
+        // Sin DOM disponible.
+      }
+    }
+  }, []);
   const [articuloActivoId, setArticuloActivoId] = useState(null);
   const [articuloParaAbrir, setArticuloParaAbrir] = useState(null);
   const [ayudaAtajosAbierta, setAyudaAtajosAbierta] = useState(false);
@@ -736,6 +763,8 @@ export default function HomePage() {
         onAbrirNotifs={() => fijarNotifs(!notifsAbiertas)}
         noLeidasNotifs={noLeidasNotifs}
         iaNotifsEnCurso={iaEnCursoNotifs}
+        mostrarBuscar={!busquedaVisible}
+        onIrBuscar={irABusqueda}
         t={t}
       />
 
@@ -788,7 +817,7 @@ export default function HomePage() {
                 onIrFuentes={irAGestionFuentes}
               />
 
-              <div className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              <div ref={busquedaZonaRef} className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center scroll-mt-24">
                 <label className="relative flex-1 rounded-2xl border border-app-line bg-app-surface transition duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-within:border-[var(--accent)]/70 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input

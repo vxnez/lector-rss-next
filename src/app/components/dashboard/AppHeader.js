@@ -2,11 +2,11 @@
 "use client";
 
 import Link from "next/link";
-import { Rss, LogIn, UserPlus } from "lucide-react";
+import { Rss, LogIn, UserPlus, Search } from "lucide-react";
 import { Menu as MenuData, X as XData, Bell as BellData, BellRing as BellRingData } from "lucide";
 import MorphIcon from "../MorphIcon";
 
-export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAjustes, panelNotifs, onAbrirNotifs, noLeidasNotifs, iaNotifsEnCurso, t }) {
+export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAjustes, panelNotifs, onAbrirNotifs, noLeidasNotifs, iaNotifsEnCurso, mostrarBuscar, onIrBuscar, t }) {
   const hayNuevas = Number(noLeidasNotifs) > 0;
   const botonNotifs = (
     <button
@@ -72,6 +72,17 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
           <>
             {botonAjustes}
             {botonNotifs}
+            {mostrarBuscar && (
+              <button
+                type="button"
+                onClick={onIrBuscar}
+                title={t("buscar.aria")}
+                aria-label={t("buscar.aria")}
+                className="btn-press anim-burbuja rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <Search size={20} strokeWidth={2.25} />
+              </button>
+            )}
             {esInvitado && (
               <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">
                 {t("header.invitado")}
