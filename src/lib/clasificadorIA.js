@@ -50,8 +50,19 @@ const MODELOS_GEMINI = ["gemini-3.5-flash-lite", "gemini-2.5-flash"];
 // (Los llama-3.x fueron dados de baja por Groq el 16/08/2026; estos son los vigentes.)
 const MODELOS_GROQ = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"];
 
-export function configIA() {
-  const proveedor = String(process.env.IA_PROVEEDOR || "gemini").trim().toLowerCase();
+export const PROVEEDORES_IA = ["groq", "gemini"];
+
+export function otroProveedorIA(proveedor) {
+  return String(proveedor).trim().toLowerCase() === "groq" ? "gemini" : "groq";
+}
+
+// forzarProveedor ("groq"|"gemini") permite al cliente alternar de proveedor
+// dentro de una corrida (failover ante cuota) sin tocar variables de entorno.
+export function configIA(forzarProveedor) {
+  const pedido = String(forzarProveedor || "").trim().toLowerCase();
+  const proveedor = PROVEEDORES_IA.includes(pedido)
+    ? pedido
+    : String(process.env.IA_PROVEEDOR || "gemini").trim().toLowerCase();
   const modelosPropios = String(process.env.IA_MODELOS || "")
     .split(",")
     .map((m) => m.trim())
@@ -238,8 +249,8 @@ async function llamarModeloChat(cfg, apiKey, modelo, textoPrompt, maxTokens, tim
   }
 }
 
-async function ejecutarCadenaIA(apiKey, textoPrompt, maxTokens, timeoutMs) {
-  const cfg = configIA();
+async function ejecutarCadenaIA(apiKey, textoPrompt, maxTokens, timeoutMs, proveedor) {
+  const cfg = configIA(proveedor);
   const clave = cfg.apiKey || apiKey;
   let ultimoError = new Error(`${cfg.etiqueta} no respondió correctamente`);
   for (const modelo of cfg.modelos) {
@@ -261,7 +272,7 @@ async function ejecutarCadenaIA(apiKey, textoPrompt, maxTokens, timeoutMs) {
   throw ultimoError;
 }
 
-function validarPropuestaCategoria(propuesta) {
+function validarPropuestaCategoria(propuesta, proveedor) {
   const nombre = propuesta && typeof propuesta.categoria === "string" ? propuesta.categoria : "";
   const categoriaValida = CATEGORIAS_DISPONIBLES.find(
     (categoria) => normalizarCategoriaLocal(categoria) === normalizarCategoriaLocal(nombre)
@@ -275,7 +286,7 @@ function validarPropuestaCategoria(propuesta) {
   // Método dinámico según proveedor (configIA): 'groq' con IA_PROVEEDOR=groq,
   // 'gemini' en cualquier otro caso. Hardcodearlo a 'gemini' dejaba las filas
   // groq como pendientes eternas.
-  const metodo = configIA().proveedor === "groq" ? "groq" : "gemini";
+  const metodo = configIA(proveedor).proveedor === "groq" ? "groq" : "gemini";
   return {
     categoria: categoriaValida,
     metodo,
@@ -283,7 +294,9 @@ function validarPropuestaCategoria(propuesta) {
   };
 }
 
-export async function clasificarLoteConIA(apiKey, noticias) {
+export async function clasificarLoteConIA(apiKey, noticias, proveedor) {
+  const cfg = configIA(proveedor);
+  const metodoProveedor = cfg.proveedor === "groq" ? "groq" : "gemini";
   const resultados = new Array(noticias.length);
   let esperaSugeridaMs = 0;
   // Primer código de fallo del lote para diagnóstico ('auth' | 'cuota' |
@@ -308,14 +321,14 @@ export async function clasificarLoteConIA(apiKey, noticias) {
   for (let inicio = 0; inicio < unicos.length; inicio += GEMINI_LOTE_TAMANO) {
     const lote = unicos.slice(inicio, inicio + GEMINI_LOTE_TAMANO);
     try {
-      const texto = await ejecutarCadenaIA(apiKey, construirInstruccionLote(lote), GEMINI_LOTE_MAX_TOKENS, GEMINI_LOTE_TIMEOUT_MS);
+      const texto = await ejecutarCadenaIA(apiKey, construirInstruccionLote(lote), GEMINI_LOTE_MAX_TOKENS, GEMINI_LOTE_TIMEOUT_MS, cfg.proveedor);
       const propuestas = extraerArregloPropuesta(texto);
       const porIndice = new Map();
       for (const propuesta of propuestas) {
         if (propuesta && Number.isInteger(Number(propuesta.i))) porIndice.set(Number(propuesta.i), propuesta);
       }
       lote.forEach((item, posicion) => {
-        let validada = validarPropuestaCategoria(porIndice.get(posicion));
+        let validada = validarPropuestaCategoria(porIndice.get(posicion), cfg.proveedor);
         if (!validada) {
           // Respaldo heurístico: la IA falló o respondió tibio (<0.8).
           // Con evidencia fuerte de palabras clave se asigna al piso del
@@ -324,7 +337,7 @@ export async function clasificarLoteConIA(apiKey, noticias) {
           if (categoriaKw) {
             validada = {
               categoria: categoriaKw,
-              metodo: configIA().proveedor === "groq" ? "groq" : "gemini",
+              metodo: metodoProveedor,
               confianza: UMBRAL_CONFIANZA_MINIMA,
             };
           }
@@ -364,7 +377,7 @@ export async function clasificarLoteConIA(apiKey, noticias) {
         const resultado = categoriaKw
           ? {
               categoria: categoriaKw,
-              metodo: configIA().proveedor === "groq" ? "groq" : "gemini",
+              metodo: metodoProveedor,
               confianza: UMBRAL_CONFIANZA_MINIMA,
             }
           : { ...SIN_CLASIFICACION };

@@ -3,11 +3,26 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 
+// Diags que ameritan failover al otro proveedor (una vez por corrida).
+const DIAG_CON_FAILOVER = new Set(["cuota", "sin_clave", "auth", "modelo"]);
+
+// Dúplica mínima de otroProveedorIA (lib/clasificadorIA es server-only y no
+// puede importarse desde este hook cliente).
+function proveedorAlterno(proveedor) {
+  return String(proveedor).trim().toLowerCase() === "groq" ? "gemini" : "groq";
+}
+
+function etiquetaProveedor(proveedor) {
+  return String(proveedor).trim().toLowerCase() === "groq" ? "Groq" : "Gemini";
+}
+
 export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteClasificado, notify, t }) {
   // null = inactiva; { total, procesadas, pendientes, estado, diag }
   const [iaProgreso, setIaProgreso] = useState(null);
   const iaEnCursoRef = useRef(false);
   const iaAutoRef = useRef(null);
+  const proveedorRef = useRef(null); // override "groq"|"gemini" o null (default servidor)
+  const cambioHechoRef = useRef(false); // un solo failover por corrida
 
   const procesarColaClasificacion = useCallback(async () => {
     const excluidos = [];
@@ -54,13 +69,15 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         return;
       }
       iaEnCursoRef.current = true;
+      proveedorRef.current = null;
+      cambioHechoRef.current = false;
       setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "en_curso" });
 
       const pedirLote = async (excluir) => {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir, proveedor: proveedorRef.current }),
         });
         if (!res.ok) throw new Error(t("avisos.ia_err"));
         const data = await res.json().catch(() => ({}));
@@ -74,6 +91,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
           resultados: Array.isArray(data.resultados) ? data.resultados : null,
           esperaMs: Number(data.reintentarEn) > 0 ? Number(data.reintentarEn) * 1000 : 250,
           diag: typeof data.diag === "string" && data.diag ? data.diag : null,
+          proveedor: typeof data.proveedor === "string" && data.proveedor ? data.proveedor : null,
         };
       };
 
@@ -117,9 +135,33 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
               if (!excluidos.includes(id)) excluidos.push(id);
             }
             if (lote.diag && !diagFinal) diagFinal = lote.diag;
+            // Failover entre proveedores (una vez por corrida): ante cuota,
+            // sin clave, auth o modelo retirado se continúa con el otro
+            // proveedor en vez de frenar con esperas de hasta 120 s. Se salta
+            // la espera del lote: era del proveedor saturado.
+            let seCambioProveedor = false;
+            if (
+              lote.diag &&
+              DIAG_CON_FAILOVER.has(lote.diag) &&
+              lote.proveedor &&
+              !cambioHechoRef.current &&
+              (lote.diag === "cuota" || procesadas === 0)
+            ) {
+              const anterior = lote.proveedor;
+              const otro = proveedorAlterno(anterior);
+              proveedorRef.current = otro;
+              cambioHechoRef.current = true;
+              rachaCuota = 0;
+              seCambioProveedor = true;
+              notify(
+                t("avisos.ia_failover", { de: etiquetaProveedor(anterior), a: etiquetaProveedor(otro) }),
+                "info"
+              );
+            }
             if (
               (diagFinal === "auth" || diagFinal === "sin_clave" || diagFinal === "modelo") &&
-              procesadas === 0
+              procesadas === 0 &&
+              !seCambioProveedor
             ) {
               break;
             }
@@ -137,7 +179,9 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
             if (lote.restantes === 0 || lote.lote === 0) break;
             const procesadasVista = total === null ? procesadas : Math.min(procesadas, total);
             setIaProgreso({ total, procesadas: procesadasVista, pendientes: lote.restantes, estado: "en_curso" });
-            await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
+            if (!seCambioProveedor) {
+              await new Promise((resolve) => setTimeout(resolve, lote.esperaMs));
+            }
           }
           if (procesadas > 0) {
             const totalVista = total ?? procesadas;

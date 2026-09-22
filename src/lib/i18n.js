@@ -593,6 +593,7 @@ const TEXTOS = {
       ia_sin_pendientes: "No hay noticias pendientes de categorización.",
       ia_lanzada: "Categorización lanzada en segundo plano...",
       ia_en_curso: "La categorización sigue en curso ({n} pendientes).",
+      ia_failover: "Sin cuota en {de}: se continúa con {a}.",
       ia_err: "No se pudo completar la categorización con IA.",
       ia_err_sin_clave: "Falta la clave de IA en el servidor (GROQ_API_KEY o GEMINI_API_KEY).",
       ia_err_auth: "La clave de IA fue rechazada (401/403). Revisa la variable en Vercel.",

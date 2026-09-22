@@ -71,12 +71,15 @@ async function clasificarPendientesResponse(userId, body = {}) {
     return NextResponse.json({ clasificados: 0, restantes: elegibles.length, lote: 0 });
   }
 
-  const apiKey = configIA().apiKey;
+  // Failover entre proveedores: el cliente puede pedir "groq"|"gemini" por
+  // lote (tras cuota/sin_clave/auth/modelo del otro). Campo aditivo.
+  const cfgIA = configIA(body.proveedor);
+  const apiKey = cfgIA.apiKey;
   if (!apiKey) {
-    return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave" });
+    return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave", proveedor: cfgIA.proveedor });
   }
 
-  const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes);
+  const { resultados, esperaMs, fallo } = await clasificarLoteConIA(apiKey, pendientes, cfgIA.proveedor);
   let clasificados = 0;
   const idsClasificados = [];
   // Detalle por item para parche instantáneo en el cliente (sin refetch).
@@ -121,6 +124,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
     lote: pendientes.length,
     ids: idsClasificados,
     resultados: detalleResultados,
+    proveedor: cfgIA.proveedor,
   });
 }
 import { resolverUsuarioId } from "@/lib/invitado";
