@@ -13,6 +13,17 @@ const MAX_ITEMS = 50;
 // Fuente única de verdad para la limpieza de cuenta (ajustesPorDefecto):
 // la bandeja es local por navegador y debe borrarse al eliminar la cuenta
 // o salir, para no filtrar avisos a la siguiente cuenta del mismo navegador.
+// Ruido de cuota de modelos IA (Groq/Gemini): avisos de límite, 429 o cambio
+// de proveedor. Nunca se muestran en la bandeja. La fijada de progreso IA
+// (pinned) está exenta: informa del avance, no de la cuota.
+const PATRON_CUOTA_IA =
+  /cuota|quota|rate[\s-]?limit|\b429\b|l[ií]mite|se contin[uú]a con|cambio de proveedor/i;
+
+export function esRuidoCuotaIA(notif) {
+  if (!notif || notif.pinned === true) return false;
+  const texto = `${notif.titulo || ""} ${notif.mensaje || ""}`;
+  return PATRON_CUOTA_IA.test(texto);
+}
 export const CLAVES_NOTIFICACIONES = [CLAVE_ABIERTA, CLAVE_ITEMS];
 
 export function useNotificaciones({ toast, onCerrarToast, iaProgreso }) {
@@ -34,11 +45,17 @@ export function useNotificaciones({ toast, onCerrarToast, iaProgreso }) {
     try {
       setAbierta(window.localStorage.getItem(CLAVE_ABIERTA) === "1");
       const guardados = JSON.parse(window.localStorage.getItem(CLAVE_ITEMS) || "[]");
-      if (Array.isArray(guardados)) setItems(guardados);
+      if (Array.isArray(guardados)) {
+        // Limpieza retroactiva: descarta ruido de cuota guardado por
+        // versiones anteriores y persiste la lista ya filtrada.
+        const limpios = guardados.filter((n) => !esRuidoCuotaIA(n));
+        setItems(limpios);
+        if (limpios.length !== guardados.length) guardar(limpios);
+      }
     } catch {
       // Sin almacenamiento disponible.
     }
-  }, []);
+  }, [guardar]);
 
   // Toast -> notificación (evento externo -> bandeja).
   useEffect(() => {
@@ -52,6 +69,12 @@ export function useNotificaciones({ toast, onCerrarToast, iaProgreso }) {
       leida: false,
       pinned: false,
     };
+    // Exclusión estricta: el ruido de cuota IA ni siquiera entra a la bandeja
+    // (el toast efímero ya cumplió su función informativa).
+    if (esRuidoCuotaIA(nueva)) {
+      onCerrarToast();
+      return;
+    }
     setItems((prev) => {
       const actualizados = [nueva, ...prev].slice(0, MAX_ITEMS);
       guardar(actualizados);

@@ -6,8 +6,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
+import { esRuidoCuotaIA } from "@/lib/hooks/useNotificaciones";
 import { useIdioma } from "@/lib/i18n";
-import { X, Check, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
+import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
 
 const TIPOS = {
   info: { icon: Bell, color: "text-sky-400 [html[data-tema-claro='1']_&]:text-sky-600", bg: "bg-sky-500/10 [html[data-tema-claro='1']_&]:bg-sky-600/10", border: "border-sky-500/30 [html[data-tema-claro='1']_&]:border-sky-600/30" },
@@ -300,6 +301,10 @@ export default function NotificationPanel({
 
   if (!abierto) return null;
 
+  // Exclusión en render (cinturón y tirantes): aunque el hook ya filtra al
+  // ingerir e hidratar, nada de ruido de cuota llega a pintarse.
+  const visibles = notificaciones.filter((n) => !esRuidoCuotaIA(n));
+
   const toggleSeleccion = (id) => {
     setSeleccionadas((prev) => {
       const nuevas = new Set(prev);
@@ -350,25 +355,30 @@ export default function NotificationPanel({
           <button
             type="button"
             onClick={() => { setModoSeleccion(false); setSeleccionadas(new Set()); }}
-            className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
+            className="touch-target shrink-0 rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
             aria-label={t("ajustes.notificaciones.cancelar_seleccion")}
           >
             <X size={18} />
           </button>
-        ) : notificaciones.some((n) => !n.leida && !n.pinned) ? (
+        ) : visibles.some((n) => !n.leida && !n.pinned) ? (
           <>
             <button
               type="button"
               onClick={onMarcarTodasLeidas}
               disabled={noLeidas === 0}
-              className="touch-target rounded-lg px-2.5 py-1.5 text-xs font-medium text-app-muted transition hover:bg-app-raised hover:text-app-fg disabled:opacity-40"
+              aria-label={t("ajustes.notificaciones.marcar_todas_leidas")}
+              title={t("ajustes.notificaciones.marcar_todas_leidas")}
+              className="touch-target shrink-0 rounded-lg px-2.5 py-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg disabled:opacity-40"
             >
-              {t("ajustes.notificaciones.marcar_todas_leidas")}
+              <CheckCheck size={18} aria-hidden="true" className="sm:hidden" />
+              <span className="hidden text-xs font-medium sm:inline">
+                {t("ajustes.notificaciones.marcar_todas_leidas")}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => { setModoSeleccion(true); }}
-              className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
+              className="touch-target shrink-0 rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
               aria-label={t("ajustes.notificaciones.seleccionar")}
             >
               <Check size={18} />
@@ -379,14 +389,14 @@ export default function NotificationPanel({
 
       {/* Lista */}
       <div className="panel-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        {notificaciones.length === 0 ? (
+        {visibles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-app-muted/50">
             <Bell size={32} className="mb-2 opacity-50" />
             <p className="text-sm font-medium">{t("ajustes.notificaciones.vacio")}</p>
             <p className="text-xs text-center px-4">{t("ajustes.notificaciones.vacio_d")}</p>
           </div>
         ) : (
-          notificaciones.map((item) => (
+          visibles.map((item) => (
             <NotificacionItem
               key={item.id}
               item={item}
