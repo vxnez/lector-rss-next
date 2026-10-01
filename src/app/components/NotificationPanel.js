@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { esRuidoCuotaIA } from "@/lib/hooks/useNotificaciones";
 import { useIdioma } from "@/lib/i18n";
-import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
+import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2, MoveHorizontal } from "lucide-react";
 
 const TIPOS = {
   info: { icon: Bell, color: "text-sky-400 [html[data-tema-claro='1']_&]:text-sky-600", bg: "bg-sky-500/10 [html[data-tema-claro='1']_&]:bg-sky-600/10", border: "border-sky-500/30 [html[data-tema-claro='1']_&]:border-sky-600/30" },
@@ -87,10 +87,6 @@ function NotificacionItem({
   const dxActual = useRef(0);
   const arrastrando = useRef(false);
   const idPuntero = useRef(null);
-  // Posición asentada tras soltar: 0 | 88 (acciones de leer) | -88 (eliminar).
-  // Vive en estado para pintar el fondo y la accesibilidad sin leer refs.
-  const [posado, setPosado] = useState(0);
-
   const pintarDx = (dx) => {
     dxActual.current = dx;
     const el = frenteRef.current;
@@ -144,27 +140,20 @@ function NotificacionItem({
     const dx = dxActual.current;
     if (!leida && dx >= Math.round(ancho * 0.4)) {
       asentar(0);
-      setPosado(0);
       onMarcarLeida();
       anunciar(t("ajustes.notificaciones.leida_anuncio"));
     } else if (dx <= -Math.round(ancho * 0.4)) {
       asentar(0);
-      setPosado(0);
       onEliminar();
       anunciar(t("ajustes.notificaciones.eliminada_anuncio"));
-    } else if (Math.abs(dx) >= 64) {
-      const fijo = dx > 0 ? 88 : -88;
-      asentar(fijo);
-      setPosado(fijo);
     } else {
+      // Sin fondo de acciones: todo arrastre parcial vuelve a su sitio.
       asentar(0);
-      setPosado(0);
     }
   };
 
   const cerrarDeslizado = () => {
     asentar(0);
-    setPosado(0);
   };
 
   const alToqueFila = () => {
@@ -173,17 +162,6 @@ function NotificacionItem({
 
   return (
     <div className="swipe-row relative overflow-hidden rounded-xl">
-      {/* Fondo con acciones: leer a la derecha del dedo, eliminar a la izquierda. */}
-      {deslizable && (
-        <div aria-hidden={posado === 0} className="absolute inset-0 flex items-stretch justify-between rounded-xl border border-app-line">
-          <span className="flex items-center bg-emerald-600/25 pl-4 pr-6">
-            {!leida && <Check size={20} className="text-emerald-300" />}
-          </span>
-          <span className="flex items-center bg-rose-600/25 pl-6 pr-4">
-            <Trash2 size={20} className="text-rose-300" />
-          </span>
-        </div>
-      )}
       <div
         ref={frenteRef}
         onPointerDown={alPunteroAbajo}
@@ -267,6 +245,30 @@ function NotificacionItem({
   );
 }
 
+const CLAVE_PISTA_SWIPE = "lector_pista_swipe";
+
+// Aviso emergente desechable que enseña el gesto (una sola vez por navegador).
+// Sustituye al fondo verde/rojo bajo la tarjeta: menos ruido visual.
+function PistaDeslizar({ visible, onCerrar, t }) {
+  if (!visible) return null;
+  return (
+    <div className="anim-toast flex items-center gap-2 rounded-xl border border-app-line bg-app-raised/60 px-3 py-2">
+      <MoveHorizontal size={16} aria-hidden="true" className="shrink-0 text-app-muted" />
+      <p className="min-w-0 flex-1 text-xs leading-snug text-app-muted">
+        {t("ajustes.notificaciones.pista_swipe")}
+      </p>
+      <button
+        type="button"
+        onClick={onCerrar}
+        aria-label={t("ajustes.notificaciones.pista_cerrar")}
+        className="touch-target shrink-0 rounded-lg p-1 text-app-muted transition hover:text-app-fg"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function NotificationPanel({
   abierto,
   onCerrar,
@@ -283,6 +285,32 @@ export default function NotificationPanel({
   const [seleccionadas, setSeleccionadas] = useState(new Set());
   const [anuncio, setAnuncio] = useState("");
   const anunciar = (mensaje) => setAnuncio(mensaje);
+  // La pista del gesto se muestra una sola vez por navegador y solo si el
+  // gesto está disponible (sin movimiento reducido).
+  const [pistaVista, setPistaVista] = useState(() => {
+    try {
+      if (window.localStorage.getItem(CLAVE_PISTA_SWIPE) === "1") return true;
+      if (document.documentElement.dataset.motion === "reduced") return true;
+      if (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        return true;
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  });
+
+  const cerrarPista = () => {
+    setPistaVista(true);
+    try {
+      window.localStorage.setItem(CLAVE_PISTA_SWIPE, "1");
+    } catch {
+      // Sin almacenamiento: la pista reaparece, sin romper nada.
+    }
+  };
 
   // Mismo comportamiento que AjustesPanel: fondo sin scroll ni interacción,
   // Escape cierra. Sin setState en el cuerpo del efecto.
@@ -389,6 +417,11 @@ export default function NotificationPanel({
 
       {/* Lista */}
       <div className="panel-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        <PistaDeslizar
+          visible={!pistaVista && !modoSeleccion && visibles.some((n) => !n.pinned)}
+          onCerrar={cerrarPista}
+          t={t}
+        />
         {visibles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-app-muted/50">
             <Bell size={32} className="mb-2 opacity-50" />
