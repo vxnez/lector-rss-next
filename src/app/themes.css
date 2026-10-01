@@ -557,6 +557,57 @@
   animation: panel-entrar-derecha 0.22s cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
+/* Entrada del panel de notificaciones: bottom sheet en móvil (<1024px),
+   lateral derecho en desktop. Una sola clase responsive. */
+@keyframes sheet-entrar-abajo {
+  from {
+    opacity: 0;
+    transform: translateY(48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1023.5px) {
+  .anim-panel-responsive {
+    animation: sheet-entrar-abajo 0.28s var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)) both;
+  }
+}
+@media (min-width: 1024px) {
+  .anim-panel-responsive {
+    animation: panel-entrar-derecha 0.22s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  }
+}
+
+/* Touch targets 48x48dp en punteros gruesos (móvil/táctil). El icono visible
+   conserva su tamaño; el área de toque se extiende con centrado. */
+@media (pointer: coarse) {
+  .touch-target {
+    min-width: 3rem;
+    min-height: 3rem;
+    display: inline-grid;
+    place-content: center;
+  }
+}
+
+/* Fila deslizable: la lista vertical sigue desplazándose (pan-y); el gesto
+   horizontal lo gestionan Pointer Events en el JSX. Solo transform/opacity. */
+.swipe-row {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+.swipe-frente {
+  will-change: transform;
+}
+.swipe-arrastrando {
+  transition: none !important;
+}
+.swipe-asentando {
+  transition: transform 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
 /* ============ Entrada de la burbuja flotante (scale + opacity) ============ */
 @keyframes burbuja-entrar {
   from {
@@ -589,6 +640,7 @@
 @media (prefers-reduced-motion: reduce) {
   .anim-panel-izquierda,
   .anim-panel-derecha,
+  .anim-panel-responsive,
   .anim-burbuja,
   .anim-fondo-fundido {
     animation: none;

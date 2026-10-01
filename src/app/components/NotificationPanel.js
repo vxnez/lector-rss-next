@@ -4,7 +4,7 @@
 // selección múltiple para borrado y gestión estándar de bandeja.
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
 import { X, Check, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
@@ -51,30 +51,174 @@ function BarraProgresoIA({ progreso, t }) {
   );
 }
 
-function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, onMarcarLeida, t }) {
+function movimientoReducidoActivo() {
+  try {
+    if (document.documentElement.dataset.motion === "reduced") return true;
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  } catch {
+    return false;
+  }
+}
+
+function NotificacionItem({
+  item,
+  modoSeleccion,
+  seleccionada,
+  onToggleSeleccion,
+  onEliminar,
+  onMarcarLeida,
+  anunciar,
+  t,
+}) {
   const tipo = TIPOS[item.tipo] || TIPOS.info;
   const Icon = tipo.icon;
   const leida = item.leida;
   // La fijada (IA) nunca se opaca ni se puede eliminar: solo se actualiza
-  // cuando el usuario ejecuta la categorización con IA.
+  // cuando el usuario ejecuta la categorización con IA. Tampoco se desliza.
   const esFijada = item.pinned === true;
+  const deslizable = !esFijada && !modoSeleccion;
+
+  const frenteRef = useRef(null);
+  const baseX = useRef(0);
+  const dxActual = useRef(0);
+  const arrastrando = useRef(false);
+  const idPuntero = useRef(null);
+  // Posición asentada tras soltar: 0 | 88 (acciones de leer) | -88 (eliminar).
+  // Vive en estado para pintar el fondo y la accesibilidad sin leer refs.
+  const [posado, setPosado] = useState(0);
+
+  const pintarDx = (dx) => {
+    dxActual.current = dx;
+    const el = frenteRef.current;
+    if (el) el.style.transform = dx === 0 ? "" : `translateX(${dx}px)`;
+  };
+
+  const asentar = (dx) => {
+    const el = frenteRef.current;
+    if (el) {
+      el.classList.remove("swipe-arrastrando");
+      el.classList.add("swipe-asentando");
+    }
+    pintarDx(dx);
+  };
+
+  const alPunteroAbajo = (event) => {
+    if (!deslizable || movimientoReducidoActivo()) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    arrastrando.current = true;
+    idPuntero.current = event.pointerId;
+    baseX.current = event.clientX - dxActual.current;
+    const el = frenteRef.current;
+    if (el) {
+      el.classList.add("swipe-arrastrando");
+      el.classList.remove("swipe-asentando");
+    }
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Sin captura disponible: el gesto sigue funcionando con mouse.
+    }
+  };
+
+  const alPunteroMover = (event) => {
+    if (!arrastrando.current || event.pointerId !== idPuntero.current) return;
+    const ancho = event.currentTarget.offsetWidth || 1;
+    let dx = event.clientX - baseX.current;
+    // Sin acción de leer disponible: el deslizamiento a la derecha rebota.
+    if (leida) dx = Math.min(dx, 0);
+    const tope = Math.round(ancho * 0.45);
+    if (dx > tope) dx = tope + Math.round((dx - tope) * 0.3);
+    if (dx < -tope) dx = -tope + Math.round((dx + tope) * 0.3);
+    pintarDx(Math.round(dx));
+  };
+
+  const alPunteroArriba = (event) => {
+    if (!arrastrando.current || event.pointerId !== idPuntero.current) return;
+    arrastrando.current = false;
+    idPuntero.current = null;
+    const ancho = event.currentTarget.offsetWidth || 1;
+    const dx = dxActual.current;
+    if (!leida && dx >= Math.round(ancho * 0.4)) {
+      asentar(0);
+      setPosado(0);
+      onMarcarLeida();
+      anunciar(t("ajustes.notificaciones.leida_anuncio"));
+    } else if (dx <= -Math.round(ancho * 0.4)) {
+      asentar(0);
+      setPosado(0);
+      onEliminar();
+      anunciar(t("ajustes.notificaciones.eliminada_anuncio"));
+    } else if (Math.abs(dx) >= 64) {
+      const fijo = dx > 0 ? 88 : -88;
+      asentar(fijo);
+      setPosado(fijo);
+    } else {
+      asentar(0);
+      setPosado(0);
+    }
+  };
+
+  const cerrarDeslizado = () => {
+    asentar(0);
+    setPosado(0);
+  };
+
+  const alToqueFila = () => {
+    if (modoSeleccion && !esFijada) onToggleSeleccion();
+  };
 
   return (
-    <div
-      className={`group relative flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""}`}
-    >
-      <input
-        type="checkbox"
-        className="sr-only peer"
-        checked={seleccionada}
-        onChange={onToggleSeleccion}
-      />
-      <span
-        className={`shrink-0 mt-0.5 ${tipo.color}`}
-        aria-hidden="true"
+    <div className="swipe-row relative overflow-hidden rounded-xl">
+      {/* Fondo con acciones: leer a la derecha del dedo, eliminar a la izquierda. */}
+      {deslizable && (
+        <div aria-hidden={posado === 0} className="absolute inset-0 flex items-stretch justify-between rounded-xl border border-app-line">
+          <span className="flex items-center bg-emerald-600/25 pl-4 pr-6">
+            {!leida && <Check size={20} className="text-emerald-300" />}
+          </span>
+          <span className="flex items-center bg-rose-600/25 pl-6 pr-4">
+            <Trash2 size={20} className="text-rose-300" />
+          </span>
+        </div>
+      )}
+      <div
+        ref={frenteRef}
+        onPointerDown={alPunteroAbajo}
+        onPointerMove={alPunteroMover}
+        onPointerUp={alPunteroArriba}
+        onPointerCancel={cerrarDeslizado}
+        onClick={alToqueFila}
+        role={modoSeleccion && !esFijada ? "checkbox" : undefined}
+        aria-checked={modoSeleccion && !esFijada ? seleccionada : undefined}
+        aria-label={modoSeleccion && !esFijada ? t("ajustes.notificaciones.seleccionar_item") : undefined}
+        title={!deslizable || movimientoReducidoActivo() ? undefined : t("ajustes.notificaciones.deslizar_pista")}
+        className={`swipe-frente group relative flex items-start gap-3 rounded-xl border bg-app-surface px-3 py-2.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""} ${modoSeleccion && !esFijada ? "cursor-pointer" : ""}`}
       >
-        <Icon size={16} />
-      </span>
+        {modoSeleccion && !esFijada ? (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={seleccionada}
+            aria-label={t("ajustes.notificaciones.seleccionar_item")}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSeleccion();
+            }}
+            className={`touch-target mt-0.5 grid h-12 w-12 shrink-0 place-content-center rounded-xl border transition lg:h-8 lg:w-8 ${
+              seleccionada
+                ? "border-[var(--accent)] bg-[var(--accent)]/20 text-[var(--accent)]"
+                : "border-app-line text-app-muted"
+            }`}
+          >
+            {seleccionada && <Check size={18} strokeWidth={3} />}
+          </button>
+        ) : (
+          <span className={`shrink-0 mt-0.5 ${tipo.color}`} aria-hidden="true">
+            <Icon size={16} />
+          </span>
+        )}
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm font-medium ${leida && !esFijada ? "text-app-muted" : "text-app-fg"}`}>
           {item.titulo}
@@ -95,28 +239,29 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
           <BarraProgresoIA progreso={item.progreso} t={t} />
         )}
       </div>
-      {!esFijada && (
-        <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity peer-checked:opacity-100">
+      {!esFijada && !modoSeleccion && (
+        <div className="flex shrink-0 flex-col gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
           {!leida && (
             <button
               type="button"
               onClick={onMarcarLeida}
-              className="btn-press rounded-lg p-1.5 text-app-muted hover:text-app-fg"
+              className="touch-target btn-press rounded-lg p-1.5 text-app-muted hover:text-app-fg"
               aria-label={t("ajustes.notificaciones.marcar_leida")}
             >
-              <Check size={14} />
+              <Check size={18} />
             </button>
           )}
           <button
             type="button"
             onClick={onEliminar}
-            className="btn-press rounded-lg p-1.5 text-app-muted hover:text-rose-400"
+            className="touch-target btn-press rounded-lg p-1.5 text-app-muted hover:text-rose-400"
             aria-label={t("ajustes.notificaciones.eliminar")}
           >
-            <Trash2 size={14} />
+            <Trash2 size={18} />
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -135,6 +280,8 @@ export default function NotificationPanel({
   const { t } = useIdioma();
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
+  const [anuncio, setAnuncio] = useState("");
+  const anunciar = (mensaje) => setAnuncio(mensaje);
 
   // Mismo comportamiento que AjustesPanel: fondo sin scroll ni interacción,
   // Escape cierra. Sin setState en el cuerpo del efecto.
@@ -176,17 +323,23 @@ export default function NotificationPanel({
         className="anim-fondo-fundido fixed inset-0 z-[65] bg-black/60 backdrop-blur-[2px]"
       />
       <div
-        className="anim-panel-derecha fixed inset-y-0 right-0 z-[70] flex w-[min(24rem,90vw)] flex-col border-l border-app-line bg-app-surface shadow-2xl"
+        className="anim-panel-responsive fixed z-[70] flex flex-col border-app-line bg-app-surface shadow-2xl inset-x-0 bottom-0 top-auto max-h-[85dvh] rounded-t-3xl border-t lg:inset-y-0 lg:right-0 lg:left-auto lg:top-auto lg:bottom-auto lg:max-h-none lg:w-[min(24rem,90vw)] lg:rounded-t-none lg:border-t-0 lg:border-l"
         role="region"
         aria-label={t("ajustes.notificaciones.panel")}
       >
+      {/* Tirador del bottom sheet (solo móvil) */}
+      <div aria-hidden="true" className="pt-2 lg:hidden">
+        <div className="mx-auto h-1 w-10 rounded-full bg-app-line" />
+      </div>
+      {/* Anuncios de lector de pantalla para acciones por gesto */}
+      <p aria-live="polite" role="status" className="sr-only">{anuncio}</p>
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-app-line px-3 py-3">
         <button
           type="button"
           onClick={onCerrar}
           aria-label={t("ajustes.notificaciones.minimizar")}
-          className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
+          className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
         >
           <ChevronLeft size={20} />
         </button>
@@ -197,7 +350,7 @@ export default function NotificationPanel({
           <button
             type="button"
             onClick={() => { setModoSeleccion(false); setSeleccionadas(new Set()); }}
-            className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
+            className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
             aria-label={t("ajustes.notificaciones.cancelar_seleccion")}
           >
             <X size={18} />
@@ -208,14 +361,14 @@ export default function NotificationPanel({
               type="button"
               onClick={onMarcarTodasLeidas}
               disabled={noLeidas === 0}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-app-muted transition hover:bg-app-raised hover:text-app-fg disabled:opacity-40"
+              className="touch-target rounded-lg px-2.5 py-1.5 text-xs font-medium text-app-muted transition hover:bg-app-raised hover:text-app-fg disabled:opacity-40"
             >
               {t("ajustes.notificaciones.marcar_todas_leidas")}
             </button>
             <button
               type="button"
               onClick={() => { setModoSeleccion(true); }}
-              className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
+              className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised hover:text-app-fg"
               aria-label={t("ajustes.notificaciones.seleccionar")}
             >
               <Check size={18} />
@@ -237,10 +390,12 @@ export default function NotificationPanel({
             <NotificacionItem
               key={item.id}
               item={item}
+              modoSeleccion={modoSeleccion}
               seleccionada={seleccionadas.has(item.id)}
               onToggleSeleccion={() => toggleSeleccion(item.id)}
               onEliminar={() => onEliminarUna(item.id)}
               onMarcarLeida={() => onMarcarLeida(item.id)}
+              anunciar={anunciar}
               t={t}
             />
           ))
@@ -268,7 +423,7 @@ export default function NotificationPanel({
           <button
             type="button"
             onClick={borrarSeleccion}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/15 transition"
+            className="touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/15 transition"
           >
             <Trash2 size={14} />
             {t("ajustes.notificaciones.eliminar_seleccionadas", { n: seleccionadas.size })}

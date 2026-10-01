@@ -15,7 +15,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
       title={t("ajustes.notificaciones.titulo")}
       aria-label={t("ajustes.notificaciones.panel")}
       aria-expanded={panelNotifs}
-      className="btn-press relative rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="touch-target btn-press relative rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <MorphIcon icon={panelNotifs ? XData : (hayNuevas ? BellRingData : BellData)} size={21} strokeWidth={2.25} />
       {hayNuevas && (
