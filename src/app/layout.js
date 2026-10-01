@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono, Momo_Trust_Display, LINE_Seed_JP, Readex_Pro, Cal_Sans, Press_Start_2P } from "next/font/google";
+import { Geist, Geist_Mono, LINE_Seed_JP, Readex_Pro, Cal_Sans, Plus_Jakarta_Sans, Outfit, Sora, Space_Grotesk, Inter, Be_Vietnam_Pro, Epilogue } from "next/font/google";
 import { IdiomaProvider } from "@/lib/i18n";
 import "./globals.css";
 import "./themes.css";
@@ -16,13 +16,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Tipografías seleccionables (Ajustes > Lectura). Momo Trust Display es la
-// predeterminada absoluta; las 5 viven como variables para --fuente-app.
-const fuenteMomo = Momo_Trust_Display({ variable: "--font-momo", subsets: ["latin"], weight: ["400"] });
+// Tipografías seleccionables (Ajustes > Lectura). Readex Pro es la
+// predeterminada absoluta; las 10 viven como variables para --fuente-app.
 const fuenteLine = LINE_Seed_JP({ variable: "--font-line", subsets: ["latin"], weight: ["400", "700"] });
 const fuenteReadex = Readex_Pro({ variable: "--font-readex", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const fuenteCalSans = Cal_Sans({ variable: "--font-calsans", subsets: ["latin"], weight: ["400"] });
-const fuentePressStart = Press_Start_2P({ variable: "--font-pressstart", subsets: ["latin"], weight: ["400"] });
+const fuenteJakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteOutfit = Outfit({ variable: "--font-outfit", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteSora = Sora({ variable: "--font-sora", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteGrotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteInter = Inter({ variable: "--font-inter", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteVietnam = Be_Vietnam_Pro({ variable: "--font-vietnam", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fuenteEpilogue = Epilogue({ variable: "--font-epilogue", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata = {
   title: "RSS Dashboard — Lector RSS",
@@ -57,7 +62,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${fuenteMomo.variable} ${fuenteLine.variable} ${fuenteReadex.variable} ${fuenteCalSans.variable} ${fuentePressStart.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fuenteLine.variable} ${fuenteReadex.variable} ${fuenteCalSans.variable} ${fuenteJakarta.variable} ${fuenteOutfit.variable} ${fuenteSora.variable} ${fuenteGrotesk.variable} ${fuenteInter.variable} ${fuenteVietnam.variable} ${fuenteEpilogue.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

@@ -1,13 +1,19 @@
 // src/lib/fuentes.js — Catálogo de tipografías de la app y persistencia (cliente).
-// Momo Trust Display es la predeterminada absoluta; el usuario alterna entre
-// las 5 desde Ajustes > Lectura. Se aplica vía dataset.fuente en <html> +
+// Readex Pro es la predeterminada absoluta; el usuario alterna entre las 10
+// desde Ajustes > Lectura. Se aplica vía dataset.fuente en <html> +
 // --fuente-app en CSS (ver globals.css). Patrón espejo de lib/temas.js.
+// Nota: una fuente guardada de un catálogo anterior cae a la predeterminada.
 export const FUENTES = [
   { id: "readex", nombre: "Readex Pro", variable: "--font-readex", weights: [400, 500, 600, 700] },
-  { id: "momo", nombre: "Momo Trust Display", variable: "--font-momo", weights: [400] },
   { id: "line", nombre: "LINE Seed JP", variable: "--font-line", weights: [400, 700] },
   { id: "calsans", nombre: "Cal Sans", variable: "--font-calsans", weights: [400] },
-  { id: "pressstart", nombre: "Press Start 2P", variable: "--font-pressstart", weights: [400] },
+  { id: "jakarta", nombre: "Plus Jakarta Sans", variable: "--font-jakarta", weights: [400, 500, 600, 700] },
+  { id: "outfit", nombre: "Outfit", variable: "--font-outfit", weights: [400, 500, 600, 700] },
+  { id: "sora", nombre: "Sora", variable: "--font-sora", weights: [400, 500, 600, 700] },
+  { id: "grotesk", nombre: "Space Grotesk", variable: "--font-grotesk", weights: [400, 500, 600, 700] },
+  { id: "inter", nombre: "Inter", variable: "--font-inter", weights: [400, 500, 600, 700] },
+  { id: "vietnam", nombre: "Be Vietnam Pro", variable: "--font-vietnam", weights: [400, 500, 600, 700] },
+  { id: "epilogue", nombre: "Epilogue", variable: "--font-epilogue", weights: [400, 500, 600, 700] },
 ];
 
 export const FUENTE_POR_DEFECTO = "readex";

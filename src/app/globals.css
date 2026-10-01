@@ -66,20 +66,32 @@ body {
 [data-fuente="readex"] {
   --fuente-app: var(--font-readex);
 }
-[data-fuente="momo"] {
-  --fuente-app: var(--font-momo);
-}
 [data-fuente="line"] {
   --fuente-app: var(--font-line);
-}
-[data-fuente="readex"] {
-  --fuente-app: var(--font-readex);
 }
 [data-fuente="calsans"] {
   --fuente-app: var(--font-calsans);
 }
-[data-fuente="pressstart"] {
-  --fuente-app: var(--font-pressstart);
+[data-fuente="jakarta"] {
+  --fuente-app: var(--font-jakarta);
+}
+[data-fuente="outfit"] {
+  --fuente-app: var(--font-outfit);
+}
+[data-fuente="sora"] {
+  --fuente-app: var(--font-sora);
+}
+[data-fuente="grotesk"] {
+  --fuente-app: var(--font-grotesk);
+}
+[data-fuente="inter"] {
+  --fuente-app: var(--font-inter);
+}
+[data-fuente="vietnam"] {
+  --fuente-app: var(--font-vietnam);
+}
+[data-fuente="epilogue"] {
+  --fuente-app: var(--font-epilogue);
 }
 
 /* Jerarquía estricta títulos/subtítulos/cuerpo sobre la fuente activa. */
