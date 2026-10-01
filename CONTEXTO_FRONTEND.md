@@ -46,7 +46,7 @@ Dueño del archivo: IA Frontend. Leerlo al iniciar cada sesión del proyecto.
   `categoryClassifier.js` (catálogo de 25, única fuente), `webToRss.js`
   (fallback de conversión SOLO al dar de alta sin feed nativo; el refresh
   es del backend), `fetchCache.js` (dedupe+TTL+SWR client-side), `push.js`
-  (envío VAPID), `temas.js` + `themes.css` + `globals.css` (8 temas),
+  (envío VAPID), `temas.js` + `themes.css` + `globals.css` (12 temas: 6+6),
   `i18n.js` (solo español), resto utilidades.
 - Componentes/páginas: dashboard, lector modal, modales (fuentes, ajustes,
   onboarding, perfil), login/register/recuperar, not-found.
@@ -90,7 +90,7 @@ Dueño del archivo: IA Frontend. Leerlo al iniciar cada sesión del proyecto.
 
 ## 5. Convenciones UI propias (no "corregir" sin acuerdo)
 
-- 8 temas con identidad fija; profundidad solo con filetes (cero orbes,
+- 12 temas con identidad fija (6 oscuros + 6 claros); profundidad solo con filetes (cero orbes,
   glows, spotlights, bezels dobles, pills eyebrow). Tokens `app-*`;
   grises/sky remapeados por tema en `themes.css`.
 - Insignias de categoría por hash con variantes CSS claro/oscuro

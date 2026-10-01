@@ -1,6 +1,6 @@
 // src/app/components/SelectorTemas.js — Selector de temas integrado al panel.
-// Botones planos con el fondo del panel (sin colores distintivos): solo
-// títulos limpios + indicador de selección. Secciones Oscuros / Claros.
+// 12 temas en 2 grupos simétricos (6 oscuros + 6 claros) con muestra de
+// color por variable CSS. Sincronización instantánea vía onTema → aplicarTema.
 "use client";
 
 import { TEMAS } from "@/lib/temas";
@@ -23,9 +23,10 @@ export default function SelectorTemas({ tema, onTema }) {
         role="radio"
         aria-checked={activo}
         aria-label={`${item.nombre}, ${modo}`}
+        title={`${item.nombre} · ${item.bg} / ${item.accent}`}
         onClick={() => onTema(item.id)}
         className={[
-          "group flex w-full min-w-0 items-center gap-3 rounded-xl border px-4 py-2 text-left",
+          "group flex w-full min-w-0 items-center gap-3 rounded-xl border px-3 py-2 text-left",
           "transition-colors duration-200 ease-out",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
           activo
@@ -33,6 +34,16 @@ export default function SelectorTemas({ tema, onTema }) {
             : "border-transparent bg-transparent hover:bg-app-raised/40",
         ].join(" ")}
       >
+        <span
+          aria-hidden="true"
+          className="grid h-8 w-8 shrink-0 place-content-center rounded-lg border border-app-line"
+          style={{ backgroundColor: item.bg }}
+        >
+          <span
+            className="block h-3.5 w-3.5 rounded-full border border-white/20"
+            style={{ backgroundColor: item.accent }}
+          />
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold leading-tight text-app-fg">
             {item.nombre}
@@ -62,18 +73,18 @@ export default function SelectorTemas({ tema, onTema }) {
         <p className="text-xs leading-relaxed text-app-muted">{t("ajustes.apariencia_nota")}</p>
       </div>
 
-      {/* Oscuros — una fila, ancho completo */}
+      {/* Oscuros — 6 temas, rejilla compacta de 2 columnas */}
       <div className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-app-muted/50">Oscuros</p>
-        <div className="grid grid-cols-1 gap-1.5" role="radiogroup" aria-label={t("ajustes.tema_grupo") + " — oscuros"}>
+        <p className="text-xs font-semibold text-app-muted">Oscuros · 6</p>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2" role="radiogroup" aria-label={t("ajustes.tema_grupo") + " — oscuros"}>
           {oscuros.map(renderBoton)}
         </div>
       </div>
 
-      {/* Claros — una fila, ancho completo */}
+      {/* Claros — 6 temas, rejilla compacta de 2 columnas */}
       <div className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-app-muted/50">Claros</p>
-        <div className="grid grid-cols-1 gap-1.5" role="radiogroup" aria-label={t("ajustes.tema_grupo") + " — claros"}>
+        <p className="text-xs font-semibold text-app-muted">Claros · 6</p>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2" role="radiogroup" aria-label={t("ajustes.tema_grupo") + " — claros"}>
           {claros.map(renderBoton)}
         </div>
       </div>

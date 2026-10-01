@@ -48,8 +48,8 @@ export const viewport = {
   viewportFit: "cover",
   // Fallback oscuro; aplicarTema() lo actualiza por tema (claros incluidos).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e6e7da" },
-    { media: "(prefers-color-scheme: dark)", color: "#070b12" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f5f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#060b14" },
   ],
 };
 

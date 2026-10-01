@@ -398,7 +398,38 @@ textarea:focus-visible {
 /* ============ Sistema de pulido UI (skills: emil + high-end + taste) ============
    Solo transform/opacity en animaciones (GPU), curvas personalizadas,
    estados de presión físicos y respeto a movimiento reducido. Usa tokens
-   var(--*) para seguir a los 8 temas sin valores crudos. */
+   var(--*) para seguir a los 12 temas sin valores crudos. */
+
+/* Transición fluida entre temas: solo color de fondo/borde/texto durante
+   ~300ms (la clase la alterna aplicarTema(); sin re-renders, solo CSS). */
+html.tema-anim body,
+html.tema-anim .bezel-outer,
+html.tema-anim .github-float-link,
+html.tema-anim button,
+html.tema-anim a,
+html.tema-anim input,
+html.tema-anim select,
+html.tema-anim textarea {
+  transition: background-color 280ms var(--ease-out), border-color 280ms var(--ease-out),
+    color 220ms var(--ease-out), box-shadow 280ms var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  html.tema-anim body,
+  html.tema-anim .bezel-outer,
+  html.tema-anim .github-float-link,
+  html.tema-anim button,
+  html.tema-anim a,
+  html.tema-anim input,
+  html.tema-anim select,
+  html.tema-anim textarea {
+    transition: none;
+  }
+}
+[data-motion="reduced"].tema-anim body,
+[data-motion="reduced"].tema-anim button,
+[data-motion="reduced"].tema-anim a {
+  transition: none;
+}
 
 /* Presión física: botones y controles responden al tacto (<300ms, ease-out). */
 .btn-press {

@@ -61,7 +61,7 @@ function NotificacionItem({ item, seleccionada, onToggleSeleccion, onEliminar, o
 
   return (
     <div
-      className={`group relative flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""}`}
+      className={`group relative flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""}`}
     >
       <input
         type="checkbox"

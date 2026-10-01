@@ -192,7 +192,7 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
     <div
       id={`noticia-${art.id}`}
       style={{ "--stagger-delay": `${Math.min(indice * 20, 200)}ms` }}
-      className={`tarjeta-noticia stagger-in card-lift group rounded-2xl border p-4 transition-all duration-200 ${
+      className={`tarjeta-noticia stagger-in card-lift group rounded-2xl border p-4 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${
         activo
           ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/50 bg-app-surface/90 shadow-md"
           : "border-app-line/80 bg-app-surface/70 hover:border-app-line hover:bg-app-surface"

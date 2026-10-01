@@ -1,22 +1,392 @@
+/* Catálogo de 12 temas simétricos (6 oscuros + 6 claros).
+   Tokens por tema: superficies, texto, bordes y acento + remapeos
+   gray/sky para componentes Tailwind. Profundidad solo con filetes. */
+
+/* ============ MEDIANOCHE (azul profundo + cian) — oscuro ============ */
 [data-theme="medianoche"] {
   color-scheme: dark;
-  --color-sky-600: #0074b8;
-  --color-gray-500: #828a94;
-  --color-gray-950: #070b12;
-  --color-gray-900: #0d1420;
-  --color-gray-800: #121c2b;
-  --color-gray-700: #243247;
+  --background: #060b14;
+  --foreground: #e8eef6;
+  --surface: #0c1524;
+  --surface-raised: #122036;
+  --border: #24344d;
+  --muted: #93a3bb;
+  --accent: #38bdf8;
+  --accent-strong: #0ea5e9;
+  --on-accent-strong: #04121e;
+  --accent-ink: #a5e3fc;
+  --ink: #ffffff;
+
+  --color-gray-950: #060b14;
+  --color-gray-900: #0c1524;
+  --color-gray-800: #122036;
+  --color-gray-700: #24344d;
   --color-gray-600: #3b4c63;
-  --color-gray-400: #91a0b5;
+  --color-gray-500: #828a94;
+  --color-gray-400: #93a3bb;
   --color-gray-300: #c3cfdd;
   --color-gray-200: #dbe4ef;
-  --color-gray-100: #e7edf5;
-  --color-sky-500: #27a9e8;
-  --color-sky-400: #5cc6f5;
-  --color-sky-300: #9fdcfc;
+  --color-gray-100: #e8eef6;
+
+  --color-sky-600: #0284c7;
+  --color-sky-500: #0ea5e9;
+  --color-sky-400: #38bdf8;
+  --color-sky-300: #7dd3fc;
 }
 
-/* Toasts y overlays siguen al tema (antes fijos a sky/rose-950 oscuros). */
+/* ============ DUNA (gris cálido + terracota/crema) — oscuro ============ */
+[data-theme="duna"] {
+  color-scheme: dark;
+  --background: #201d1b;
+  --foreground: #f0e8dd;
+  --surface: #2e2a27;
+  --surface-raised: #3b342f;
+  --border: #57493f;
+  --muted: #b7a898;
+  --accent: #d08a52;
+  --accent-strong: #c47d50;
+  --on-accent-strong: #241610;
+  --accent-ink: #f0c9a3;
+  --ink: #f0e8dd;
+
+  --color-gray-950: #201d1b;
+  --color-gray-900: #2e2a27;
+  --color-gray-800: #3b342f;
+  --color-gray-700: #57493f;
+  --color-gray-600: #6f6259;
+  --color-gray-500: #a89e93;
+  --color-gray-400: #b7a898;
+  --color-gray-300: #d3c9be;
+  --color-gray-200: #e6ded4;
+  --color-gray-100: #f0e8dd;
+
+  --color-sky-600: #a8643a;
+  --color-sky-500: #c47d50;
+  --color-sky-400: #d99a6d;
+  --color-sky-300: #e8b48c;
+}
+
+/* ============ MINERAL (pizarra + salvia) — oscuro ============ */
+[data-theme="mineral"] {
+  color-scheme: dark;
+  --background: #1b2229;
+  --foreground: #e9eeef;
+  --surface: #2a3540;
+  --surface-raised: #35434f;
+  --border: #4a5c6a;
+  --muted: #9fb0bc;
+  --accent: #a8cbbf;
+  --accent-strong: #9dc3b6;
+  --on-accent-strong: #10201b;
+  --accent-ink: #d6e9e1;
+  --ink: #e9eeef;
+
+  --color-gray-950: #1b2229;
+  --color-gray-900: #2a3540;
+  --color-gray-800: #35434f;
+  --color-gray-700: #4a5c6a;
+  --color-gray-600: #647684;
+  --color-gray-500: #9fb0bc;
+  --color-gray-400: #b3c2cc;
+  --color-gray-300: #cbd5db;
+  --color-gray-200: #dde3e7;
+  --color-gray-100: #e9eeef;
+
+  --color-sky-600: #7fa8a4;
+  --color-sky-500: #9dc3b6;
+  --color-sky-400: #b5d3c9;
+  --color-sky-300: #cfe3dc;
+}
+
+/* ============ BOSQUE (verde profundo + esmeralda) — oscuro ============ */
+[data-theme="bosque"] {
+  color-scheme: dark;
+  --background: #0f241c;
+  --foreground: #e9f3eb;
+  --surface: #1b3a2e;
+  --surface-raised: #24493a;
+  --border: #38614d;
+  --muted: #96b7a2;
+  --accent: #34d399;
+  --accent-strong: #10b981;
+  --on-accent-strong: #06231a;
+  --accent-ink: #a7f3d0;
+  --ink: #e9f3eb;
+
+  --color-gray-950: #0f241c;
+  --color-gray-900: #1b3a2e;
+  --color-gray-800: #24493a;
+  --color-gray-700: #38614d;
+  --color-gray-600: #54816d;
+  --color-gray-500: #a9cbb3;
+  --color-gray-400: #96b7a2;
+  --color-gray-300: #bcd3c2;
+  --color-gray-200: #d9e8dd;
+  --color-gray-100: #e9f3eb;
+
+  --color-sky-600: #059669;
+  --color-sky-500: #10b981;
+  --color-sky-400: #34d399;
+  --color-sky-300: #6ee7b7;
+}
+
+/* ============ ÉBANO (casi negro + turquesa) — oscuro ============ */
+[data-theme="ebano"] {
+  color-scheme: dark;
+  --background: #0e0d16;
+  --foreground: #ececf5;
+  --surface: #1b1a2a;
+  --surface-raised: #242338;
+  --border: #3d3c5a;
+  --muted: #a6a4c4;
+  --accent: #45c4b8;
+  --accent-strong: #2aa8a0;
+  --on-accent-strong: #04211f;
+  --accent-ink: #a7e8e1;
+  --ink: #ececf5;
+
+  --color-gray-950: #0e0d16;
+  --color-gray-900: #1b1a2a;
+  --color-gray-800: #242338;
+  --color-gray-700: #3d3c5a;
+  --color-gray-600: #5b5978;
+  --color-gray-500: #a9a8c6;
+  --color-gray-400: #a6a4c4;
+  --color-gray-300: #c6c5da;
+  --color-gray-200: #dddcea;
+  --color-gray-100: #ececf5;
+
+  --color-sky-600: #0d9488;
+  --color-sky-500: #2aa8a0;
+  --color-sky-400: #45c4b8;
+  --color-sky-300: #8fe3dc;
+}
+
+/* ============ OBSIDIANA (carbón + dorado) — oscuro ============ */
+[data-theme="obsidiana"] {
+  color-scheme: dark;
+  --background: #0c0b09;
+  --foreground: #f2ece0;
+  --surface: #191612;
+  --surface-raised: #231e17;
+  --border: #3e362a;
+  --muted: #b3a48e;
+  --accent: #d4a24e;
+  --accent-strong: #c9973f;
+  --on-accent-strong: #221503;
+  --accent-ink: #f0d29a;
+  --ink: #f2ece0;
+
+  --color-gray-950: #0c0b09;
+  --color-gray-900: #191612;
+  --color-gray-800: #231e17;
+  --color-gray-700: #3e362a;
+  --color-gray-600: #5f5340;
+  --color-gray-500: #a89a80;
+  --color-gray-400: #b3a48e;
+  --color-gray-300: #d3c6ae;
+  --color-gray-200: #e6dcc4;
+  --color-gray-100: #f2ece0;
+
+  --color-sky-600: #b45309;
+  --color-sky-500: #c9973f;
+  --color-sky-400: #d4a24e;
+  --color-sky-300: #e8c37c;
+}
+
+/* ============ CELESTE (marfil + petróleo/azul suave) — CLARO ============ */
+[data-theme="celeste"] {
+  color-scheme: light;
+  --background: #f7f5f0;
+  --foreground: #232a2e;
+  --surface: #fdfcf9;
+  --surface-raised: #ece8dd;
+  --border: #d8d2c2;
+  --muted: #5d6b72;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --on-accent-strong: #f2faf8;
+  --accent-ink: #0b4f4a;
+  --ink: #232a2e;
+
+  --color-gray-950: #f7f5f0;
+  --color-gray-900: #fdfcf9;
+  --color-gray-800: #ece8dd;
+  --color-gray-700: #d8d2c2;
+  --color-gray-600: #b3aa94;
+  --color-gray-500: #5d6b72;
+  --color-gray-400: #47555b;
+  --color-gray-300: #334046;
+  --color-gray-200: #2a353a;
+  --color-gray-100: #232a2e;
+
+  --color-sky-600: #0f766e;
+  --color-sky-500: #2563eb;
+  --color-sky-400: #0e7490;
+  --color-sky-300: #155e75;
+}
+
+/* ============ MENTA (blanco crema + verde bosque) — CLARO ============ */
+[data-theme="menta"] {
+  color-scheme: light;
+  --background: #f6f9f4;
+  --foreground: #1c2a21;
+  --surface: #ffffff;
+  --surface-raised: #e3ede3;
+  --border: #c4d4c3;
+  --muted: #58705d;
+  --accent: #2f6b3c;
+  --accent-strong: #275d33;
+  --on-accent-strong: #f0f8f0;
+  --accent-ink: #1e4d2a;
+  --ink: #1c2a21;
+
+  --color-gray-950: #f6f9f4;
+  --color-gray-900: #ffffff;
+  --color-gray-800: #e3ede3;
+  --color-gray-700: #c4d4c3;
+  --color-gray-600: #9caea7;
+  --color-gray-500: #58705d;
+  --color-gray-400: #43564e;
+  --color-gray-300: #2c3d37;
+  --color-gray-200: #232f2b;
+  --color-gray-100: #1c2a21;
+
+  --color-sky-600: #2f6b3c;
+  --color-sky-500: #359e49;
+  --color-sky-400: #227434;
+  --color-sky-300: #1a5c2a;
+}
+
+/* ============ CELADÓN (gris cálido + verde natural) — CLARO ============ */
+[data-theme="celadon"] {
+  color-scheme: light;
+  --background: #f1f3ec;
+  --foreground: #22291f;
+  --surface: #fafbf6;
+  --surface-raised: #e0e5d5;
+  --border: #c6cdb4;
+  --muted: #62705c;
+  --accent: #3f7a44;
+  --accent-strong: #2f7a38;
+  --on-accent-strong: #f1f9f1;
+  --accent-ink: #245c2b;
+  --ink: #22291f;
+
+  --color-gray-950: #f1f3ec;
+  --color-gray-900: #fafbf6;
+  --color-gray-800: #e0e5d5;
+  --color-gray-700: #c6cdb4;
+  --color-gray-600: #9aa78f;
+  --color-gray-500: #62705c;
+  --color-gray-400: #4a5744;
+  --color-gray-300: #35402f;
+  --color-gray-200: #2a3326;
+  --color-gray-100: #22291f;
+
+  --color-sky-600: #2f7a38;
+  --color-sky-500: #3f7a44;
+  --color-sky-400: #2c6b32;
+  --color-sky-300: #225627;
+}
+
+/* ============ MARFIL (arena + café tostado) — CLARO ============ */
+[data-theme="marfil"] {
+  color-scheme: light;
+  --background: #f3ede1;
+  --foreground: #2e2620;
+  --surface: #fbf8f0;
+  --surface-raised: #e7dcc6;
+  --border: #d3c3a6;
+  --muted: #77685a;
+  --accent: #8a5a2b;
+  --accent-strong: #7a4e24;
+  --on-accent-strong: #fbf3e6;
+  --accent-ink: #5c3d1c;
+  --ink: #2e2620;
+
+  --color-gray-950: #f3ede1;
+  --color-gray-900: #fbf8f0;
+  --color-gray-800: #e7dcc6;
+  --color-gray-700: #d3c3a6;
+  --color-gray-600: #b3a184;
+  --color-gray-500: #77685a;
+  --color-gray-400: #5c5045;
+  --color-gray-300: #463c33;
+  --color-gray-200: #382f27;
+  --color-gray-100: #2e2620;
+
+  --color-sky-600: #8a5a2b;
+  --color-sky-500: #a06a35;
+  --color-sky-400: #7a4e24;
+  --color-sky-300: #5f3c1c;
+}
+
+/* ============ VAINILLA (crema cálido + ámbar/carbón) — CLARO ============ */
+[data-theme="vainilla"] {
+  color-scheme: light;
+  --background: #faf3e3;
+  --foreground: #2b2721;
+  --surface: #fffcf4;
+  --surface-raised: #f0e2c2;
+  --border: #ddc99e;
+  --muted: #7a6f5e;
+  --accent: #b45309;
+  --accent-strong: #92400e;
+  --on-accent-strong: #fffbeb;
+  --accent-ink: #78350f;
+  --ink: #2b2721;
+
+  --color-gray-950: #faf3e3;
+  --color-gray-900: #fffcf4;
+  --color-gray-800: #f0e2c2;
+  --color-gray-700: #ddc99e;
+  --color-gray-600: #c0a878;
+  --color-gray-500: #7a6f5e;
+  --color-gray-400: #5e5546;
+  --color-gray-300: #484134;
+  --color-gray-200: #38332a;
+  --color-gray-100: #2b2721;
+
+  --color-sky-600: #b45309;
+  --color-sky-500: #d97706;
+  --color-sky-400: #92400e;
+  --color-sky-300: #78350f;
+}
+
+/* ============ ALABASTRO (blanco puro + eucalipto) — CLARO ============ */
+[data-theme="alabastro"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #1e2a26;
+  --surface: #f7faf8;
+  --surface-raised: #e6efe9;
+  --border: #c9d9cf;
+  --muted: #5e726b;
+  --accent: #3e7c5b;
+  --accent-strong: #2f6a4c;
+  --on-accent-strong: #f0f9f4;
+  --accent-ink: #1f4d38;
+  --ink: #1e2a26;
+
+  --color-gray-950: #ffffff;
+  --color-gray-900: #f7faf8;
+  --color-gray-800: #e6efe9;
+  --color-gray-700: #c9d9cf;
+  --color-gray-600: #a3b8ab;
+  --color-gray-500: #5e726b;
+  --color-gray-400: #48594f;
+  --color-gray-300: #33403a;
+  --color-gray-200: #29332f;
+  --color-gray-100: #1e2a26;
+
+  --color-sky-600: #3e7c5b;
+  --color-sky-500: #4c946d;
+  --color-sky-400: #2f6a4c;
+  --color-sky-300: #24573d;
+}
+
+/* Toasts y overlays siguen al tema. */
 .toast-app {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -28,168 +398,10 @@
   color: var(--foreground);
 }
 
-/* ============ DUNA (Dune #363232 + Copperfield #C47D50) — oscuro ============ */
-[data-theme="duna"] {
-  color-scheme: dark;
-  --background: #211f1f;
-  --foreground: #ece5dd;
-  --surface: #363232;
-  --surface-raised: #443c38;
-  --border: #57504b;
-  --muted: #b3a89e;
-  --accent: #c47d50;
-  --accent-strong: #c47d50;
-  --on-accent-strong: #241a12;
-  --accent-ink: #eec39a;
-  --ink: #ece5dd;
-
-  --color-gray-950: #211f1f;
-  --color-gray-900: #363232;
-  --color-gray-800: #443c38;
-  --color-gray-700: #57504b;
-  --color-gray-600: #6f665e;
-  --color-gray-500: #a89e93;
-  --color-gray-400: #b3a89e;
-  --color-gray-300: #d3c9be;
-  --color-gray-200: #e6ded4;
-  --color-gray-100: #ece5dd;
-
-  --color-sky-600: #a8643a;
-  --color-sky-500: #c47d50;
-  --color-sky-400: #d99a6d;
-  --color-sky-300: #e8b48c;
-}
-
-/* ============ MINERAL (Mineral Green #355448 + Jet Stream #BDD9D7) — oscuro ============ */
-[data-theme="mineral"] {
-  color-scheme: dark;
-  --background: #1d2b26;
-  --foreground: #e9f2ec;
-  --surface: #355448;
-  --surface-raised: #415d53;
-  --border: #4e675a;
-  --muted: #9db8ab;
-  --accent: #bdd9d7;
-  --accent-strong: #bdd9d7;
-  --on-accent-strong: #12241f;
-  --accent-ink: #d8ece7;
-  --ink: #e9f2ec;
-
-  --color-gray-950: #1d2b26;
-  --color-gray-900: #355448;
-  --color-gray-800: #415d53;
-  --color-gray-700: #4e675a;
-  --color-gray-600: #648074;
-  --color-gray-500: #b9cdc1;
-  --color-gray-400: #c3d4c9;
-  --color-gray-300: #d5e2d9;
-  --color-gray-200: #dbe7df;
-  --color-gray-100: #e9f2ec;
-
-  --color-sky-600: #7fa8a4;
-  --color-sky-500: #bdd9d7;
-  --color-sky-400: #cfe3e0;
-  --color-sky-300: #dcefee;
-}
-
-/* ============ BOSQUE (Te Papa Green #244B40 + Apple #28B330) — oscuro ============ */
-[data-theme="bosque"] {
-  color-scheme: dark;
-  --background: #132a22;
-  --foreground: #e8f3ec;
-  --surface: #244b40;
-  --surface-raised: #2e5a4d;
-  --border: #3d6f5e;
-  --muted: #93b8a4;
-  --accent: #3aa244;
-  --accent-strong: #3aa244;
-  --on-accent-strong: #0c1f14;
-  --accent-ink: #a9ecb3;
-  --ink: #e8f3ec;
-
-  --color-gray-950: #132a22;
-  --color-gray-900: #244b40;
-  --color-gray-800: #2e5a4d;
-  --color-gray-700: #3d6f5e;
-  --color-gray-600: #54816d;
-  --color-gray-500: #a9cbb3;
-  --color-gray-400: #9dc2ae;
-  --color-gray-300: #bcd3c2;
-  --color-gray-200: #d9e8dd;
-  --color-gray-100: #e8f3ec;
-
-  --color-sky-600: #2f8f38;
-  --color-sky-500: #3aa244;
-  --color-sky-400: #5cb862;
-  --color-sky-300: #8fd694;
-}
-
-/* ============ ÉBANO (Ebony Clay #28263E + Java #36B4AE) — oscuro ============ */
-[data-theme="ebano"] {
-  color-scheme: dark;
-  --background: #191827;
-  --foreground: #ebebf5;
-  --surface: #28263e;
-  --surface-raised: #34324c;
-  --border: #46445f;
-  --muted: #a3a1c2;
-  --accent: #36b4ae;
-  --accent-strong: #36b4ae;
-  --on-accent-strong: #06211f;
-  --accent-ink: #a5e6e0;
-  --ink: #ebebf5;
-
-  --color-gray-950: #191827;
-  --color-gray-900: #28263e;
-  --color-gray-800: #34324c;
-  --color-gray-700: #46445f;
-  --color-gray-600: #5b5978;
-  --color-gray-500: #a9a8c6;
-  --color-gray-400: #a3a1c2;
-  --color-gray-300: #c6c5da;
-  --color-gray-200: #dddcea;
-  --color-gray-100: #ebebf5;
-
-  --color-sky-600: #3fb3ac;
-  --color-sky-500: #45bcb5;
-  --color-sky-400: #5fd3cc;
-  --color-sky-300: #8fe3dc;
-}
-
-/* ============ CELESTE (Celeste #D2D3C5 + Eagle #AEB7A0) — CLARO ============ */
-[data-theme="celeste"] {
-  color-scheme: light;
-  --background: #e6e7da;
-  --foreground: #22271e;
-  --surface: #f0f1e6;
-  --surface-raised: #d9dcc9;
-  --border: #c2c5ae;
-  --muted: #68705f;
-  --accent: #5c6850;
-  --accent-strong: #55624a;
-  --on-accent-strong: #f4f5ea;
-  --accent-ink: #42503a;
-  --ink: #22271e;
-
-  --color-gray-950: #e6e7da;
-  --color-gray-900: #f0f1e6;
-  --color-gray-800: #d9dcc9;
-  --color-gray-700: #c2c5ae;
-  --color-gray-600: #a3a78f;
-  --color-gray-500: #68705f;
-  --color-gray-400: #4c5343;
-  --color-gray-300: #333a2b;
-  --color-gray-200: #292f23;
-  --color-gray-100: #22271e;
-
-  --color-sky-600: #5c6850;
-  --color-sky-500: #6f7a5f;
-  --color-sky-400: #4d5a43;
-  --color-sky-300: #3f4c37;
-
-  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
-     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
-     oscuros conservan los valores originales). */
+/* ---- Remapeos comunes a los 6 temas claros (una sola vía) ---- */
+/* En temas claros los 200-400 fijos de Tailwind quedan ilegibles sobre
+   superficies claras; se oscurecen aquí. Los oscuros conservan originales. */
+[data-tema-claro="1"] {
   --color-amber-200: #92400e;
   --color-amber-300: #b45309;
   --color-amber-400: #b45309;
@@ -200,147 +412,27 @@
   --color-rose-400: #be123c;
 }
 /* Texto principal: de blanco a tinta (los botones de acento/rojo la recuperan abajo). */
-[data-theme="celeste"] .text-white {
+[data-tema-claro="1"] .text-white {
   color: var(--ink);
 }
-[data-theme="celeste"] .hover\:text-white:hover {
+[data-tema-claro="1"] .hover\:text-white:hover {
   color: var(--ink);
 }
-[data-theme="celeste"] .bg-sky-600,
-[data-theme="celeste"] .bg-sky-500,
-[data-theme="celeste"] .bg-sky-600\/90 {
+[data-tema-claro="1"] .bg-sky-600,
+[data-tema-claro="1"] .bg-sky-500,
+[data-tema-claro="1"] .bg-sky-600\/90 {
   color: var(--on-accent-strong);
 }
-[data-theme="celeste"] .bg-red-700 {
-  color: #fff;
-}
-
-/* ============ MENTA (Jet Stream #BDD9D7 + Mineral #355448) — CLARO ============ */
-[data-theme="menta"] {
-  color-scheme: light;
-  --background: #e2ede9;
-  --foreground: #1b2522;
-  --surface: #eef4f1;
-  --surface-raised: #d5e2dd;
-  --border: #bccbc5;
-  --muted: #5f726b;
-  --accent: #2c4a3e;
-  --accent-strong: #33584d;
-  --on-accent-strong: #eef5f2;
-  --accent-ink: #26463b;
-  --ink: #1b2522;
-
-  --color-gray-950: #e2ede9;
-  --color-gray-900: #eef4f1;
-  --color-gray-800: #d5e2dd;
-  --color-gray-700: #bccbc5;
-  --color-gray-600: #9caea7;
-  --color-gray-500: #5f726b;
-  --color-gray-400: #43564e;
-  --color-gray-300: #2c3d37;
-  --color-gray-200: #232f2b;
-  --color-gray-100: #1b2522;
-
-  --color-sky-600: #2c4a3e;
-  --color-sky-500: #355448;
-  --color-sky-400: #27453a;
-  --color-sky-300: #1d332b;
-
-  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
-     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
-     oscuros conservan los valores originales). */
-  --color-amber-200: #92400e;
-  --color-amber-300: #b45309;
-  --color-amber-400: #b45309;
-  --color-red-300: #b91c1c;
-  --color-red-400: #b91c1c;
-  --color-emerald-300: #047857;
-  --color-emerald-400: #047857;
-  --color-rose-400: #be123c;
-}
-[data-theme="menta"] .text-white {
-  color: var(--ink);
-}
-[data-theme="menta"] .hover\:text-white:hover {
-  color: var(--ink);
-}
-[data-theme="menta"] .bg-sky-600,
-[data-theme="menta"] .bg-sky-500,
-[data-theme="menta"] .bg-sky-600\/90 {
-  color: var(--on-accent-strong);
-}
-[data-theme="menta"] .bg-red-700 {
-  color: #fff;
-}
-
-/* ============ CELADÓN (Fern #55B564 + Celadon claro) — CLARO ============ */
-[data-theme="celadon"] {
-  color-scheme: light;
-  --background: #e0f0dd;
-  --foreground: #1b2a1f;
-  --surface: #eef7ec;
-  --surface-raised: #d3e6d0;
-  --border: #b3cbb0;
-  --muted: #52705a;
-  --accent: #277636;
-  --accent-strong: #357a45;
-  --on-accent-strong: #f2faf3;
-  --accent-ink: #245c31;
-  --ink: #1b2a1f;
-
-  --color-gray-950: #e0f0dd;
-  --color-gray-900: #eef7ec;
-  --color-gray-800: #d3e6d0;
-  --color-gray-700: #b3cbb0;
-  --color-gray-600: #8faa8b;
-  --color-gray-500: #52705a;
-  --color-gray-400: #3c5942;
-  --color-gray-300: #2b4330;
-  --color-gray-200: #223626;
-  --color-gray-100: #1b2a1f;
-
-  --color-sky-600: #277636;
-  --color-sky-500: #359e49;
-  --color-sky-400: #227434;
-  --color-sky-300: #1a5c2a;
-
-  /* Tonos cálidos/de estado: en temas claros los 200-400 fijos de Tailwind
-     quedan ilegibles sobre superficies claras; se oscurecen aquí (los temas
-     oscuros conservan los valores originales). */
-  --color-amber-200: #92400e;
-  --color-amber-300: #b45309;
-  --color-amber-400: #b45309;
-  --color-red-300: #b91c1c;
-  --color-red-400: #b91c1c;
-  --color-emerald-300: #047857;
-  --color-emerald-400: #047857;
-  --color-rose-400: #be123c;
-}
-[data-theme="celadon"] .text-white {
-  color: var(--ink);
-}
-[data-theme="celadon"] .hover\:text-white:hover {
-  color: var(--ink);
-}
-[data-theme="celadon"] .bg-sky-600,
-[data-theme="celadon"] .bg-sky-500,
-[data-theme="celadon"] .bg-sky-600\/90 {
-  color: var(--on-accent-strong);
-}
-[data-theme="celadon"] .bg-red-700 {
+[data-tema-claro="1"] .bg-red-700 {
   color: #fff;
 }
 
 /* Superficies ámbar translúcidas: en temas claros el ámbar/10 queda
    demasiado pálido; se refuerza el tinte sin tocar los temas oscuros. */
-[data-theme="celeste"] .bg-amber-500\/10,
-[data-theme="menta"] .bg-amber-500\/10,
-[data-theme="celadon"] .bg-amber-500\/10 {
+[data-tema-claro="1"] .bg-amber-500\/10 {
   background-color: rgb(217 119 6 / 0.14);
 }
-[data-theme="celeste"] .border-amber-500\/40,
-[data-theme="menta"] .border-amber-500\/40,
-[data-theme="celadon"] .border-amber-500\/40 {
+[data-tema-claro="1"] .border-amber-500\/40 {
   border-color: rgb(180 83 9 / 0.55);
 }
 
@@ -348,73 +440,43 @@
    en temas claros los fondos 950 translúcidos quedan oscuros y fangosos
    junto al texto ya oscurecido; se sustituyen por tintes claros del mismo
    matiz para conservar contraste AA sin tocar los temas oscuros. */
-[data-theme="celeste"] .bg-emerald-950\/60,
-[data-theme="menta"] .bg-emerald-950\/60,
-[data-theme="celadon"] .bg-emerald-950\/60,
-[data-theme="celeste"] .bg-emerald-950\/40,
-[data-theme="menta"] .bg-emerald-950\/40,
-[data-theme="celadon"] .bg-emerald-950\/40 {
+[data-tema-claro="1"] .bg-emerald-950\/60,
+[data-tema-claro="1"] .bg-emerald-950\/40 {
   background-color: rgb(4 120 87 / 0.12);
 }
-[data-theme="celeste"] .hover\:bg-emerald-900\/50:hover,
-[data-theme="menta"] .hover\:bg-emerald-900\/50:hover,
-[data-theme="celadon"] .hover\:bg-emerald-900\/50:hover {
+[data-tema-claro="1"] .hover\:bg-emerald-900\/50:hover {
   background-color: rgb(4 120 87 / 0.22);
 }
-[data-theme="celeste"] .border-emerald-700,
-[data-theme="menta"] .border-emerald-700,
-[data-theme="celadon"] .border-emerald-700 {
+[data-tema-claro="1"] .border-emerald-700 {
   border-color: rgb(4 120 87 / 0.55);
 }
-[data-theme="celeste"] .border-emerald-900\/40,
-[data-theme="menta"] .border-emerald-900\/40,
-[data-theme="celadon"] .border-emerald-900\/40 {
+[data-tema-claro="1"] .border-emerald-900\/40 {
   border-color: rgb(4 120 87 / 0.35);
 }
-[data-theme="celeste"] .bg-red-950\/40,
-[data-theme="menta"] .bg-red-950\/40,
-[data-theme="celadon"] .bg-red-950\/40,
-[data-theme="celeste"] .bg-red-950\/30,
-[data-theme="menta"] .bg-red-950\/30,
-[data-theme="celadon"] .bg-red-950\/30 {
+[data-tema-claro="1"] .bg-red-950\/40,
+[data-tema-claro="1"] .bg-red-950\/30 {
   background-color: rgb(185 28 28 / 0.08);
 }
-[data-theme="celeste"] .hover\:bg-red-900\/40:hover,
-[data-theme="menta"] .hover\:bg-red-900\/40:hover,
-[data-theme="celadon"] .hover\:bg-red-900\/40:hover {
+[data-tema-claro="1"] .hover\:bg-red-900\/40:hover {
   background-color: rgb(185 28 28 / 0.16);
 }
-[data-theme="celeste"] .border-red-900\/60,
-[data-theme="menta"] .border-red-900\/60,
-[data-theme="celadon"] .border-red-900\/60 {
+[data-tema-claro="1"] .border-red-900\/60 {
   border-color: rgb(185 28 28 / 0.5);
 }
-[data-theme="celeste"] .border-red-900\/50,
-[data-theme="menta"] .border-red-900\/50,
-[data-theme="celadon"] .border-red-900\/50 {
+[data-tema-claro="1"] .border-red-900\/50 {
   border-color: rgb(185 28 28 / 0.45);
 }
-[data-theme="celeste"] .border-red-900\/40,
-[data-theme="menta"] .border-red-900\/40,
-[data-theme="celadon"] .border-red-900\/40,
-[data-theme="celeste"] .border-red-900\/30,
-[data-theme="menta"] .border-red-900\/30,
-[data-theme="celadon"] .border-red-900\/30 {
+[data-tema-claro="1"] .border-red-900\/40,
+[data-tema-claro="1"] .border-red-900\/30 {
   border-color: rgb(185 28 28 / 0.32);
 }
-[data-theme="celeste"] .bg-sky-950,
-[data-theme="menta"] .bg-sky-950,
-[data-theme="celadon"] .bg-sky-950 {
+[data-tema-claro="1"] .bg-sky-950 {
   background-color: rgb(2 132 199 / 0.12);
 }
-[data-theme="celeste"] .border-sky-800,
-[data-theme="menta"] .border-sky-800,
-[data-theme="celadon"] .border-sky-800 {
+[data-tema-claro="1"] .border-sky-800 {
   border-color: rgb(2 132 199 / 0.4);
 }
-[data-theme="celeste"] .hover\:border-sky-600:hover,
-[data-theme="menta"] .hover\:border-sky-600:hover,
-[data-theme="celadon"] .hover\:border-sky-600:hover {
+[data-tema-claro="1"] .hover\:border-sky-600:hover {
   border-color: rgb(2 132 199 / 0.7);
 }
 
@@ -422,41 +484,27 @@
    (texto rose-300 sobre tinte rose-500/10): en temas claros el texto
    casi blanco/rosa pálido es invisible; se oscurecen al tono 700
    correspondiente. El /70 del subtítulo se conserva vía color-mix. */
-[data-theme="celeste"] .text-sky-100,
-[data-theme="menta"] .text-sky-100,
-[data-theme="celadon"] .text-sky-100 {
+[data-tema-claro="1"] .text-sky-100 {
   color: #0c4a6e;
 }
 /* La variante con opacidad es otra clase (Tailwind la genera aparte):
    mismo tinta con su 70% para subtítulos e iconos secundarios. */
-[data-theme="celeste"] .text-sky-100\/70,
-[data-theme="menta"] .text-sky-100\/70,
-[data-theme="celadon"] .text-sky-100\/70 {
+[data-tema-claro="1"] .text-sky-100\/70 {
   color: rgb(12 74 110 / 0.72);
 }
-[data-theme="celeste"] .text-rose-300,
-[data-theme="menta"] .text-rose-300,
-[data-theme="celadon"] .text-rose-300 {
+[data-tema-claro="1"] .text-rose-300 {
   color: #be123c;
 }
-[data-theme="celeste"] .bg-rose-500\/10,
-[data-theme="menta"] .bg-rose-500\/10,
-[data-theme="celadon"] .bg-rose-500\/10 {
+[data-tema-claro="1"] .bg-rose-500\/10 {
   background-color: rgb(190 18 60 / 0.08);
 }
-[data-theme="celeste"] .hover\:bg-rose-500\/15:hover,
-[data-theme="menta"] .hover\:bg-rose-500\/15:hover,
-[data-theme="celadon"] .hover\:bg-rose-500\/15:hover {
+[data-tema-claro="1"] .hover\:bg-rose-500\/15:hover {
   background-color: rgb(190 18 60 / 0.15);
 }
-[data-theme="celeste"] .border-rose-500\/30,
-[data-theme="menta"] .border-rose-500\/30,
-[data-theme="celadon"] .border-rose-500\/30 {
+[data-tema-claro="1"] .border-rose-500\/30 {
   border-color: rgb(190 18 60 / 0.35);
 }
-[data-theme="celeste"] .hover\:border-rose-400\/50:hover,
-[data-theme="menta"] .hover\:border-rose-400\/50:hover,
-[data-theme="celadon"] .hover\:border-rose-400\/50:hover {
+[data-tema-claro="1"] .hover\:border-rose-400\/50:hover {
   border-color: rgb(190 18 60 / 0.55);
 }
 
