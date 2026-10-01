@@ -593,7 +593,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
   return (
     <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col">
+      <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl max-w-[calc(100vw-2rem)] w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col overflow-x-hidden box-border">
         
         {/* Cabecera en dos filas: título + cerrar arriba, acciones debajo.
             Así el título nunca se desfasa por falta de espacio. */}
@@ -617,7 +617,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={() => { if (onAgregarFuente) onAgregarFuente(); }}
               title={t("fuentes.agregar_titulo")}
               aria-label={t("fuentes.agregar_aria")}
-              className="btn-press group bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5"
+              className="touch-target btn-press group bg-sky-600 hover:bg-sky-500 text-white text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5"
             >
               <Plus size={14} />
               <span className="hidden sm:inline">{t("fuentes.agregar")}</span>
@@ -627,7 +627,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               title={t("fuentes.importar_titulo")}
               aria-label={t("fuentes.importar_aria")}
               aria-pressed={vistaOpml}
-              className={`btn-press text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border ${
+              className={`touch-target btn-press text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border ${
                 vistaOpml
                   ? "bg-sky-600/20 text-sky-300 border-sky-500/40"
                   : "bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700"
@@ -640,7 +640,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={exportarOPML}
               title={t("fuentes.exportar_titulo")}
               aria-label={t("fuentes.exportar_aria")}
-              className="btn-press bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border border-gray-700"
+              className="touch-target btn-press bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 border border-gray-700"
             >
               <Download size={14} />
               <span className="hidden sm:inline">{t("fuentes.exportar")}</span>
@@ -649,7 +649,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={handleRefreshAllSources}
               disabled={refreshingAll}
               aria-label={t("fuentes.refrescar_todo_aria")}
-              className="btn-press bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 disabled:opacity-50"
+              className="touch-target btn-press bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 border border-sky-500/30 text-xs px-2 sm:px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 disabled:opacity-50"
             >
               <MorphIcon
                 icon={refreshingAll ? LoaderCircleData : RefreshCcwData}
@@ -696,7 +696,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={alternarTodas}
               aria-pressed={todasSeleccionadas}
               title={todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
-              className={`btn-press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              className={`touch-target btn-press min-w-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 todasSeleccionadas
                   ? "border-sky-500 bg-sky-500/15 text-sky-300"
                   : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
@@ -708,7 +708,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                 strokeWidth={2.5}
                 className="shrink-0"
               />
-              {todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
+              <span className="truncate">{todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}</span>
             </button>
             {seleccionadas.length > 0 && (
               <span className="text-[11px] text-sky-400">
@@ -722,25 +722,25 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               onClick={() => setConfirmarLote(true)}
               disabled={seleccionadas.length === 0 || eliminandoLote}
               title={t("fuentes.eliminar_titulo")}
-              className="btn-press ml-auto flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 disabled:opacity-40"
+              className="touch-target btn-press min-w-0 sm:ml-auto flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 disabled:opacity-40"
             >
               <MorphIcon
                 icon={eliminandoLote ? LoaderCircleData : Trash2Data}
                 size={12}
                 className={eliminandoLote ? "animate-spin" : ""}
               />
-              {t("fuentes.eliminar_sel", { n: seleccionadas.length })}
+              <span className="truncate">{t("fuentes.eliminar_sel", { n: seleccionadas.length })}</span>
             </button>
             <button
               type="button"
               onClick={handleFullLote}
               disabled={seleccionadas.length === 0 || aplicandoFullLote}
               title={t("fuentes.convert_full_hint")}
-              className="btn-press flex items-center gap-1.5 rounded-xl border border-sky-800 bg-sky-950 px-3 py-1.5 text-xs font-medium text-sky-300 hover:border-sky-600 disabled:opacity-40"
+              className="touch-target btn-press min-w-0 w-full sm:w-auto justify-center flex items-center gap-1.5 rounded-xl border border-sky-800 bg-sky-950 px-3 py-1.5 text-xs font-medium text-sky-300 hover:border-sky-600 disabled:opacity-40"
             >
-              {todasFullSel
+              <span className="truncate">{todasFullSel
                 ? t("fuentes.full_lote_off", { n: seleccionadas.length })
-                : t("fuentes.full_lote_on", { n: seleccionadas.length })}
+                : t("fuentes.full_lote_on", { n: seleccionadas.length })}</span>
             </button>
           </div>
         )}
@@ -931,7 +931,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       aria-label={`${t("fuentes.seleccionar_aria")}: ${nombreFuente}`}
                       title={`${t("fuentes.seleccionar_aria")}: ${nombreFuente}`}
                       onClick={() => alternarSeleccionFuente(sId)}
-                      className="btn-press mt-0.5 shrink-0 rounded-lg p-1 hover:bg-gray-800"
+                      className="touch-target btn-press mt-0.5 shrink-0 rounded-lg p-1 hover:bg-gray-800"
                     >
                       <MorphIcon
                         icon={marcada ? CheckData : CircleData}
@@ -947,7 +947,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         onChange={(event) => setEditForm((form) => ({ ...form, titulo: event.target.value }))}
                         placeholder={t("fuentes.nombre_ph")}
                         aria-label={t("fuentes.nombre_ph")}
-                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                        className="w-full min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
                       />
                       <div className="flex items-center gap-1.5">
                         <input
@@ -962,7 +962,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           onClick={copiarUrlEdicion}
                           title={t("fuentes.copiar_url")}
                           aria-label={t("fuentes.copiar_url")}
-                          className="btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
+                          className="touch-target btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
                         >
                           <Copy size={14} />
                         </button>
@@ -971,7 +971,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           onClick={pegarUrlEdicion}
                           title={t("fuentes.pegar_url")}
                           aria-label={t("fuentes.pegar_url")}
-                          className="btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
+                          className="touch-target btn-press shrink-0 rounded-lg border border-gray-700 bg-gray-900 p-2 text-gray-300 hover:border-gray-500 hover:text-white"
                         >
                           <ClipboardPaste size={14} />
                         </button>
@@ -981,7 +981,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         onChange={(event) => setEditForm((form) => ({ ...form, categoria: event.target.value }))}
                         placeholder={t("fuentes.cat_ph")}
                         aria-label={t("fuentes.cat_ph")}
-                        className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                        className="w-full min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
                       />
                       <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 hover:border-gray-600 transition">
                         <input
@@ -1000,7 +1000,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                   ) : (
                     <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
                       <h4 className="text-sm font-semibold text-white truncate">{nombreFuente}</h4>
-                      <p className="text-xs text-gray-400 truncate max-w-md">{sUrl}</p>
+                      <p title={sUrl} className="text-xs text-gray-400 truncate max-w-full sm:max-w-md">{sUrl}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px]">
                         <span className="text-emerald-300">● {source.estado || t("fuentes.activa")}</span>
                         <span className="text-gray-500">{t("fuentes.articulos", { n: Number(source.articulos_count || 0) })}</span>
@@ -1023,11 +1023,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         title={t("fuentes.convert_full_hint")}
                         disabled={isTogglingThis}
                         onClick={() => handleToggleFullPage(source)}
-                        className="btn-press mt-1 flex max-w-full items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/60 px-2 py-1.5 text-left hover:border-gray-600 disabled:opacity-50"
+                        className="touch-target btn-press mt-1 flex min-w-0 max-w-full items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/60 px-2 py-1.5 text-left hover:border-gray-600 disabled:opacity-50"
                       >
                         <span
                           aria-hidden="true"
-                          className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition ${
+                          className={`relative mt-0.5 inline-flex h-4 w-7 shrink-0 items-center rounded-full transition ${
                             fullPageActivo ? "bg-sky-500" : "bg-gray-700"
                           }`}
                         >
@@ -1037,11 +1037,11 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                             }`}
                           />
                         </span>
-                        <span className="min-w-0">
-                          <span className={`block truncate text-[11px] font-medium ${fullPageActivo ? "text-sky-300" : "text-gray-400"}`}>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-[11px] font-medium ${fullPageActivo ? "text-sky-300" : "text-gray-400"}`}>
                             {t("fuentes.convert_full")}{isTogglingThis ? "…" : ""}
                           </span>
-                          <span className="block truncate text-[10px] text-gray-500">{t("fuentes.convert_full_hint")}</span>
+                          <span className="block text-[10px] leading-snug text-gray-500 whitespace-normal break-words">{t("fuentes.convert_full_hint")}</span>
                         </span>
                       </button>
                     </div>
@@ -1054,14 +1054,14 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         <button
                           onClick={() => handleSaveEdit(sId)}
                           title={t("fuentes.guardar_titulo")}
-                          className="btn-press bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-xl border border-emerald-900/40 flex items-center gap-1.5"
+                          className="touch-target btn-press bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 text-xs px-3 py-1.5 rounded-xl border border-emerald-900/40 flex items-center gap-1.5"
                         >
                           <Save size={12} />
                           <span>{t("fuentes.guardar")}</span>
                         </button>
                         <button
                           onClick={() => setEditingSourceId(null)}
-                          className="btn-press bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-xl border border-gray-700"
+                          className="touch-target btn-press bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-xl border border-gray-700"
                         >
                           {t("fuentes.cancelar")}
                         </button>
@@ -1071,7 +1071,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                         <button
                           onClick={() => handleStartEdit(source)}
                           title={t("fuentes.editar_titulo")}
-                          className="btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5"
+                          className="touch-target btn-press bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs px-3 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5"
                         >
                           <Pencil size={12} />
                           <span>{t("fuentes.editar")}</span>
@@ -1080,7 +1080,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                           onClick={() => handleRefreshSingle(source)}
                           disabled={isRefreshingThis}
                           title={fullPageActivo ? `${t("fuentes.refrescar_titulo")} · ${t("fuentes.convert_full")}` : t("fuentes.refrescar_titulo")}
-                          className={`btn-press text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 disabled:opacity-50 ${
+                          className={`touch-target btn-press text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 disabled:opacity-50 ${
                             fullPageActivo
                               ? "bg-sky-600/20 text-sky-300 border-sky-500/40 hover:bg-sky-600/30"
                               : "bg-gray-800 hover:bg-gray-700 text-sky-400 border-gray-700"
@@ -1100,7 +1100,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
                       onClick={() => handleDelete(sId)}
                       title={t("fuentes.eliminar_titulo")}
                       aria-live="polite"
-                      className="btn-press flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/40"
+                      className="touch-target btn-press flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/40"
                     >
                       <Trash2 size={12} />
                       <span>{t("fuentes.eliminar")}</span>
@@ -1198,7 +1198,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         <div className="flex justify-end pt-2 border-t border-gray-800">
           <button
             onClick={cerrar}
-            className="btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl"
+            className="touch-target btn-press bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl"
           >
             {t("fuentes.cerrar")}
           </button>
