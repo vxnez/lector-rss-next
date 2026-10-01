@@ -100,10 +100,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             error?.status ? `status=${error.status}` : "",
             error?.message || error
           );
-          // 429/5xx = backend saturado (transitorio): lanzar en vez de
-          // devolver false para no convertirlo en AccessDenied permanente;
-          // NextAuth muestra error y el usuario puede reintentar.
-          if ([429, 502, 503, 504].includes(Number(error?.status))) throw error;
+          // Transitorio (reintentable): 429/5xx, timeouts y cortes de red.
+          // Lanzar en vez de devolver false para no convertirlo en un
+          // AccessDenied permanente; NextAuth muestra la página de error
+          // (/auth/error) y el usuario puede reintentar. Solo los 4xx con
+          // significado (401/403/404/409...) niegan el acceso.
+          const estado = Number(error?.status);
+          const esTimeout =
+            error?.name === "AbortError" || /timeout/i.test(String(error?.message || ""));
+          if (esTimeout || [429, 500, 502, 503, 504].includes(estado)) throw error;
           return false;
         }
       }
@@ -129,5 +134,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    error: "/auth/error",
   },
 });

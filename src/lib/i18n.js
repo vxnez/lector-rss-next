@@ -433,6 +433,16 @@ const TEXTOS_ES = {
       err_sesion: "No se pudo iniciar sesión. Inténtalo de nuevo.",
       err_invitado: "No se pudo iniciar como invitado.",
     },
+    auth_error: {
+      titulo: "No se pudo iniciar sesión",
+      denegado:
+        "Tu cuenta no tiene permiso para entrar con ese proveedor. Si crees que es un error, espera unos segundos e inténtalo de nuevo.",
+      transitorio:
+        "El servidor tardó demasiado en responder. Espera unos segundos e inténtalo de nuevo.",
+      generico: "Ocurrió un error al iniciar sesión. Inténtalo de nuevo.",
+      reintentar: "Volver al inicio de sesión",
+      inicio: "Ir al inicio",
+    },
     register: {
       titulo: "Crear Cuenta",
       nombre: "Nombre",
@@ -1129,6 +1139,16 @@ const TEXTOS_EN = {
       err_credenciales: "Wrong credentials",
       err_sesion: "Could not log in. Try again.",
       err_invitado: "Could not start as guest.",
+    },
+    auth_error: {
+      titulo: "Could not sign in",
+      denegado:
+        "Your account is not allowed to sign in with that provider. If you think this is a mistake, wait a few seconds and try again.",
+      transitorio:
+        "The server took too long to respond. Wait a few seconds and try again.",
+      generico: "An error occurred while signing in. Try again.",
+      reintentar: "Back to sign in",
+      inicio: "Go home",
     },
     register: {
       titulo: "Create Account",
