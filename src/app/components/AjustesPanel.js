@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
+import { useCapaHistorial } from "@/lib/historialCapas";
 import { useIdioma } from "@/lib/i18n";
 import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -174,6 +175,10 @@ export default function AjustesPanel({
   const cerrarRef = useRef(null);
   const { t, idioma, setIdioma } = useIdioma();
 
+  // Subvista como estado navegable: el atrás móvil vuelve al menú de ajustes
+  // en vez de cerrar todo el panel (comparte la pila global de capas).
+  const cerrarVistaHist = useCapaHistorial(abierto && vista !== null, () => setVista(null));
+
   const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
 
   // Versión viva vía /api/repo (caché 1h + timeout 6s, sin rate-limit directo).
@@ -212,24 +217,24 @@ export default function AjustesPanel({
         return;
       }
       setPasoEliminar("idle");
-      if (vista) setVista(null);
+      if (vista) cerrarVistaHist();
       else onCerrar();
     };
     document.addEventListener("keydown", alTeclado);
     return () => document.removeEventListener("keydown", alTeclado);
-  }, [abierto, vista, pasoEliminar, onCerrar]);
+  }, [abierto, vista, pasoEliminar, onCerrar, cerrarVistaHist]);
 
   if (!abierto) return null;
 
   const cerrar = () => {
-    setVista(null);
     setPasoEliminar("idle");
+    cerrarVistaHist();
     onCerrar();
   };
 
   const atras = () => {
     setPasoEliminar("idle");
-    setVista(null);
+    cerrarVistaHist();
   };
 
   const cargarPerfil = async () => {
@@ -391,7 +396,7 @@ export default function AjustesPanel({
               type="button"
               onClick={atras}
               aria-label="Volver a ajustes"
-              className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
+              className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
             >
               <ChevronLeft size={20} />
             </button>
@@ -404,7 +409,7 @@ export default function AjustesPanel({
             type="button"
             onClick={cerrar}
             aria-label={t("ajustes.cerrar")}
-            className="rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
+            className="touch-target rounded-lg p-1.5 text-app-muted transition hover:bg-app-raised/40 hover:text-app-fg"
           >
             <X size={18} />
           </button>
@@ -413,9 +418,25 @@ export default function AjustesPanel({
         <div className="panel-scroll flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
           {!vista && (
             <>
-              {/* Seis apartados funcionales, sin duplicados: la cuenta vive en
-                  un solo lugar, la guía dentro de Ayuda y el repo con un
+              {/* Cinco apartados ordenados por uso: la cuenta vive en un
+                  solo lugar, la guía dentro de Ayuda y el repo con un
                   único enlace. */}
+              <TarjetaAjuste
+                icono={<Palette size={20} />}
+                fondoIcono="#e0e7ff"
+                tintaIcono="#3730a3"
+                titulo={t("ajustes.apariencia_t")}
+                descripcion={t("ajustes.apariencia_d")}
+                onAbrir={() => abrirVista("apariencia")}
+              />
+              <TarjetaAjuste
+                icono={<Languages size={20} />}
+                fondoIcono="#fef9c3"
+                tintaIcono="#854d0e"
+                titulo={t("ajustes.lectura_t")}
+                descripcion={t("ajustes.lectura_d")}
+                onAbrir={() => abrirVista("lectura")}
+              />
               <TarjetaAjuste
                 icono={
                   imagenUsuario && !esInvitado ? (
@@ -439,22 +460,6 @@ export default function AjustesPanel({
                     : (nombreUsuario || emailUsuario || t("ajustes.cuenta_seg_d"))
                 }
                 onAbrir={() => abrirVista("cuenta")}
-              />
-              <TarjetaAjuste
-                icono={<Palette size={20} />}
-                fondoIcono="#e0e7ff"
-                tintaIcono="#3730a3"
-                titulo={t("ajustes.apariencia_t")}
-                descripcion={t("ajustes.apariencia_d")}
-                onAbrir={() => abrirVista("apariencia")}
-              />
-              <TarjetaAjuste
-                icono={<Languages size={20} />}
-                fondoIcono="#fef9c3"
-                tintaIcono="#854d0e"
-                titulo={t("ajustes.lectura_t")}
-                descripcion={t("ajustes.lectura_d")}
-                onAbrir={() => abrirVista("lectura")}
               />
               <TarjetaAjuste
                 icono={<Database size={20} />}

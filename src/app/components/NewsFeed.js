@@ -13,6 +13,7 @@ import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
 import { formatFecha, nombreFuenteDeArticulo } from "@/lib/formato";
 import { useIdioma } from "@/lib/i18n";
+import { useCapaHistorial } from "@/lib/historialCapas";
 import ErrorBoundary, { LectorErrorFallback } from "./ErrorBoundary";
 
 // El lector solo se necesita cuando se abre una noticia: fuera del bundle inicial.
@@ -482,6 +483,11 @@ export default function NewsFeed({
     onLectorCerrado?.();
   }, [onLectorCerrado]);
 
+  // El lector es una capa navegable: el atrás móvil cierra la noticia y
+  // vuelve al feed (vale para apertura por toque y por teclado/búsqueda,
+  // ya que ambas pasan por `selectedArticle`).
+  const cerrarLectorHist = useCapaHistorial(selectedArticle !== null, cerrarLector);
+
   const abrirArticuloCb = useCallback((art) => {
     setListaModal(articlesRef.current || []);
     setSelectedArticle(art);
@@ -526,7 +532,7 @@ export default function NewsFeed({
         <ArticleReaderModal
           key={selectedArticle?.id ?? "vacio"}
           article={selectedArticle}
-          onClose={cerrarLector}
+          onClose={cerrarLectorHist}
           onToggleRead={onToggleRead}
           onToggleSave={onToggleSave}
           onUpdateCategory={onUpdateCategory}

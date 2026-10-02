@@ -620,7 +620,6 @@ export default function HomePage() {
   const cerrarConfirmar = useCapaHistorial(confirmarEliminar, () => setConfirmarEliminar(false));
   const cerrarGuia = useCapaHistorial(showOnboardingSurvey, closeOnboardingSurvey);
   const cerrarAyuda = useCapaHistorial(ayudaAtajosAbierta, () => setAyudaAtajosAbierta(false));
-  const cerrarLector = useCapaHistorial(articuloParaAbrir !== null, () => setArticuloParaAbrir(null));
   const cerrarPanelMovil = useCapaHistorial(panelMovilAbierto, () => setPanelMovilAbierto(false));
 
   useKeyboardShortcuts({
@@ -1003,7 +1002,7 @@ export default function HomePage() {
                       modoVista={modoVista}
                       articuloActivoId={articuloActivoId}
                       articuloParaAbrir={articuloParaAbrir}
-                      onLectorCerrado={() => cerrarLector()}
+                      onLectorCerrado={() => setArticuloParaAbrir(null)}
                       onToggleRead={toggleLeido}
                       onToggleSave={toggleGuardado}
                       onUpdateCategory={actualizarCategoria}
