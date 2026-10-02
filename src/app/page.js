@@ -379,6 +379,13 @@ export default function HomePage() {
   // disparaba el diálogo fantasma al cerrar la guía de bienvenida).
   // Feed→atrás→diálogo→atrás→feed, sin expulsiones a login.
   const [confirmarSalida, setConfirmarSalida] = useState(false);
+  // Ref de sesión para el handler: el diálogo solo se abre con sesión; antes
+  // de que resuelva la carga (backend lento) el atrás se absorbe sin expulsar
+  // en vez de dejar la ventana sin guardia.
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  });
   const hayCapaSobreGuardia = useCallback(() => Boolean(
     isAddModalOpen ||
       isManageModalOpen ||
@@ -402,7 +409,11 @@ export default function HomePage() {
     notifsAbiertas,
     panelMovilAbierto,
   ]);
-  useCapaGuardia(Boolean(session?.user), () => setConfirmarSalida(true), hayCapaSobreGuardia);
+  // La guardia vive desde la carga (cubre la ventana lenta del backend) y
+  // se desarma sin sesión tras cargar: el visitante navega atrás normal.
+  useCapaGuardia(!loading, () => {
+    if (sessionRef.current?.user) setConfirmarSalida(true);
+  }, hayCapaSobreGuardia);
   const cerrarDialogoSalida = useCapaHistorial(confirmarSalida, () => setConfirmarSalida(false));
 
   useEffect(() => {

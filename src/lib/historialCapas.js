@@ -9,7 +9,26 @@ import { useCallback, useEffect, useRef } from "react";
 const pila = [];
 let siguienteId = 1;
 
+// Bandera atómica de procesamiento: el hilo JS no puede reentrar a un
+// listener síncrono, pero si un refactor futuro awaitara dentro del handler,
+// el evento solapado se reencola en vez de ejecutarse encima (nunca se
+// pierde ni se duplica trabajo).
+let procesandoAtras = false;
+
 function alAtras(event) {
+  if (procesandoAtras) {
+    window.setTimeout(() => alAtras(event), 0);
+    return;
+  }
+  procesandoAtras = true;
+  try {
+    manejarAtras(event);
+  } finally {
+    procesandoAtras = false;
+  }
+}
+
+function manejarAtras(event) {
   const destino = event?.state;
   // 1. Reconciliación por destino: si aterrizamos en una entrada nuestra,
   //    las capas por encima se consumieron sin handler (doble atrás rápido,
@@ -19,10 +38,16 @@ function alAtras(event) {
   if (destino && typeof destino === "object" && typeof destino.capa === "string") {
     const indice = pila.findIndex((c) => c.id === destino.capa);
     if (indice >= 0) {
+      // Drenar PRIMERO y notificar DESPUÉS: los onCerrar pueden re-registrar
+      // (la guardia rearma su centinela) y hacerlo dentro del while sería un
+      // livelock — cada push revalida la condición y el hilo no sale nunca.
+      const caidas = [];
       while (pila.length - 1 > indice) {
-        const saltada = pila.pop();
+        caidas.push(pila.pop());
+      }
+      for (const caida of caidas) {
         try {
-          saltada?.onCerrar?.();
+          caida?.onCerrar?.();
         } catch {
           // El cierre nunca rompe la navegación.
         }
@@ -39,6 +64,10 @@ function alAtras(event) {
     // El cierre nunca debe romper la navegación del navegador.
   }
 }
+
+// Exportación solo para pruebas de lógica (verificar-historial.cjs): expone
+// el registro y el manejador tal cual se embarcan, sin duplicar código.
+export const __historialTest = { pila, registrarCapa, retirarCapa, manejarAtras };
 
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", alAtras);
