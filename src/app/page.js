@@ -15,6 +15,7 @@ import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
 import { FUENTE_POR_DEFECTO, FUENTE_PX_DEFECTO, FUENTE_PX_MIN, FUENTE_PX_MAX, aplicarFuente, aplicarFuentePx, fuenteInicial, fuentePxInicial } from "@/lib/fuentes";
 import { useIdioma } from "@/lib/i18n";
 import { urlBase64ToUint8Array } from "@/lib/feed-utils";
+import { useCapaHistorial } from "@/lib/historialCapas";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
 import { limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
@@ -341,20 +342,6 @@ export default function HomePage() {
       articuloParaAbrir
   );
 
-  useKeyboardShortcuts({
-    articles: articulos,
-    articuloActivoId,
-    setArticuloActivoId,
-    onAbrirArticulo: (art) => setArticuloParaAbrir(art),
-    onToggleRead: toggleLeido,
-    onToggleSave: toggleGuardado,
-    onDelete: descartarArticulo,
-    onFocusSearch: () => searchInputRef.current?.focus(),
-    onCambiarTab: seleccionarTab,
-    onToggleAyuda: () => setAyudaAtajosAbierta((prev) => !prev),
-    modalAbierto: algunModalAbierto,
-  });
-
   const esInvitado = Boolean(session?.user?.invitado);
 
   const salirInvitado = useCallback(async () => {
@@ -605,6 +592,38 @@ export default function HomePage() {
     handleCategorizarIA({ silencioso: true });
   };
 
+  // Capas navegables: cada modal/panel abierto empuja una entrada al historial
+  // del navegador; el gesto/botón atrás del móvil cierra la capa superior en
+  // vez de expulsar la sesión (p. ej. al login de Google). Los `cerrar*` van a
+  // TODAS las vías de cierre (botón X, overlay, Escape, toggles).
+  const cerrarAdd = useCapaHistorial(isAddModalOpen, () => {
+    setIsAddModalOpen(false);
+    setUrlCompartida("");
+  });
+  const cerrarManage = useCapaHistorial(isManageModalOpen, () => setIsManageModalOpen(false));
+  const cerrarPerfil = useCapaHistorial(isPerfilOpen, () => setIsPerfilOpen(false));
+  const cerrarAjustes = useCapaHistorial(panelAjustes, () => setPanelAjustes(false));
+  const cerrarNotifs = useCapaHistorial(notifsAbiertas, () => fijarNotifs(false));
+  const cerrarConfirmar = useCapaHistorial(confirmarEliminar, () => setConfirmarEliminar(false));
+  const cerrarGuia = useCapaHistorial(showOnboardingSurvey, closeOnboardingSurvey);
+  const cerrarAyuda = useCapaHistorial(ayudaAtajosAbierta, () => setAyudaAtajosAbierta(false));
+  const cerrarLector = useCapaHistorial(articuloParaAbrir !== null, () => setArticuloParaAbrir(null));
+  const cerrarPanelMovil = useCapaHistorial(panelMovilAbierto, () => setPanelMovilAbierto(false));
+
+  useKeyboardShortcuts({
+    articles: articulos,
+    articuloActivoId,
+    setArticuloActivoId,
+    onAbrirArticulo: (art) => setArticuloParaAbrir(art),
+    onToggleRead: toggleLeido,
+    onToggleSave: toggleGuardado,
+    onDelete: descartarArticulo,
+    onFocusSearch: () => searchInputRef.current?.focus(),
+    onCambiarTab: seleccionarTab,
+    onToggleAyuda: () => (ayudaAtajosAbierta ? cerrarAyuda() : setAyudaAtajosAbierta(true)),
+    modalAbierto: algunModalAbierto,
+  });
+
   const handleAgregarFuenteOnboarding = useCallback(
     async (titulo, url_feed, categoria, opciones = {}) => {
       try {
@@ -689,7 +708,7 @@ export default function HomePage() {
   };
 
   const confirmarEliminarTodas = async () => {
-    setConfirmarEliminar(false);
+    cerrarConfirmar();
     bumpCacheVersion();
     const backupArticulos = [...articulos];
     setArticulos([]);
@@ -760,7 +779,7 @@ export default function HomePage() {
         panelAjustes={panelAjustes}
         onAbrirAjustes={() => setPanelAjustes(true)}
         panelNotifs={notifsAbiertas}
-        onAbrirNotifs={() => fijarNotifs(!notifsAbiertas)}
+        onAbrirNotifs={() => (notifsAbiertas ? cerrarNotifs() : fijarNotifs(true))}
         noLeidasNotifs={noLeidasNotifs}
         iaNotifsEnCurso={iaEnCursoNotifs}
         mostrarBuscar={!busquedaVisible}
@@ -971,7 +990,7 @@ export default function HomePage() {
                       modoVista={modoVista}
                       articuloActivoId={articuloActivoId}
                       articuloParaAbrir={articuloParaAbrir}
-                      onLectorCerrado={() => setArticuloParaAbrir(null)}
+                      onLectorCerrado={() => cerrarLector()}
                       onToggleRead={toggleLeido}
                       onToggleSave={toggleGuardado}
                       onUpdateCategory={actualizarCategoria}
@@ -995,13 +1014,13 @@ export default function HomePage() {
             {panelMovilAbierto && (
               <div
                 aria-hidden="true"
-                onClick={() => setPanelMovilAbierto(false)}
+                onClick={() => cerrarPanelMovil()}
                 className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] lg:hidden"
               />
             )}
             <button
               type="button"
-              onClick={() => setPanelMovilAbierto((prev) => !prev)}
+              onClick={() => (panelMovilAbierto ? cerrarPanelMovil() : setPanelMovilAbierto(true))}
               title={t("controles.abrir")}
               aria-label={t("controles.abrir")}
               aria-expanded={panelMovilAbierto}
@@ -1099,7 +1118,7 @@ export default function HomePage() {
       <OnboardingSurvey
         key={showOnboardingSurvey ? "guia-abierta" : "guia-cerrada"}
         abierto={showOnboardingSurvey}
-        onCerrar={closeOnboardingSurvey}
+        onCerrar={() => cerrarGuia()}
         t={t}
         onCompletado={handleRefresh}
         onAgregarFuente={handleAgregarFuenteOnboarding}
@@ -1107,7 +1126,7 @@ export default function HomePage() {
 
       <AjustesPanel
         abierto={panelAjustes}
-        onCerrar={() => setPanelAjustes(false)}
+        onCerrar={() => cerrarAjustes()}
         tema={tema}
         onTema={cambiarTema}
         fuente={fuenteApp}
@@ -1129,7 +1148,7 @@ export default function HomePage() {
         imagenUsuario={esInvitado ? null : session?.user?.image || null}
         esInvitado={esInvitado}
         onEditarPerfil={() => {
-          setPanelAjustes(false);
+          cerrarAjustes();
           setIsPerfilOpen(true);
         }}
         onCerrarSesion={salirInvitado}
@@ -1152,8 +1171,7 @@ export default function HomePage() {
         isOpen={isAddModalOpen}
         initialUrl={urlCompartida}
         onClose={() => {
-          setIsAddModalOpen(false);
-          setUrlCompartida("");
+          cerrarAdd();
         }}
         onSuccess={async (data) => {
           setPagina(1);
@@ -1172,9 +1190,9 @@ export default function HomePage() {
 
       <ManageSourcesModal
         isOpen={isManageModalOpen}
-        onClose={() => setIsManageModalOpen(false)}
+        onClose={() => cerrarManage()}
         onAgregarFuente={() => {
-          setIsManageModalOpen(false);
+          cerrarManage();
           setIsAddModalOpen(true);
         }}
         onChange={() => {
@@ -1192,7 +1210,7 @@ export default function HomePage() {
         <PerfilModal
           key={isPerfilOpen ? "perfil-abierto" : "perfil-cerrado"}
           isOpen={isPerfilOpen}
-          onClose={() => setIsPerfilOpen(false)}
+          onClose={() => cerrarPerfil()}
           onSuccess={() => recargarSesion()}
           onNotify={notify}
         />
@@ -1200,7 +1218,7 @@ export default function HomePage() {
 
       <ConfirmDeleteModal
         abierto={confirmarEliminar}
-        onCancelar={() => setConfirmarEliminar(false)}
+        onCancelar={() => cerrarConfirmar()}
         onConfirmar={confirmarEliminarTodas}
         t={t}
         seccion={{
@@ -1221,7 +1239,7 @@ export default function HomePage() {
 
       <NotificationPanel
         abierto={notifsAbiertas}
-        onCerrar={() => fijarNotifs(false)}
+        onCerrar={() => cerrarNotifs()}
         notificaciones={notificaciones}
         noLeidas={noLeidasNotifs}
         pushActivado={pushActivado}
@@ -1232,7 +1250,7 @@ export default function HomePage() {
       />
       <KeyboardShortcutsModal
         abierto={ayudaAtajosAbierta}
-        onCerrar={() => setAyudaAtajosAbierta(false)}
+        onCerrar={() => cerrarAyuda()}
         t={t}
       />
     </div>
