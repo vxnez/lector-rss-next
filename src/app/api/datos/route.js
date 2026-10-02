@@ -1,7 +1,7 @@
 // src/app/api/datos/route.js — Exportar y eliminar datos propios vía API interna.
 // Solo sesión real (como /api/perfil); invitados usan salir (efímero).
 import { auth } from "@/auth";
-import { api, deleteFuente, deleteFuentesBulk, deleteUser, getArticulos, getFuentes, getUser, invalidarUsuarioCache } from "@/lib/api";
+import { api, deleteFuente, deleteFuentesBulk, deleteUser, getArticulosBulk, getFuentes, getUser, invalidarUsuarioCache } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -15,7 +15,8 @@ export async function GET() {
     const [usuario, fuentes, articulosRes] = await Promise.all([
       getUser(userId),
       getFuentes(userId).catch(() => []),
-      getArticulos({ usuario_id: userId, limit: 100000, offset: 0 }).catch(() => []),
+      // Exportación paginada (clamp backend 1..100): hasta 20000 filas.
+      getArticulosBulk(userId, {}, 20000).catch(() => []),
     ]);
     const usuarioNorm = usuario?.user || usuario?.usuario || usuario;
     if (!usuarioNorm?.id && !usuarioNorm?.email) {

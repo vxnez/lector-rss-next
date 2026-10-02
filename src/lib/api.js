@@ -419,6 +419,55 @@ export async function marcarArticulo(articulo_id, usuario_id, patch = {}) {
   });
 }
 
+// Bulk paginado compatible con el clamp del backend (limit 1..100; >100 =
+// 400 `limit_fuera_de_rango_1_100`): pagina con limit 100 y une hasta `tope`
+// (o el total si es menor). La primera página va en serie (revela el total)
+// y el resto en paralelo acotado (tandas de 4, anti-429). Nunca lanza: ante
+// fallo devuelve lo unido.
+const LIMITE_PAGINA_BULK = 100;
+function extraerItemsBulk(res) {
+  if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
+  const items = res?.articles || res?.articulos || res?.data || res?.items || [];
+  const crudo = res?.total ?? res?.count;
+  if (crudo === undefined || crudo === null) {
+    return { items: Array.isArray(items) ? items : [], total: Array.isArray(items) ? items.length : 0, exacto: false };
+  }
+  return { items: Array.isArray(items) ? items : [], total: Number(crudo) || 0, exacto: true };
+}
+
+export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
+  const topeSeguro = Math.max(Number(tope) || 0, 0);
+  if (topeSeguro <= 0) return [];
+  const primera = await getArticulos({
+    usuario_id,
+    ...params,
+    limit: LIMITE_PAGINA_BULK,
+    offset: 0,
+  }).catch(() => null);
+  const uno = extraerItemsBulk(primera);
+  const items = Array.isArray(uno.items) ? [...uno.items] : [];
+  const objetivo = uno.exacto
+    ? Math.min(Number(uno.total) || 0, topeSeguro)
+    : Math.min(items.length, topeSeguro);
+  const offsets = [];
+  for (let off = LIMITE_PAGINA_BULK; off < objetivo; off += LIMITE_PAGINA_BULK) {
+    offsets.push(off);
+  }
+  for (let i = 0; i < offsets.length; i += 4) {
+    const respuestas = await Promise.all(
+      offsets.slice(i, i + 4).map((off) =>
+        getArticulos({ usuario_id, ...params, limit: LIMITE_PAGINA_BULK, offset: off }).catch(() => null)
+      )
+    );
+    for (const r of respuestas) {
+      const { items: mas } = extraerItemsBulk(r);
+      if (Array.isArray(mas) && mas.length > 0) items.push(...mas);
+    }
+    if (items.length >= objetivo) break;
+  }
+  return items.slice(0, objetivo);
+}
+
 // ---- Stats ----
 export async function getStats(usuario_id) {
   return api("/api/data/stats", { query: { usuario_id: String(usuario_id) } });

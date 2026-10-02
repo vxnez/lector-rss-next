@@ -7,6 +7,7 @@ import {
   createFuente,
   deleteFuente,
   getArticulos,
+  getArticulosBulk,
   getFuentes,
   getStats,
   marcarArticulo,
@@ -57,7 +58,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
       .filter((n) => Number.isInteger(n) && n > 0)
       .slice(0, 2000)
   );
-  const bulk = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
+  const bulk = await getArticulosBulk(userId, {}, 1000).catch(() => []);
   const lista = Array.isArray(bulk) ? bulk : bulk?.articulos || bulk?.articles || bulk?.data || [];
   const elegibles = (Array.isArray(lista) ? lista : []).filter(esPendienteIA);
   const pendientes = elegibles
@@ -106,7 +107,7 @@ async function clasificarPendientesResponse(userId, body = {}) {
     }
   }
 
-  const bulk2 = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
+  const bulk2 = await getArticulosBulk(userId, {}, 1000).catch(() => []);
   const lista2 = Array.isArray(bulk2) ? bulk2 : bulk2?.articulos || bulk2?.articles || bulk2?.data || [];
   const restantes = (Array.isArray(lista2) ? lista2 : []).filter(esPendienteIA).length;
   const todosFallaron = clasificados === 0 && resultados.every((r) => !esExitoIA(r?.metodo));
@@ -710,10 +711,9 @@ export async function GET(req) {
     }
 
     // Conteos por fuente para el gestor (el backend no manda articulos_count):
-    // un solo bulk y agrupado local. Topado en 1000 (ver `truncado`).
+    // bulk paginado y agrupado local. Topado en 1000 (ver `truncado`).
     if (tipo === "conteo_fuentes") {
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0 }).catch(() => []);
-      const { items } = extraerLista(res);
+      const items = await getArticulosBulk(userId, {}, 1000).catch(() => []);
       const counts = {};
       for (const a of items || []) {
         const fid = a?.fuente_id ?? a?.fuenteId;
@@ -748,8 +748,7 @@ export async function GET(req) {
       const fuentesFiltro = (searchParams.get("fuentes") || "").split(",").map((s) => s.trim()).filter(Boolean);
       const ia = searchParams.get("ia") || "todas";
       const base = filtrosDesdeTab(tab);
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base });
-      let { items } = extraerLista(res);
+      let items = await getArticulosBulk(userId, { q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base }, 1000).catch(() => []);
       if (fuentesFiltro.length > 0) {
         const set = new Set(fuentesFiltro.map(String));
         items = items.filter((a) => set.has(String(a.fuente_id)));
@@ -786,14 +785,15 @@ export async function GET(req) {
     const necesitaLocal = fuentesFiltro.length > 0 || categorias.length > 1 || ia !== "todas";
 
     if (!usaPaginacion && !necesitaLocal && categorias.length === 0) {
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base, order, dir });
-      const { items } = extraerLista(res);
+      const items = await getArticulosBulk(userId, { q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), ...base, order, dir }, 1000).catch(() => []);
       return NextResponse.json(items.map(repararFilaArticulo));
     }
 
     if (necesitaLocal) {
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), categoria: categoriaUnica, ...base, order, dir });
-      let { items, exacto } = extraerLista(res);
+      // Bulk completo hasta el tope (1000): el total filtrado es exacto
+      // salvo que se haya cortado por tope.
+      let items = await getArticulosBulk(userId, { q: q || undefined, ...(q ? { modo_busqueda: "fulltext", reintentarSinFulltext: true } : {}), categoria: categoriaUnica, ...base, order, dir }, 1000).catch(() => []);
+      let exacto = true;
       // El bulk va topado en 1000: si vino lleno, el total filtrado es cota
       // inferior y puede haber más páginas (el frontend retrocede solo si la
       // página extra llega vacía).
@@ -917,8 +917,7 @@ export async function DELETE(req) {
         return NextResponse.json({ error: "Pestaña no válida" }, { status: 400 });
       }
       const base = filtrosDesdeTab(alcanceTab);
-      const res = await getArticulos({ usuario_id: userId, limit: 1000, offset: 0, ...base }).catch(() => []);
-      const { items } = extraerLista(res);
+      const items = await getArticulosBulk(userId, { ...base }, 1000).catch(() => []);
       await Promise.all(items.map((a) => marcarArticulo(a.id, userId, { descartado: 1 }).catch(() => null)));
       return NextResponse.json({ message: "Todas las publicaciones fueron descartadas", tab: alcanceTab });
     }
