@@ -43,7 +43,7 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
       title={t("header.ajustes_titulo")}
       aria-label={t("header.ajustes_aria")}
       aria-expanded={panelAjustes}
-      className="btn-press rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="touch-target btn-press rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <MorphIcon icon={panelAjustes ? XData : MenuData} size={21} strokeWidth={2.25} />
     </button>
@@ -78,15 +78,10 @@ export default function AppHeader({ session, esInvitado, panelAjustes, onAbrirAj
                 onClick={onIrBuscar}
                 title={t("buscar.aria")}
                 aria-label={t("buscar.aria")}
-                className="btn-press anim-burbuja rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="touch-target btn-press anim-burbuja rounded-xl p-2 text-app-muted hover:bg-app-raised/70 hover:text-app-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 <Search size={20} strokeWidth={2.25} />
               </button>
-            )}
-            {esInvitado && (
-              <span className="text-xs bg-amber-500/10 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">
-                {t("header.invitado")}
-              </span>
             )}
           </>
         ) : (
