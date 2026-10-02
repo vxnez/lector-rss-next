@@ -66,11 +66,18 @@ function retirarCapa(id, onCerrar) {
   } catch {
     // Sin historial disponible: solo se cierra la UI.
   }
-  try {
-    onCerrar?.();
-  } catch {
-    // Sin acción pendiente.
-  }
+  // El cierre se difiere tras la navegación (siguiente tarea): el popstate
+  // de ESTE back debe procesarse antes de que el render re-registre capas
+  // (p. ej. la guardia de salida). Si el onCerrar corriera primero, el
+  // evento aterrizaría sobre la entrada recién pusheada y reabriría la capa
+  // en bucle. El orden tarea( popstate)→tarea( cierre) lo garantiza.
+  window.setTimeout(() => {
+    try {
+      onCerrar?.();
+    } catch {
+      // Sin acción pendiente.
+    }
+  }, 0);
 }
 
 function desprenderCapa(id) {
@@ -80,7 +87,8 @@ function desprenderCapa(id) {
 
 // Sincroniza UNA capa con el historial. Devuelve `cerrar` envuelto: úsalo en
 // TODAS las vías de cierre (botón X, overlay, Escape interno) para consumir
-// su entrada. El atrás del sistema cierra solo vía popstate.
+// su entrada. El cierre corre diferido tras la navegación para no reabrir en
+// bucle; si la capa se reabrió en el intertanto, respeta la instancia nueva.
 export function useCapaHistorial(abierto, onCerrar) {
   const idRef = useRef(null);
   const cerrarRef = useRef(onCerrar);
@@ -109,7 +117,11 @@ export function useCapaHistorial(abierto, onCerrar) {
   return useCallback(() => {
     const id = idRef.current;
     idRef.current = null;
-    if (id) retirarCapa(id, () => cerrarRef.current?.());
+    // Si la capa se reabrió antes de que corra el cierre diferido, el
+    // diferido la dejaría cerrada por error: solo cierra si sigue cerrada.
+    if (id) retirarCapa(id, () => {
+      if (idRef.current === null) cerrarRef.current?.();
+    });
     else cerrarRef.current?.();
   }, []);
 }
