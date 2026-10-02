@@ -132,12 +132,16 @@ export function useCapaHistorial(abierto, onCerrar) {
 // nunca hay ventana sin centinela, así que ningún atrás puede expulsar a
 // login. El diálogo, al abrirse, apila su propia capa encima (ciclo
 // feed→diálogo→feed). Solo se desarma sin sesión.
-export function useCapaGuardia(activa, onAbrir) {
+// `hayBloqueo` (opcional): si al consumirse hay una capa abierta por encima
+// (registro invertido en el mismo commit), se rearma sin abrir el diálogo.
+export function useCapaGuardia(activa, onAbrir, hayBloqueo) {
   const idRef = useRef(null);
   const abrirRef = useRef(onAbrir);
+  const bloqueoRef = useRef(hayBloqueo);
 
   useEffect(() => {
     abrirRef.current = onAbrir;
+    bloqueoRef.current = hayBloqueo;
   });
 
   useEffect(() => {
@@ -147,12 +151,11 @@ export function useCapaGuardia(activa, onAbrir) {
     }
     const armar = () => {
       const id = registrarCapa(() => {
-        if (idRef.current === id) {
-          // Rearme síncrono en el popstate: la pila nunca queda sin
-          // centinela, ni siquiera entre dos gestos rapidísimos.
-          idRef.current = armar();
-        }
-        abrirRef.current?.();
+        // Registro viejo (p. ej. tras fin de sesión): ignorar.
+        if (idRef.current !== id) return;
+        // Rearme síncrono en el popstate.
+        idRef.current = armar();
+        if (!bloqueoRef.current?.()) abrirRef.current?.();
       });
       return id;
     };

@@ -374,6 +374,64 @@ export default function HomePage() {
     router.push("/login");
   }, [router, restablecerSesionBase, setArticulos, setConteos, setPagina, setTotalNoticias]);
 
+  // Guardia persistente de salida: se registra ANTES que cualquier capa para
+  // que el centinela quede debajo (un registro invertido en el mismo commit
+  // disparaba el diálogo fantasma al cerrar la guía de bienvenida).
+  // Feed→atrás→diálogo→atrás→feed, sin expulsiones a login.
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const hayCapaSobreGuardia = useCallback(() => Boolean(
+    isAddModalOpen ||
+      isManageModalOpen ||
+      isPerfilOpen ||
+      confirmarEliminar ||
+      showOnboardingSurvey ||
+      panelAjustes ||
+      ayudaAtajosAbierta ||
+      articuloParaAbrir ||
+      notifsAbiertas ||
+      panelMovilAbierto
+  ), [
+    isAddModalOpen,
+    isManageModalOpen,
+    isPerfilOpen,
+    confirmarEliminar,
+    showOnboardingSurvey,
+    panelAjustes,
+    ayudaAtajosAbierta,
+    articuloParaAbrir,
+    notifsAbiertas,
+    panelMovilAbierto,
+  ]);
+  useCapaGuardia(Boolean(session?.user), () => setConfirmarSalida(true), hayCapaSobreGuardia);
+  const cerrarDialogoSalida = useCapaHistorial(confirmarSalida, () => setConfirmarSalida(false));
+
+  useEffect(() => {
+    if (!confirmarSalida) return undefined;
+    const alTecla = (event) => {
+      if (event.key === "Escape") cerrarDialogoSalida();
+    };
+    document.addEventListener("keydown", alTecla);
+    return () => document.removeEventListener("keydown", alTecla);
+  }, [confirmarSalida, cerrarDialogoSalida]);
+
+  const confirmarSalidaSesion = async () => {
+    setConfirmarSalida(false);
+    if (esInvitado) {
+      await salirInvitado();
+      return;
+    }
+    try {
+      restablecerSesionBase();
+    } catch {
+      // La purga nunca bloquea la salida.
+    }
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      router.push("/login");
+    }
+  };
+
   const recargarSesion = useCallback(async () => {
     try {
       const resAuth = await fetch("/api/auth/session", { cache: "no-store" });
@@ -622,40 +680,6 @@ export default function HomePage() {
   const cerrarGuia = useCapaHistorial(showOnboardingSurvey, closeOnboardingSurvey);
   const cerrarAyuda = useCapaHistorial(ayudaAtajosAbierta, () => setAyudaAtajosAbierta(false));
   const cerrarPanelMovil = useCapaHistorial(panelMovilAbierto, () => setPanelMovilAbierto(false));
-
-  // Guardia persistente de salida: mantiene SIEMPRE un centinela sobre la
-  // página mientras hay sesión. Feed→atrás→diálogo→atrás→feed, sin ventana
-  // sin centinela y sin expulsiones a login. El diálogo apila su capa encima.
-  const [confirmarSalida, setConfirmarSalida] = useState(false);
-  useCapaGuardia(Boolean(session?.user), () => setConfirmarSalida(true));
-  const cerrarDialogoSalida = useCapaHistorial(confirmarSalida, () => setConfirmarSalida(false));
-
-  useEffect(() => {
-    if (!confirmarSalida) return undefined;
-    const alTecla = (event) => {
-      if (event.key === "Escape") cerrarDialogoSalida();
-    };
-    document.addEventListener("keydown", alTecla);
-    return () => document.removeEventListener("keydown", alTecla);
-  }, [confirmarSalida, cerrarDialogoSalida]);
-
-  const confirmarSalidaSesion = async () => {
-    setConfirmarSalida(false);
-    if (esInvitado) {
-      await salirInvitado();
-      return;
-    }
-    try {
-      restablecerSesionBase();
-    } catch {
-      // La purga nunca bloquea la salida.
-    }
-    try {
-      await signOut({ callbackUrl: "/login" });
-    } catch {
-      router.push("/login");
-    }
-  };
 
   useKeyboardShortcuts({
     articles: articulos,
