@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
+import { Check as CheckData, Circle as CircleData } from "lucide";
 import { useIdioma } from "@/lib/i18n";
 import { iconoDeCategoria } from "@/lib/iconosCategorias";
 import MorphIcon from "../MorphIcon";
@@ -23,11 +24,23 @@ function CategoryPill({ category, selected, onClick, t }) {
         }`}
       aria-pressed={selected}
     >
-      <span className="shrink-0 text-app-muted" aria-hidden="true">
+      <span
+        aria-hidden="true"
+        className={`inline-flex shrink-0 transition-[transform,color] duration-200 ease-out ${
+          selected ? "scale-110 text-[var(--accent)]" : "scale-100 text-app-muted"
+        }`}
+      >
         <MorphIcon icon={iconoDeCategoria(category.id)} size={17} strokeWidth={2.25} />
       </span>
       <span className="truncate text-sm font-medium">{traducirCategoria(category.id, idioma)}</span>
-      {selected && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
+      <MorphIcon
+        icon={selected ? CheckData : CircleData}
+        size={15}
+        strokeWidth={2.5}
+        className={`shrink-0 transition-[color] duration-200 ${
+          selected ? "text-[var(--accent)]" : "text-app-muted/40"
+        }`}
+      />
     </button>
   );
 }

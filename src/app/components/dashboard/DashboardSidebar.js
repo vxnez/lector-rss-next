@@ -23,6 +23,7 @@ import {
 import MorphIcon from "../MorphIcon";
 import { dominioDeUrl } from "@/lib/formato";
 import { traducirCategoria } from "@/lib/categoryStyles";
+import { iconoDeCategoria } from "@/lib/iconosCategorias";
 import { useIdioma } from "@/lib/i18n";
 
 function IconoFuentePildora({ fuente }) {
@@ -515,6 +516,14 @@ export default function DashboardSidebar({
                       size={13}
                       strokeWidth={2.5}
                       className="shrink-0"
+                    />
+                    <MorphIcon
+                      icon={iconoDeCategoria(categoria)}
+                      size={14}
+                      strokeWidth={2.25}
+                      className={`shrink-0 transition-[transform,color] duration-200 ease-out ${
+                        activa ? "scale-110 text-sky-300" : "scale-100 text-gray-500"
+                      }`}
                     />
                     {traducirCategoria(categoria, idioma)}
                   </button>
