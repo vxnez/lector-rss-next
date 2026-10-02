@@ -91,6 +91,24 @@ const assert = (cond, msg) => {
   // Nunca expulsado: siempre queda al menos una entrada propia sobre P0.
   assert(pilaNav.length >= 2, `doble atrás expulsó: len=${pilaNav.length}`);
 
+  // --- Escenario 4: transición Ajustes→Perfil (cerrar+abrir atómico) ---
+  // Réplica del hook: retirar A y abrir B dentro del cierre diferido.
+  const idA4 = H.registrarCapa(() => {});
+  // Simula cerrarAjustes(abrirPerfil): retirar + diferido que abre B.
+  const idxA = H.pila.findIndex((c) => c.id === idA4);
+  H.pila.splice(idxA, 1);
+  window.history.back();
+  await microtareas();
+  let idB = null;
+  window.setTimeout(() => { idB = H.registrarCapa(() => {}); }, 0);
+  await microtareas();
+  await microtareas();
+  assert(idB && H.pila.some((c) => c.id === idB), "transición: B debe sobrevivir");
+  window.history.back(); // atrás con B -> solo cierra B
+  await microtareas();
+  assert(H.pila.some((c) => c.id === idB) === false, "transición: B debió cerrarse");
+  assert(pilaNav.length >= 2, "transición: sin expulsión");
+
   // --- Escenario 3: fuzz aleatorio (capas, cierres, atrás) ---
   H.pila.length = 0;
   const rnd = (() => { let s = 42; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; })();

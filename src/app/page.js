@@ -1230,8 +1230,9 @@ export default function HomePage() {
         imagenUsuario={esInvitado ? null : session?.user?.image || null}
         esInvitado={esInvitado}
         onEditarPerfil={() => {
-          cerrarAjustes();
-          setIsPerfilOpen(true);
+          // El destino abre tras el popstate del cierre (ver useCapaHistorial):
+          // abrirlo aquí mataría su entrada en la reconciliación.
+          cerrarAjustes(() => setIsPerfilOpen(true));
         }}
         onCerrarSesion={salirInvitado}
         onPurgarSesion={restablecerSesionBase}
@@ -1275,8 +1276,8 @@ export default function HomePage() {
         isOpen={isManageModalOpen}
         onClose={() => cerrarManage()}
         onAgregarFuente={() => {
-          cerrarManage();
-          setIsAddModalOpen(true);
+          // Igual que Editar perfil: el destino abre tras el popstate.
+          cerrarManage(() => setIsAddModalOpen(true));
         }}
         onChange={() => {
           setPagina(1);

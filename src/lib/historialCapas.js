@@ -143,15 +143,22 @@ export function useCapaHistorial(abierto, onCerrar) {
     };
   }, [abierto]);
 
-  return useCallback(() => {
+  return useCallback((alAbrir) => {
     const id = idRef.current;
     idRef.current = null;
     // Si la capa se reabrió antes de que corra el cierre diferido, el
     // diferido la dejaría cerrada por error: solo cierra si sigue cerrada.
+    // `alAbrir` (p. ej. Ajustes → Perfil) corre AQUÍ, tras el popstate del
+    // cierre: si abriera antes, la reconciliación vería su entrada como
+    // "saltada" y la mataría al instante (modal que parpadea y muere).
+    const hacer = () => {
+      cerrarRef.current?.();
+      alAbrir?.();
+    };
     if (id) retirarCapa(id, () => {
-      if (idRef.current === null) cerrarRef.current?.();
+      if (idRef.current === null) hacer();
     });
-    else cerrarRef.current?.();
+    else hacer();
   }, []);
 }
 
