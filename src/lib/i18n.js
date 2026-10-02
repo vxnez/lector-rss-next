@@ -262,6 +262,7 @@ const TEXTOS_ES = {
       sincronizando: "Sincronizando...",
       err_agregar: "Error al agregar la fuente",
       err_sin_noticias: "La fuente no devolvió noticias para mostrar.",
+      sugeridas: "Agregar fuentes sugeridas",
     },
     fuentes: {
       titulo: "Gestionar Fuentes RSS",
@@ -975,6 +976,7 @@ const TEXTOS_EN = {
       sincronizando: "Syncing...",
       err_agregar: "Error adding the feed",
       err_sin_noticias: "The feed returned no news to show.",
+      sugeridas: "Add suggested feeds",
     },
     fuentes: {
       titulo: "Manage RSS Feeds",

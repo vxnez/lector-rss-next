@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus, ClipboardPaste } from "lucide-react";
+import { Rss, Link as LinkIcon, Tag, X, AlertCircle, Loader2, Plus, ClipboardPaste, Sparkles, ChevronDown } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
+import RecommendedFeedsList from "./dashboard/RecommendedFeedsList";
 
 // initialUrl llega por prop y el padre fuerza remontaje con `key` al abrir,
 // así el prefill (p. ej. Web Share Target) no necesita sincronizar con efectos.
@@ -14,6 +15,16 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
   const [forzarWeb, setForzarWeb] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Fuentes sugeridas: mismo catálogo que la bienvenida
+  // (/api/recommended-feeds → { categorias }). Carga perezosa al desplegar.
+  const [mostrarSugeridas, setMostrarSugeridas] = useState(false);
+  const [sugeridas, setSugeridas] = useState({});
+  const [sugeridasCargadas, setSugeridasCargadas] = useState(false);
+  const [cargandoSugeridas, setCargandoSugeridas] = useState(false);
+  const [sugeridasAgregando, setSugeridasAgregando] = useState(new Set());
+  const [sugeridasAgregadas, setSugeridasAgregadas] = useState(new Set());
+  const [totalSugeridasAgregadas, setTotalSugeridasAgregadas] = useState(0);
+  const [agregandoTodasSug, setAgregandoTodasSug] = useState(false);
 
   if (!isOpen) return null;
 
@@ -45,6 +56,77 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
       setLoading(false);
     }
   };
+
+  const alternarSugeridas = async () => {
+    const abrir = !mostrarSugeridas;
+    setMostrarSugeridas(abrir);
+    if (!abrir || sugeridasCargadas || cargandoSugeridas) return;
+    setCargandoSugeridas(true);
+    try {
+      const res = await fetch("/api/recommended-feeds", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t("fuentes.err_conexion"));
+      setSugeridas(data.categorias && typeof data.categorias === "object" ? data.categorias : {});
+      setSugeridasCargadas(true);
+    } catch (err) {
+      setError(err.message || t("fuentes.err_conexion"));
+    } finally {
+      setCargandoSugeridas(false);
+    }
+  };
+
+  const agregarSugerida = async (feed) => {
+    const clave = `${feed.titulo}|${feed.url}`;
+    if (sugeridasAgregando.has(clave) || sugeridasAgregadas.has(clave)) return;
+    setSugeridasAgregando((prev) => new Set(prev).add(clave));
+    try {
+      const res = await fetch("/api/rss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url_feed: feed.url,
+          categoria: feed.categoria || "General",
+          ...(feed.forzar_conversion === true ? { forzar_conversion: true } : {}),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 409) throw new Error(data.error || t("addfeed.err_agregar"));
+      setSugeridasAgregadas((prev) => new Set(prev).add(clave));
+      setTotalSugeridasAgregadas((n) => n + 1);
+      if (onSuccess) await onSuccess(data);
+    } catch (err) {
+      setError(err.message || t("addfeed.err_agregar"));
+    } finally {
+      setSugeridasAgregando((prev) => {
+        const next = new Set(prev);
+        next.delete(clave);
+        return next;
+      });
+    }
+  };
+
+  const agregarTodasSugeridas = async () => {
+    if (agregandoTodasSug || !sugeridas || typeof sugeridas !== "object") return;
+    const todas = Object.values(sugeridas).flatMap((lista) => (Array.isArray(lista) ? lista : []));
+    if (todas.length === 0) return;
+    setAgregandoTodasSug(true);
+    try {
+      for (const feed of todas) {
+        const clave = `${feed.titulo}|${feed.url}`;
+        if (!sugeridasAgregadas.has(clave) && !sugeridasAgregando.has(clave)) {
+          await agregarSugerida(feed);
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      }
+    } finally {
+      setAgregandoTodasSug(false);
+    }
+  };
+
+  const totalSugeridas =
+    sugeridas && typeof sugeridas === "object"
+      ? Object.values(sugeridas).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0)
+      : 0;
 
   return (
     <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -172,6 +254,40 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
             </button>
           </div>
         </form>
+
+        {/* Fuentes sugeridas: mismo catálogo categorizado de la bienvenida. */}
+        <div className="mt-4 border-t border-gray-800/60 pt-4">
+          <button
+            type="button"
+            onClick={alternarSugeridas}
+            aria-expanded={mostrarSugeridas}
+            className="touch-target btn-press flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2.5 text-sm font-medium text-[var(--accent-ink)] hover:bg-[var(--accent)]/20"
+          >
+            <Sparkles size={16} aria-hidden="true" />
+            <span>{t("addfeed.sugeridas")}</span>
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={`shrink-0 transition-transform duration-200 ${mostrarSugeridas ? "rotate-180" : ""}`}
+            />
+          </button>
+          {mostrarSugeridas && (
+            <div className="mt-3">
+              <RecommendedFeedsList
+                cargando={cargandoSugeridas}
+                feeds={sugeridas}
+                total={totalSugeridas}
+                totalAgregados={totalSugeridasAgregadas}
+                onAdd={agregarSugerida}
+                onAddAll={agregarTodasSugeridas}
+                agregandoTodas={agregandoTodasSug}
+                feedsAgregando={sugeridasAgregando}
+                feedsAgregados={sugeridasAgregadas}
+                t={t}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

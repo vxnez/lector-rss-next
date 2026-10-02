@@ -18,7 +18,7 @@ import { urlBase64ToUint8Array } from "@/lib/feed-utils";
 import { useCapaHistorial } from "@/lib/historialCapas";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
-import { limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
+import { limpiarBienvenidaInvitado, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
@@ -351,6 +351,9 @@ export default function HomePage() {
       // Limpieza local de todas formas
     }
     limpiarNotificacionesLocales();
+    // Sin esto, reingresar como invitado no muestra la guía (la marca vieja
+    // persiste en el mismo navegador).
+    limpiarBienvenidaInvitado();
     setSession(null);
     setArticulos([]);
     bumpCacheVersion();

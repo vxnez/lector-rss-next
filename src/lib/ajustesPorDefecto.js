@@ -78,6 +78,20 @@ export function limpiarNotificacionesLocales() {
 }
 
 /**
+ * Bienvenida de invitado: al salir/expirar el modo invitado la marca debe
+ * borrarse para que el próximo ingreso muestre la guía de nuevo. Solo toca
+ * las claves de invitado (las `welcome_seen_<email>` de cuentas permanentes
+ * se conservan).
+ */
+export function limpiarBienvenidaInvitado() {
+  try {
+    window.localStorage.removeItem("guest_has_seen_onboarding");
+    window.localStorage.removeItem("welcome_seen_invitado");
+  } catch {
+    // Sin almacenamiento disponible: nada que limpiar.
+  }
+}
+/**
  * Limpieza total al eliminar la cuenta permanente: defaults + marcas de
  * bienvenida/onboarding del navegador + bandeja de notificaciones. Tras
  * esto, un re-registro con el mismo correo arranca con perfil
