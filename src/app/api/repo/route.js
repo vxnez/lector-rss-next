@@ -5,7 +5,15 @@ export async function GET() {
     const timeout = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(
       "https://api.github.com/repos/vxnez/lector-rss-next/commits?per_page=1",
-      { signal: controller.signal, next: { revalidate: 3600 } }
+      {
+        signal: controller.signal,
+        next: { revalidate: 3600 },
+        headers: {
+          // Sin User-Agent GitHub responde 403 y la versión quedaría en 0.
+          "User-Agent": "lector-rss-next",
+          Accept: "application/vnd.github+json",
+        },
+      }
     );
     clearTimeout(timeout);
     if (!res.ok) return Response.json({ commits: 0 }, { status: 200 });

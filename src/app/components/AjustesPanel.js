@@ -38,7 +38,7 @@ import { FUENTES, FUENTE_PX_MIN, FUENTE_PX_MAX } from "@/lib/fuentes";
 import { limpiarRastrosCuenta, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
 
 const URL_REPOSITORIO = "https://github.com/vxnez/lector-rss-next";
-const URL_APP = "https://lector-rss-next.vercel.app";
+const URL_APP = "https://rssdashboard.vercel.app";
 const VERSION_APP = "1.0";
 const TAMANOS_PAGINA = [15, 30, 60];
 
