@@ -293,7 +293,7 @@ export default function DashboardSidebar({
             {numFiltrosActivos > 0 && (
               <span
                 aria-hidden="true"
-                className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-gray-950"
+                className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-amber-950"
               >
                 {numFiltrosActivos}
               </span>

@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/lib/correo.js"
+        ],
+        "createdAt": "2026-10-02T09:10:28.246Z",
+        "reason": "Emails transaccionales: los clientes de correo no cargan webfonts, Arial es lo correcto"
+      }
+    ]
+  }
+}

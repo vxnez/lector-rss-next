@@ -396,15 +396,18 @@ textarea:focus-visible {
   }
 }
 
-/* Línea vertical cuando la tarjeta está minimizada: acento plano. */
+/* Línea vertical cuando la tarjeta está minimizada: acento plano.
+   El ensanchado al hover es scaleX (GPU) en vez de width (layout thrash). */
 .github-float-min {
   background: var(--accent);
   cursor: pointer;
   box-shadow: none;
-  transition: width 200ms var(--ease-out);
+  transform: scaleX(1);
+  transform-origin: right center;
+  transition: transform 200ms var(--ease-out);
 }
 .github-float-min:hover {
-  width: 1rem;
+  transform: scaleX(1.6);
 }
 
 /* ============ Sistema de pulido UI (skills: emil + high-end + taste) ============
