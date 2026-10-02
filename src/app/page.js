@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import dynamic from "next/dynamic";
 import GitHubCard from "./components/GitHubCard";
 import NewsFeed from "./components/NewsFeed";
@@ -621,6 +622,42 @@ export default function HomePage() {
   const cerrarGuia = useCapaHistorial(showOnboardingSurvey, closeOnboardingSurvey);
   const cerrarAyuda = useCapaHistorial(ayudaAtajosAbierta, () => setAyudaAtajosAbierta(false));
   const cerrarPanelMovil = useCapaHistorial(panelMovilAbierto, () => setPanelMovilAbierto(false));
+
+  // Guardia de salida: con el feed al descubierto se mantiene UNA entrada de
+  // historial; el atrás móvil abre el diálogo de confirmación en vez de
+  // expulsar la sesión (p. ej. al login de Google). Las capas se apilan
+  // encima y se cierran primero (LIFO), sin re-registrar la guardia.
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const guardiaActiva = Boolean(session?.user) && !confirmarSalida;
+  useCapaHistorial(guardiaActiva, () => setConfirmarSalida(true));
+  const cerrarDialogoSalida = useCapaHistorial(confirmarSalida, () => setConfirmarSalida(false));
+
+  useEffect(() => {
+    if (!confirmarSalida) return undefined;
+    const alTecla = (event) => {
+      if (event.key === "Escape") cerrarDialogoSalida();
+    };
+    document.addEventListener("keydown", alTecla);
+    return () => document.removeEventListener("keydown", alTecla);
+  }, [confirmarSalida, cerrarDialogoSalida]);
+
+  const confirmarSalidaSesion = async () => {
+    setConfirmarSalida(false);
+    if (esInvitado) {
+      await salirInvitado();
+      return;
+    }
+    try {
+      restablecerSesionBase();
+    } catch {
+      // La purga nunca bloquea la salida.
+    }
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      router.push("/login");
+    }
+  };
 
   useKeyboardShortcuts({
     articles: articulos,
@@ -1266,6 +1303,49 @@ export default function HomePage() {
         onCerrar={() => cerrarAyuda()}
         t={t}
       />
+
+      {/* Guardia de salida: el atrás con el feed al descubierto pregunta
+          antes de cerrar la sesión (solo con sesión activa). */}
+      {confirmarSalida && session?.user && (
+        <div
+          className="anim-overlay fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => cerrarDialogoSalida()}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="titulo-salida"
+            aria-describedby="texto-salida"
+            onClick={(event) => event.stopPropagation()}
+            className="anim-modal w-full max-w-sm space-y-4 rounded-2xl border border-app-line bg-app-surface p-6 shadow-2xl"
+          >
+            <h3 id="titulo-salida" className="text-balance text-lg font-bold text-app-fg">
+              {t("ajustes.salida_titulo")}
+            </h3>
+            <p id="texto-salida" className="text-pretty text-sm leading-relaxed text-app-muted">
+              {t("ajustes.salida_texto")}
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => cerrarDialogoSalida()}
+                autoFocus
+                className="touch-target btn-press rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90"
+              >
+                {t("ajustes.salida_no")}
+              </button>
+              <button
+                type="button"
+                onClick={confirmarSalidaSesion}
+                className="touch-target btn-press rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 hover:bg-rose-500/15"
+              >
+                {t("ajustes.salida_si")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
