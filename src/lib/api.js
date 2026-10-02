@@ -438,12 +438,24 @@ function extraerItemsBulk(res) {
 export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
   const topeSeguro = Math.max(Number(tope) || 0, 0);
   if (topeSeguro <= 0) return [];
+  const avisarFallo = (donde, error) => {
+    // Un 400 tragado aquí se vería como "listas vacías / conteos en cero":
+    // se loguea el status para cazarlo al instante.
+    console.warn(
+      `Bulk articulos ${donde}:`,
+      error?.status ? `status=${error.status}` : "",
+      error?.message || error
+    );
+  };
   const primera = await getArticulos({
     usuario_id,
     ...params,
     limit: LIMITE_PAGINA_BULK,
     offset: 0,
-  }).catch(() => null);
+  }).catch((error) => {
+    avisarFallo("offset=0", error);
+    return null;
+  });
   const uno = extraerItemsBulk(primera);
   const items = Array.isArray(uno.items) ? [...uno.items] : [];
   const objetivo = uno.exacto
@@ -456,7 +468,10 @@ export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
   for (let i = 0; i < offsets.length; i += 4) {
     const respuestas = await Promise.all(
       offsets.slice(i, i + 4).map((off) =>
-        getArticulos({ usuario_id, ...params, limit: LIMITE_PAGINA_BULK, offset: off }).catch(() => null)
+        getArticulos({ usuario_id, ...params, limit: LIMITE_PAGINA_BULK, offset: off }).catch((error) => {
+          avisarFallo(`offset=${off}`, error);
+          return null;
+        })
       )
     );
     for (const r of respuestas) {
