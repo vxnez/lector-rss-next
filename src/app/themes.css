@@ -581,14 +581,15 @@
   }
 }
 
-/* Touch targets 48x48dp en punteros gruesos (móvil/táctil). El icono visible
-   conserva su tamaño; el área de toque se extiende con centrado. */
+/* Touch targets 48x48dp en punteros gruesos (móvil/táctil). Solo mínimos:
+   inline-flex centrado para no romper botones que ya son flex o grid. */
 @media (pointer: coarse) {
   .touch-target {
     min-width: 3rem;
     min-height: 3rem;
-    display: inline-grid;
-    place-content: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

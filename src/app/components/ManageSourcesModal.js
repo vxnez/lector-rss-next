@@ -690,58 +690,63 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
         {/* Barra de selección múltiple: seleccionar todo (reversible),
             conteo y borrado en lote para una eliminación más rápida. */}
         {!vistaOpml && !loading && visibleSources.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-gray-950/60 px-3 py-2">
-            <button
-              type="button"
-              onClick={alternarTodas}
-              aria-pressed={todasSeleccionadas}
-              title={todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
-              className={`touch-target btn-press min-w-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                todasSeleccionadas
-                  ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                  : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
-              }`}
-            >
-              <MorphIcon
-                icon={todasSeleccionadas ? CheckCheckData : CircleData}
-                size={13}
-                strokeWidth={2.5}
-                className="shrink-0"
-              />
-              <span className="truncate">{todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}</span>
-            </button>
+          <div className="space-y-2 rounded-xl border border-gray-800 bg-gray-950/60 px-3 py-2.5">
             {seleccionadas.length > 0 && (
-              <span className="text-[11px] text-sky-400">
+              <p className="text-center text-[11px] font-medium tabular-nums text-sky-400">
                 {seleccionadas.length === 1
                   ? t("fuentes.sel_una", { n: 1 })
                   : t("fuentes.sel_varias", { n: seleccionadas.length })}
-              </span>
+              </p>
             )}
-            <button
-              type="button"
-              onClick={() => setConfirmarLote(true)}
-              disabled={seleccionadas.length === 0 || eliminandoLote}
-              title={t("fuentes.eliminar_titulo")}
-              className="touch-target btn-press min-w-0 sm:ml-auto flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 disabled:opacity-40"
-            >
-              <MorphIcon
-                icon={eliminandoLote ? LoaderCircleData : Trash2Data}
-                size={12}
-                className={eliminandoLote ? "animate-spin" : ""}
-              />
-              <span className="truncate">{t("fuentes.eliminar_sel", { n: seleccionadas.length })}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleFullLote}
-              disabled={seleccionadas.length === 0 || aplicandoFullLote}
-              title={t("fuentes.convert_full_hint")}
-              className="touch-target btn-press min-w-0 w-full sm:w-auto justify-center flex items-center gap-1.5 rounded-xl border border-sky-800 bg-sky-950 px-3 py-1.5 text-xs font-medium text-sky-300 hover:border-sky-600 disabled:opacity-40"
-            >
-              <span className="truncate">{todasFullSel
-                ? t("fuentes.full_lote_off", { n: seleccionadas.length })
-                : t("fuentes.full_lote_on", { n: seleccionadas.length })}</span>
-            </button>
+            {/* Acciones masivas en rejilla simétrica: dos columnas iguales y
+                la conversión a página completa a ancho completo. Misma altura
+                en los tres botones, sin desbordes a 320px. */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={alternarTodas}
+                aria-pressed={todasSeleccionadas}
+                title={todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}
+                className={`touch-target btn-press min-w-0 flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                  todasSeleccionadas
+                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                }`}
+              >
+                <MorphIcon
+                  icon={todasSeleccionadas ? CheckCheckData : CircleData}
+                  size={13}
+                  strokeWidth={2.5}
+                  className="shrink-0"
+                />
+                <span className="truncate">{todasSeleccionadas ? t("fuentes.quitar_seleccion") : t("fuentes.seleccionar_todo")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmarLote(true)}
+                disabled={seleccionadas.length === 0 || eliminandoLote}
+                title={t("fuentes.eliminar_titulo")}
+                className="touch-target btn-press min-w-0 flex items-center justify-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-900/40 disabled:opacity-40"
+              >
+                <MorphIcon
+                  icon={eliminandoLote ? LoaderCircleData : Trash2Data}
+                  size={12}
+                  className={eliminandoLote ? "shrink-0 animate-spin" : "shrink-0"}
+                />
+                <span className="truncate">{t("fuentes.eliminar_sel", { n: seleccionadas.length })}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleFullLote}
+                disabled={seleccionadas.length === 0 || aplicandoFullLote}
+                title={t("fuentes.convert_full_hint")}
+                className="touch-target btn-press col-span-2 flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-sky-800 bg-sky-950 px-3 py-2 text-xs font-medium text-sky-300 hover:border-sky-600 disabled:opacity-40"
+              >
+                <span className="truncate">{todasFullSel
+                  ? t("fuentes.full_lote_off", { n: seleccionadas.length })
+                  : t("fuentes.full_lote_on", { n: seleccionadas.length })}</span>
+              </button>
+            </div>
           </div>
         )}
 
