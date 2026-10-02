@@ -4,36 +4,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Sparkles, Check, Plus, Loader2, Heart, Tag } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
+import { iconoDeCategoria } from "@/lib/iconosCategorias";
+import MorphIcon from "../MorphIcon";
 import { traducirCategoria } from "@/lib/categoryStyles";
 import { animarAperturaModal, animarCierreModal } from "@/lib/animaciones";
 import RecommendedFeedsList from "./RecommendedFeedsList";
-
-// Fallback de iconos/colores por si la API no los proporciona
-const CATEGORY_META = {
-  "Tecnología": { icon: "💻", color: "bg-sky-500" },
-  "Developers": { icon: "🧑‍💻", color: "bg-teal-500" },
-  "Ciencia y Espacio": { icon: "🚀", color: "bg-purple-500" },
-  "Videojuegos": { icon: "🎮", color: "bg-pink-500" },
-  "Cine y Series": { icon: "🎬", color: "bg-red-500" },
-  "Música": { icon: "🎵", color: "bg-green-500" },
-  "Deportes": { icon: "⚽", color: "bg-amber-500" },
-  "Economía y Finanzas": { icon: "💰", color: "bg-emerald-500" },
-  "Salud y Medicina": { icon: "🏥", color: "bg-rose-500" },
-  "Política": { icon: "🏛️", color: "bg-blue-500" },
-  "Medio Ambiente": { icon: "🌱", color: "bg-lime-500" },
-  "Gastronomía": { icon: "🍽️", color: "bg-orange-500" },
-  "Viajes y Turismo": { icon: "✈️", color: "bg-cyan-500" },
-  "Motor": { icon: "🏎️", color: "bg-red-600" },
-  "Educación": { icon: "📚", color: "bg-indigo-500" },
-  "Cultura y Arte": { icon: "🎨", color: "bg-fuchsia-500" },
-  "Moda y Belleza": { icon: "💄", color: "bg-pink-600" },
-  "Fitness y Nutrición": { icon: "💪", color: "bg-emerald-600" },
-  "Hogar y Vida Diaria": { icon: "🏠", color: "bg-amber-600" },
-  "Celulares": { icon: "📱", color: "bg-sky-600" },
-  "Computadoras": { icon: "🖥️", color: "bg-violet-500" },
-  "Seguridad y Justicia": { icon: "⚖️", color: "bg-gray-600" },
-  "Clima y Meteorología": { icon: "🌤️", color: "bg-blue-400" },
-};
 
 function CategoryPill({ category, selected, onClick, t }) {
   const { idioma } = useIdioma();
@@ -48,7 +23,9 @@ function CategoryPill({ category, selected, onClick, t }) {
         }`}
       aria-pressed={selected}
     >
-      <span className="text-lg">{category.icon}</span>
+      <span className="shrink-0 text-app-muted" aria-hidden="true">
+        <MorphIcon icon={iconoDeCategoria(category.id)} size={17} strokeWidth={2.25} />
+      </span>
       <span className="truncate text-sm font-medium">{traducirCategoria(category.id, idioma)}</span>
       {selected && <Check size={14} strokeWidth={3} className="shrink-0 text-sky-400" />}
     </button>
@@ -92,8 +69,6 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
             .filter(([, feeds]) => Array.isArray(feeds) && feeds.length > 0)
             .map(([nombre, feeds]) => ({
               id: nombre,
-              icon: CATEGORY_META[nombre]?.icon || "📰",
-              color: CATEGORY_META[nombre]?.color || "bg-gray-500",
               count: feeds.length,
             }))
             .sort((a, b) => b.count - a.count); // Ordenar por más feeds primero
