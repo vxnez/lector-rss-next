@@ -125,3 +125,45 @@ export function useCapaHistorial(abierto, onCerrar) {
     else cerrarRef.current?.();
   }, []);
 }
+
+// Guardia persistente del feed: mantiene SIEMPRE una entrada centinela sobre
+// la página. Al consumirse (atrás con el feed al descubierto) se rearma EN LA
+// MISMA tarea del popstate y abre el diálogo: entre un gesto y el siguiente
+// nunca hay ventana sin centinela, así que ningún atrás puede expulsar a
+// login. El diálogo, al abrirse, apila su propia capa encima (ciclo
+// feed→diálogo→feed). Solo se desarma sin sesión.
+export function useCapaGuardia(activa, onAbrir) {
+  const idRef = useRef(null);
+  const abrirRef = useRef(onAbrir);
+
+  useEffect(() => {
+    abrirRef.current = onAbrir;
+  });
+
+  useEffect(() => {
+    if (!activa) {
+      idRef.current = null;
+      return undefined;
+    }
+    const armar = () => {
+      const id = registrarCapa(() => {
+        if (idRef.current === id) {
+          // Rearme síncrono en el popstate: la pila nunca queda sin
+          // centinela, ni siquiera entre dos gestos rapidísimos.
+          idRef.current = armar();
+        }
+        abrirRef.current?.();
+      });
+      return id;
+    };
+    idRef.current = armar();
+    return () => {
+      // Desarme (fin de sesión): se retira del registro sin navegar; la
+      // entrada huérfana la absorbe la reconciliación al volver atrás.
+      if (idRef.current) {
+        desprenderCapa(idRef.current);
+        idRef.current = null;
+      }
+    };
+  }, [activa]);
+}

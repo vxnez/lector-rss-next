@@ -16,7 +16,7 @@ import { TEMA_POR_DEFECTO, aplicarTema, temaInicial } from "@/lib/temas";
 import { FUENTE_POR_DEFECTO, FUENTE_PX_DEFECTO, FUENTE_PX_MIN, FUENTE_PX_MAX, aplicarFuente, aplicarFuentePx, fuenteInicial, fuentePxInicial } from "@/lib/fuentes";
 import { useIdioma } from "@/lib/i18n";
 import { urlBase64ToUint8Array } from "@/lib/feed-utils";
-import { useCapaHistorial } from "@/lib/historialCapas";
+import { useCapaGuardia, useCapaHistorial } from "@/lib/historialCapas";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
 import { aplicarAparienciaBase, purgarSesionLocal } from "@/lib/ajustesPorDefecto";
@@ -623,13 +623,11 @@ export default function HomePage() {
   const cerrarAyuda = useCapaHistorial(ayudaAtajosAbierta, () => setAyudaAtajosAbierta(false));
   const cerrarPanelMovil = useCapaHistorial(panelMovilAbierto, () => setPanelMovilAbierto(false));
 
-  // Guardia de salida: con el feed al descubierto se mantiene UNA entrada de
-  // historial; el atrás móvil abre el diálogo de confirmación en vez de
-  // expulsar la sesión (p. ej. al login de Google). Las capas se apilan
-  // encima y se cierran primero (LIFO), sin re-registrar la guardia.
+  // Guardia persistente de salida: mantiene SIEMPRE un centinela sobre la
+  // página mientras hay sesión. Feed→atrás→diálogo→atrás→feed, sin ventana
+  // sin centinela y sin expulsiones a login. El diálogo apila su capa encima.
   const [confirmarSalida, setConfirmarSalida] = useState(false);
-  const guardiaActiva = Boolean(session?.user) && !confirmarSalida;
-  useCapaHistorial(guardiaActiva, () => setConfirmarSalida(true));
+  useCapaGuardia(Boolean(session?.user), () => setConfirmarSalida(true));
   const cerrarDialogoSalida = useCapaHistorial(confirmarSalida, () => setConfirmarSalida(false));
 
   useEffect(() => {
