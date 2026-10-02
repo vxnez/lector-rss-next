@@ -126,16 +126,18 @@ export function useCapaHistorial(abierto, onCerrar) {
   }, []);
 }
 
-// Guardia persistente del feed: mantiene SIEMPRE una entrada centinela sobre
-// la página. Al consumirse (atrás con el feed al descubierto) se rearma EN LA
-// MISMA tarea del popstate y abre el diálogo: entre un gesto y el siguiente
-// nunca hay ventana sin centinela, así que ningún atrás puede expulsar a
-// login. El diálogo, al abrirse, apila su propia capa encima (ciclo
-// feed→diálogo→feed). Solo se desarma sin sesión.
+// Guardia persistente del feed: mantiene SIEMPRE un centinela DOBLE sobre la
+// página (búfer + centinela). Al consumirse el centinela se rearma EN LA MISMA
+// tarea del popstate y abre el diálogo: entre un gesto y el siguiente nunca
+// hay ventana sin centinela, así que ningún atrás puede expulsar a login.
+// Además el atrás nunca abandona el documento (aterriza en el búfer propio):
+// cero parpadeos de la pantalla de login. El diálogo, al abrirse, apila su
+// propia capa encima (ciclo feed→diálogo→feed). Solo se desarma sin sesión.
 // `hayBloqueo` (opcional): si al consumirse hay una capa abierta por encima
 // (registro invertido en el mismo commit), se rearma sin abrir el diálogo.
 export function useCapaGuardia(activa, onAbrir, hayBloqueo) {
   const idRef = useRef(null);
+  const bufRef = useRef(null);
   const abrirRef = useRef(onAbrir);
   const bloqueoRef = useRef(hayBloqueo);
 
@@ -147,7 +149,13 @@ export function useCapaGuardia(activa, onAbrir, hayBloqueo) {
   useEffect(() => {
     if (!activa) {
       idRef.current = null;
+      bufRef.current = null;
       return undefined;
+    }
+    // Búfer (una sola vez): el suelo sobre el que siempre cae el atrás.
+    // Su registro es mudo: la reconciliación lo usa solo como ancla.
+    if (!bufRef.current) {
+      bufRef.current = registrarCapa(() => {});
     }
     const armar = () => {
       const id = registrarCapa(() => {
@@ -161,11 +169,15 @@ export function useCapaGuardia(activa, onAbrir, hayBloqueo) {
     };
     idRef.current = armar();
     return () => {
-      // Desarme (fin de sesión): se retira del registro sin navegar; la
-      // entrada huérfana la absorbe la reconciliación al volver atrás.
+      // Desarme (fin de sesión): se retira del registro sin navegar; las
+      // entradas huérfanas las absorbe la reconciliación al volver atrás.
       if (idRef.current) {
         desprenderCapa(idRef.current);
         idRef.current = null;
+      }
+      if (bufRef.current) {
+        desprenderCapa(bufRef.current);
+        bufRef.current = null;
       }
     };
   }, [activa]);
