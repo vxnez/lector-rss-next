@@ -154,6 +154,7 @@ export default function AjustesPanel({
   esInvitado,
   onEditarPerfil,
   onCerrarSesion,
+  onPurgarSesion,
   pushSoportado,
   pushActivado,
   pushCargando,
@@ -328,8 +329,13 @@ export default function AjustesPanel({
       onCerrarSesion();
       return;
     }
-    // La bandeja es local: no debe filtrarse a la siguiente cuenta.
-    limpiarNotificacionesLocales();
+    // Purga total + apariencia base ANTES de salir: el /login pinta el tema
+    // del sistema, no el personalizado de la cuenta que se fue.
+    try {
+      onPurgarSesion?.();
+    } catch {
+      limpiarNotificacionesLocales();
+    }
     await signOut({ callbackUrl: "/login" });
   };
 

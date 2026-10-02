@@ -6,6 +6,8 @@
 // Este módulo es la única fuente de verdad para "valores por defecto":
 // restablecer = eliminar claves para que cada lector caiga a su default.
 import { CLAVES_NOTIFICACIONES } from "@/lib/hooks/useNotificaciones";
+import { TEMA_POR_DEFECTO, aplicarTema, temaPreferidoSistema } from "@/lib/temas";
+import { FUENTE_POR_DEFECTO, FUENTE_PX_DEFECTO, aplicarFuente, aplicarFuentePx } from "@/lib/fuentes";
 
 export const AJUSTES_POR_DEFECTO = {
   lector_tema: null, // null = preferencia del sistema (ver temas.temaPreferidoSistema)
@@ -90,6 +92,38 @@ export function limpiarBienvenidaInvitado() {
   } catch {
     // Sin almacenamiento disponible: nada que limpiar.
   }
+}
+/**
+ * Purga de cierre de sesión (todas las cuentas + invitado): preferencias
+ * efímeras a defaults, bandeja local y bienvenida de invitado. NO toca las
+ * `welcome_seen_<email>` de cuentas permanentes (su guía no se repite).
+ */
+export function purgarSesionLocal() {
+  restablecerAjustesLocales();
+  limpiarNotificacionesLocales();
+  limpiarBienvenidaInvitado();
+}
+
+/**
+ * Devuelve el DOM a la apariencia base (tema del sistema + fuente/tamaño
+ * por defecto, sin movimiento reducido ni densidad compacta). Solo cliente;
+ * llamar tras purgarSesionLocal() para que la vista de autenticación pinte
+ * el estado base en vez del tema personalizado anterior.
+ */
+export function aplicarAparienciaBase() {
+  let tema = TEMA_POR_DEFECTO;
+  let fuente = FUENTE_POR_DEFECTO;
+  let fuentePx = FUENTE_PX_DEFECTO;
+  try {
+    tema = aplicarTema(temaPreferidoSistema()).id;
+    fuente = aplicarFuente(FUENTE_POR_DEFECTO).id;
+    fuentePx = aplicarFuentePx(FUENTE_PX_DEFECTO);
+    delete document.documentElement.dataset.motion;
+    delete document.documentElement.dataset.densidad;
+  } catch {
+    // Sin DOM: el CSS ya trae los valores base por defecto.
+  }
+  return { tema, fuente, fuentePx };
 }
 /**
  * Limpieza total al eliminar la cuenta permanente: defaults + marcas de

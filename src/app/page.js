@@ -18,7 +18,7 @@ import { urlBase64ToUint8Array } from "@/lib/feed-utils";
 import { useCapaHistorial } from "@/lib/historialCapas";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
-import { limpiarBienvenidaInvitado, limpiarNotificacionesLocales } from "@/lib/ajustesPorDefecto";
+import { aplicarAparienciaBase, purgarSesionLocal } from "@/lib/ajustesPorDefecto";
 
 import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
@@ -344,16 +344,26 @@ export default function HomePage() {
 
   const esInvitado = Boolean(session?.user?.invitado);
 
+  // Vuelve todo a base (purga local + DOM + estados React): la vista de
+  // autenticación pinta el tema del sistema, no el personalizado anterior.
+  const restablecerSesionBase = useCallback(() => {
+    purgarSesionLocal();
+    const base = aplicarAparienciaBase();
+    setTema(base.tema);
+    setFuenteApp(base.fuente);
+    setFuentePx(base.fuentePx);
+    setDensidad("comoda");
+    setMovimientoReducido(false);
+    setAutoMarcarLeida(false);
+  }, [setTema, setFuenteApp, setFuentePx, setDensidad, setMovimientoReducido, setAutoMarcarLeida]);
+
   const salirInvitado = useCallback(async () => {
     try {
       await fetch("/api/auth/invitado", { method: "DELETE" });
     } catch {
       // Limpieza local de todas formas
     }
-    limpiarNotificacionesLocales();
-    // Sin esto, reingresar como invitado no muestra la guía (la marca vieja
-    // persiste en el mismo navegador).
-    limpiarBienvenidaInvitado();
+    restablecerSesionBase();
     setSession(null);
     setArticulos([]);
     bumpCacheVersion();
@@ -361,7 +371,7 @@ export default function HomePage() {
     setTotalNoticias(0);
     setConteos({ pendientes: 0, leidas: 0, guardadas: 0 });
     router.push("/login");
-  }, [router, setArticulos, setConteos, setPagina, setTotalNoticias]);
+  }, [router, restablecerSesionBase, setArticulos, setConteos, setPagina, setTotalNoticias]);
 
   const recargarSesion = useCallback(async () => {
     try {
@@ -1155,6 +1165,7 @@ export default function HomePage() {
           setIsPerfilOpen(true);
         }}
         onCerrarSesion={salirInvitado}
+        onPurgarSesion={restablecerSesionBase}
         pushSoportado={pushSoportado}
         pushActivado={pushActivado}
         pushCargando={pushCargando}
