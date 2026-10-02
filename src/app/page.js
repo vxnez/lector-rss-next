@@ -1053,18 +1053,18 @@ export default function HomePage() {
             />
           </div>
         ) : (
-          <div className="text-center py-20 max-w-2xl mx-auto space-y-6">
+          <div className="text-center py-12 sm:py-20 max-w-2xl mx-auto px-1 space-y-6 min-w-0">
             <div className="inline-flex items-center justify-center p-3 bg-sky-500/10 text-sky-400 rounded-2xl border border-sky-500/20 mb-2">
               <Plus size={32} />
             </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">{t("landing.titulo")}</h2>
-            <p className="text-gray-400 leading-relaxed">{t("landing.texto")}</p>
-            <div className="flex justify-center gap-4 pt-4">
+            <h2 className="text-balance text-2xl sm:text-3xl font-extrabold text-app-fg tracking-tight break-words">{t("landing.titulo")}</h2>
+            <p className="text-pretty text-app-muted leading-relaxed break-words">{t("landing.texto")}</p>
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 pt-4">
               <Link
                 href="/login"
-                className="bg-sky-600 hover:bg-sky-500 text-white font-medium px-6 py-2.5 rounded-xl transition hover:shadow-lg hover:shadow-sky-600/20"
+                className="touch-target btn-press inline-flex items-center justify-center bg-[var(--accent-strong)] hover:opacity-90 text-[var(--on-accent-strong)] font-medium px-6 py-2.5 rounded-xl transition-[opacity,box-shadow] min-w-0"
               >
-                {t("landing.comenzar")}
+                <span className="truncate">{t("landing.comenzar")}</span>
               </Link>
             </div>
           </div>

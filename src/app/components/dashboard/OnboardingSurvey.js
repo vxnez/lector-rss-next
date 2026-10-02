@@ -265,12 +265,12 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
-        className="anim-modal scroll-oculto relative flex max-h-[90vh] w-full max-w-3xl flex-col gap-6 overflow-hidden rounded-2xl border border-app-line bg-app-surface p-6 shadow-2xl sm:p-8"
+        className="anim-modal scroll-oculto relative flex max-h-[90vh] max-h-[90dvh] w-full max-w-3xl max-w-[calc(100vw-2rem)] flex-col gap-6 overflow-hidden overflow-x-hidden rounded-2xl border border-app-line bg-app-surface p-4 shadow-2xl sm:p-8"
       >
         <button
           onClick={handleOmitir}
           aria-label={t("comun.cerrar")}
-          className="btn-press absolute top-4 right-4 text-app-muted hover:text-app-fg p-1.5 rounded-lg bg-app-raised/50 hover:bg-app-raised"
+          className="touch-target btn-press absolute top-4 right-4 text-app-muted hover:text-app-fg p-1.5 rounded-lg bg-app-raised/50 hover:bg-app-raised"
         >
           <X size={20} />
         </button>
@@ -278,17 +278,17 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         {/* Contenido desplazable: solo esta zona hace scroll; el pie con
             Omitir/Continuar queda siempre visible sin buscarlo. */}
         <div className="scroll-oculto min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-1">
-        {/* Indicador de pasos */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Indicador de pasos (con aire a la derecha para no chocar con la X). */}
+        <div className="flex items-center justify-between gap-1 mb-2 pr-10">
           {[
             { n: 1, label: t("onboarding.paso_categorias") },
             { n: 2, label: t("onboarding.paso_feeds") },
             { n: 3, label: t("onboarding.paso_listo") },
           ].map((p) => (
-            <div key={p.n} className="flex flex-col items-center gap-1.5 flex-1">
+            <div key={p.n} className="flex min-w-0 flex-col items-center gap-1.5 flex-1">
               <div className="flex items-center justify-center gap-2">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-[background-color,color,box-shadow] duration-200 ${
                     paso >= p.n
                       ? "bg-[var(--accent-strong)] text-[var(--on-accent-strong)]"
                       : "bg-gray-800 text-gray-500"
@@ -297,7 +297,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                   {paso > p.n ? <Check size={16} strokeWidth={3} /> : p.n}
                 </div>
               </div>
-              <span className={`text-xs font-medium text-center max-w-[100px] ${paso >= p.n ? "text-app-fg" : "text-app-muted"}`}>
+              <span className={`text-xs font-medium text-center break-words min-w-0 max-w-full sm:max-w-[100px] ${paso >= p.n ? "text-app-fg" : "text-app-muted"}`}>
                 {p.label}
               </span>
             </div>
@@ -418,14 +418,14 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
         )}
         </div>
 
-        {/* Botones de navegación */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-app-line">
+        {/* Botones de navegación (envuelven en 320px con etiquetas largas). */}
+        <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-app-line">
           {paso === 1 && (
             <>
               <button
                 type="button"
                 onClick={handleOmitir}
-                className="btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="touch-target btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.omitir")}
               </button>
@@ -433,7 +433,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                 type="button"
                 onClick={siguientePaso}
                 disabled={categoriasSeleccionadas.length === 0}
-                className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="touch-target btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("onboarding.continuar")}
               </button>
@@ -444,14 +444,14 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
               <button
                 type="button"
                 onClick={() => setPaso(1)}
-                className="btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="touch-target btn-press rounded-xl border border-app-line bg-app-raised px-4 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60 hover:bg-app-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.anterior")}
               </button>
               <button
                 type="button"
                 onClick={siguientePaso}
-                className="btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="touch-target btn-press group flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               >
                 {t("onboarding.continuar")}
               </button>
@@ -462,7 +462,7 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
               type="button"
               onClick={handleCompletar}
               disabled={completando}
-              className="btn-press group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+              className="touch-target btn-press group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-strong)] px-4 py-2.5 text-sm font-medium text-[var(--on-accent-strong)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
             >
               {completando ? t("comun.cargando") : t("onboarding.ver_dashboard")}
             </button>
