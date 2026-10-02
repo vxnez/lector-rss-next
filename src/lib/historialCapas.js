@@ -4,18 +4,34 @@
 // Solo cliente ("use client" en quien lo importe); guarda SSR incluida.
 import { useCallback, useEffect, useRef } from "react";
 
-// Pila de capas abiertas (LIFO): [{ id, onCerrar }].
+// Pila de capas abiertas (LIFO): [{ id, onCerrar }]. El orden replica el
+// del historial del navegador: cada registro nace con su pushState.
 const pila = [];
 let siguienteId = 1;
-// Marca la navegación programada propia (cerrar por botón/Escape): su
-// popstate se ignora para no cerrar la capa que quedó debajo.
-let navegacionPropia = false;
 
-function alAtras() {
-  if (navegacionPropia) {
-    navegacionPropia = false;
-    return;
+function alAtras(event) {
+  const destino = event?.state;
+  // 1. Reconciliación por destino: si aterrizamos en una entrada nuestra,
+  //    las capas por encima se consumieron sin handler (doble atrás rápido,
+  //    back() coalescido por el navegador). Se cierran en silencio para
+  //    resincronizar la UI con el historial real. Sin banderas: no hay nada
+  //    que se quede colgado y trague el siguiente gesto.
+  if (destino && typeof destino === "object" && typeof destino.capa === "string") {
+    const indice = pila.findIndex((c) => c.id === destino.capa);
+    if (indice >= 0) {
+      while (pila.length - 1 > indice) {
+        const saltada = pila.pop();
+        try {
+          saltada?.onCerrar?.();
+        } catch {
+          // El cierre nunca rompe la navegación.
+        }
+      }
+      return;
+    }
   }
+  // 2. Destino ajeno (entrada inicial, sitio externo): la cima ya no está en
+  //    el historial; se cierra para no dejar la UI desincronizada.
   const cima = pila.pop();
   try {
     cima?.onCerrar?.();
@@ -40,13 +56,15 @@ function registrarCapa(onCerrar) {
 }
 
 function retirarCapa(id, onCerrar) {
+  // Se retira ANTES de navegar: el popstate resultante aterriza en la
+  // entrada de abajo y la reconciliación lo confirma sin cerrar de más.
+  // Sin banderas globales.
   const indice = pila.findIndex((c) => c.id === id);
   if (indice >= 0) pila.splice(indice, 1);
   try {
-    navegacionPropia = true;
     window.history.back();
   } catch {
-    navegacionPropia = false;
+    // Sin historial disponible: solo se cierra la UI.
   }
   try {
     onCerrar?.();
