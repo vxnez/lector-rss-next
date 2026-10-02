@@ -48,6 +48,18 @@
         "url": "https://www.jornada.com.mx/rss/politica.xml?v=1",
         "descripcion": "Política nacional",
         "idioma": "es"
+      },
+      {
+        "titulo": "BBC Mundo",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "descripcion": "Noticias mundiales",
+        "idioma": "en"
+      },
+      {
+        "titulo": "NPR Política",
+        "url": "https://feeds.npr.org/1014/rss.xml",
+        "descripcion": "Política estadounidense",
+        "idioma": "en"
       }
     ],
     "Economía y Finanzas": [
@@ -106,6 +118,18 @@
         "url": "https://diariopresente.mx/feedgooglenews/sucesos",
         "descripcion": "Sucesos y justicia",
         "idioma": "es"
+      },
+      {
+        "titulo": "Krebs on Security",
+        "url": "https://krebsonsecurity.com/feed/",
+        "descripcion": "Seguridad informática",
+        "idioma": "en"
+      },
+      {
+        "titulo": "Threatpost",
+        "url": "https://threatpost.com/feed/",
+        "descripcion": "Ciberseguridad",
+        "idioma": "en"
       }
     ],
     "Tecnología": [
@@ -220,6 +244,18 @@
         "url": "https://consultorsalud.com.mx/feed",
         "descripcion": "Salud y medicina",
         "idioma": "es"
+      },
+      {
+        "titulo": "STAT News",
+        "url": "https://www.statnews.com/feed/",
+        "descripcion": "Salud y medicina",
+        "idioma": "en"
+      },
+      {
+        "titulo": "CIDRAP",
+        "url": "https://www.cidrap.umn.edu/rss.xml",
+        "descripcion": "Enfermedades infecciosas",
+        "idioma": "en"
       }
     ],
     "Fitness y Nutrición": [
@@ -248,6 +284,18 @@
         "url": "https://es.mongabay.com/feed/",
         "descripcion": "Periodismo ambiental en español",
         "idioma": "es"
+      },
+      {
+        "titulo": "Grist",
+        "url": "https://grist.org/feed/",
+        "descripcion": "Clima y ambiente",
+        "idioma": "en"
+      },
+      {
+        "titulo": "Mongabay EN",
+        "url": "https://news.mongabay.com/feed/",
+        "descripcion": "Naturaleza y ambiente",
+        "idioma": "en"
       }
     ],
     "Deportes": [
@@ -294,6 +342,18 @@
         "url": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/cultura/portada",
         "descripcion": "Cultura en español",
         "idioma": "es"
+      },
+      {
+        "titulo": "Hyperallergic",
+        "url": "https://hyperallergic.com/feed/",
+        "descripcion": "Arte contemporáneo",
+        "idioma": "en"
+      },
+      {
+        "titulo": "Artnet",
+        "url": "https://news.artnet.com/feed",
+        "descripcion": "Mercado del arte",
+        "idioma": "en"
       }
     ],
     "Cine y Series": [
@@ -314,6 +374,18 @@
         "url": "https://www.jornada.com.mx/rss/espectaculos.xml?v=1",
         "descripcion": "Cine, teatro, música y espectáculos",
         "idioma": "es"
+      },
+      {
+        "titulo": "Variety",
+        "url": "https://variety.com/feed/",
+        "descripcion": "Cine y entretenimiento",
+        "idioma": "en"
+      },
+      {
+        "titulo": "IndieWire",
+        "url": "https://www.indiewire.com/feed/",
+        "descripcion": "Cine independiente",
+        "idioma": "en"
       }
     ],
     "Música": [
@@ -366,6 +438,12 @@
         "url": "https://www.gastronomiaycia.com/feed/",
         "descripcion": "Gastronomía, vinos y restaurantes",
         "idioma": "es"
+      },
+      {
+        "titulo": "Eater",
+        "url": "https://www.eater.com/rss/index.xml",
+        "descripcion": "Gastronomía",
+        "idioma": "en"
       }
     ],
     "Motor": [
@@ -374,6 +452,18 @@
         "url": "https://www.autofacil.es/rss",
         "descripcion": "Coches, pruebas y novedades",
         "idioma": "es"
+      },
+      {
+        "titulo": "Jalopnik",
+        "url": "https://jalopnik.com/rss",
+        "descripcion": "Cultura automotor",
+        "idioma": "en"
+      },
+      {
+        "titulo": "Motor1",
+        "url": "https://www.motor1.com/rss/news/all/",
+        "descripcion": "Noticias motor",
+        "idioma": "en"
       }
     ],
     "Educación": [
@@ -388,6 +478,12 @@
         "url": "https://conectate.um.edu.mx/rss",
         "descripcion": "Universidad de Morelia",
         "idioma": "es"
+      },
+      {
+        "titulo": "Inside Higher Ed",
+        "url": "https://www.insidehighered.com/rss.xml",
+        "descripcion": "Educación superior",
+        "idioma": "en"
       }
     ],
     "General": [
@@ -654,6 +750,18 @@
         "url": "https://www.jornada.com.mx/rss/edicion.xml?v=1",
         "descripcion": "Edición completa del periódico",
         "idioma": "es"
+      },
+      {
+        "titulo": "BBC Portada",
+        "url": "https://feeds.bbci.co.uk/news/rss.xml",
+        "descripcion": "Titulares generales",
+        "idioma": "en"
+      },
+      {
+        "titulo": "NPR Noticias",
+        "url": "https://feeds.npr.org/1001/rss.xml",
+        "descripcion": "Noticias generales",
+        "idioma": "en"
       }
     ],
     "Developers": [
@@ -703,9 +811,9 @@
   },
   "metadata": {
     "fuente": "Curated from vxnez/rssfeeds and verified Spanish/Mexican RSS sources",
-    "actualizado": "2026-09-22",
-    "total_feeds": 110,
-    "verificado": "2026-09-22T09:47:15.223Z",
-    "nota": "Auditoría backend 2026-09-22: purga de 10 feeds muertos + 9 altas; campo idioma por fila (es/en)"
+    "actualizado": "2026-10-02",
+    "total_feeds": 128,
+    "verificado": "2026-10-02T09:32:54.394Z",
+    "nota": "Ampliación EN 2026-10-02: +18 feeds ingleses verificados en vivo; campo idioma por fila (es/en)"
   }
 }

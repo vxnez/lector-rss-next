@@ -12,9 +12,16 @@ function LocalFeedCard({ feed, onAdd, adding, added, idioma, t }) {
     <div className="card-lift rounded-2xl border border-app-line/80 bg-app-bg/60 p-4 hover:border-[var(--accent)]/50">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="mb-1 flex items-center gap-2 text-xs text-app-muted">
-            <Tag size={12} className="opacity-75" />
+          <div className="mb-1 flex flex-wrap items-center gap-1.5 text-xs text-app-muted">
+            <Tag size={12} className="opacity-75" aria-hidden="true" />
             <span>{traducirCategoria(feed.categoria, idioma)}</span>
+            <span
+              className="shrink-0 rounded border border-app-line bg-app-raised/70 px-1 py-px text-[10px] font-bold leading-tight tracking-wide text-app-muted"
+              title={(feed.idioma || "es") === "en" ? "Fuente en inglés" : "Fuente en español"}
+              aria-label={(feed.idioma || "es") === "en" ? "Fuente en inglés" : "Fuente en español"}
+            >
+              {String(feed.idioma || "es").toUpperCase()}
+            </span>
           </div>
           <h4 className="mb-1 truncate text-base font-semibold text-app-fg">{feed.titulo}</h4>
           <p className="line-clamp-2 text-sm text-app-muted">{feed.descripcion}</p>
