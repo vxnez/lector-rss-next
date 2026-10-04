@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List, Pin, Move } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -106,6 +106,33 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // el modal se remonta por `key` así que el inicial basta).
   const [seccionActiva, setSeccionActiva] = useState(null);
   const [railVisible, setRailVisible] = useState(true);
+  // Panel externo en el backdrop: "fijo" (anclado arriba-derecha) o
+  // "flotante" (arrastrable + redimensionable nativo con `resize`).
+  const [modoIndice, setModoIndice] = useState("fijo");
+  const [posFlotante, setPosFlotante] = useState(null);
+  // Arrastre del panel en modo flotante (Pointer Events, sin librerías).
+  const iniciarArrastre = (event) => {
+    if (modoIndice !== "flotante") return;
+    if (event.button !== undefined && event.button !== 0) return;
+    if (event.target && event.target.closest && event.target.closest("button")) return;
+    event.preventDefault();
+    const inicioX = event.clientX;
+    const inicioY = event.clientY;
+    const panel = event.currentTarget.closest("nav");
+    const rect = panel ? panel.getBoundingClientRect() : null;
+    if (!rect) return;
+    const mover = (ev) => {
+      const x = Math.min(Math.max(rect.left + (ev.clientX - inicioX), 8), window.innerWidth - 120);
+      const y = Math.min(Math.max(rect.top + (ev.clientY - inicioY), 8), window.innerHeight - 80);
+      setPosFlotante({ x, y });
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+  };
   // Índice dinámico: sale de los subtítulos ya parseados (cero DOM parsing,
   // cero backend). Solo aparece con 2+ secciones.
   const indiceContenido = useMemo(
@@ -798,19 +825,41 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
         </div>
-      {/* Índice lateral estilo Skiper: rail flotante translúcido solo en
-          escritorio (xl+), con tracking de sección activa en tiempo real.
-          En móvil/tablet manda el <details> colapsable del cuerpo. */}
+      {/* Índice en el backdrop (fuera de la caja del artículo): fijo
+          arriba-derecha o flotante arrastrable/redimensionable. Solo xl+. */}
       {indiceContenido.length >= 2 && railVisible && (
         <nav
           aria-label={t("lector.indice")}
-          className="absolute right-3 top-1/2 z-20 hidden max-h-[55%] w-40 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex"
+          style={posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
+          className={`fixed right-4 top-20 z-20 hidden w-60 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
+            modoIndice === "flotante"
+              ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto"
+              : "max-h-[calc(50dvh-6rem)]"
+          }`}
         >
-          <div className="flex items-center gap-1.5 border-b border-app-line/70 px-3 py-2">
+          <div
+            onPointerDown={iniciarArrastre}
+            className={`flex items-center gap-1.5 border-b border-app-line/70 px-3 py-2 ${
+              modoIndice === "flotante" ? "cursor-move touch-none select-none" : ""
+            }`}
+          >
             <List size={13} className="shrink-0 text-[var(--accent-ink)]" />
             <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
               {t("lector.indice")} · {indiceContenido.length}
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                setModoIndice((m) => (m === "fijo" ? "flotante" : "fijo"));
+                setPosFlotante(null);
+              }}
+              title={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
+              aria-label={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
+              aria-pressed={modoIndice === "flotante"}
+              className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
+            >
+              {modoIndice === "fijo" ? <Move size={13} /> : <Pin size={13} />}
+            </button>
             <button
               type="button"
               onClick={() => setRailVisible(false)}
@@ -855,7 +904,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           onClick={() => setRailVisible(true)}
           title={t("lector.indice")}
           aria-label={t("lector.indice")}
-          className="btn-press absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-app-line bg-app-surface/70 p-2.5 text-app-muted shadow-xl backdrop-blur-md hover:text-app-fg xl:block"
+          className="btn-press fixed right-4 top-20 z-20 hidden rounded-full border border-app-line bg-app-surface/70 p-2.5 text-app-muted shadow-xl backdrop-blur-md hover:text-app-fg xl:block"
         >
           <List size={15} />
         </button>
