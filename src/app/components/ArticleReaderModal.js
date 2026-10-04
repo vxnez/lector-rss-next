@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import ResumenEstructurado, { parseResumen } from "./ResumenEstructurado";
+import PanelResumenIA from "./PanelResumenIA";
 import { confianzaIAVisible, traducirCategoria } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
@@ -1025,5 +1026,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                     </>,
           document.body
         )}
+      {puedePortal && <PanelResumenIA article={article} t={t} />}
   </>);
 }

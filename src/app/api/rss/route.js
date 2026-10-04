@@ -16,7 +16,7 @@ import {
   refreshFuentes,
 } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
-import { clasificarLoteConIA, configIA } from "@/lib/clasificadorIA";
+import { clasificarLoteConIA, configIA, resumirConIA } from "@/lib/clasificadorIA";
 
 // Pendiente de IA (contrato §5.2 backend): "General"/nula equivale a no
 // categorizado y se retoma de CUALQUIER método salvo edición manual.
@@ -605,6 +605,32 @@ export async function POST(req) {
 
     if (body.action === "clasificar_pendientes") {
       return clasificarPendientesResponse(userId, body);
+    }
+
+    // Resumen IA por artículo (viñetas): reutiliza la cadena de modelos y la
+    // key gratuita del servidor. Con auth obligatoria: sin sesión no hay
+    // inferencia (la cuota no se quema en anónimo).
+    if (body.action === "resumir_articulo") {
+      const titulo = limpiarTitulo(body.titulo || "", 300);
+      const texto = limpiarTextoResumen(body.resumen || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 2000);
+      if (!texto) {
+        return NextResponse.json({ puntos: [], diag: "corto", proveedor: null, cacheado: false });
+      }
+      try {
+        const r = await resumirConIA(undefined, titulo, texto, body.proveedor);
+        return NextResponse.json({
+          puntos: r.puntos,
+          proveedor: r.proveedor,
+          diag: r.diag,
+          cacheado: Boolean(r.cacheado),
+        });
+      } catch (error) {
+        console.error("Error resumiendo con IA:", error?.message || error);
+        return NextResponse.json({ puntos: [], diag: "respuesta", proveedor: null, cacheado: false });
+      }
     }
 
     if (body.action === "refresh_source" || body.action === "refresh") {

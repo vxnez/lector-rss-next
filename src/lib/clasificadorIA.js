@@ -390,3 +390,114 @@ export async function clasificarLoteConIA(apiKey, noticias, proveedor) {
   }
   return { resultados, esperaMs: esperaSugeridaMs, fallo: falloCodigo };
 }
+
+// ---- Resumen por IA (viñetas) ----
+// Reutiliza la cadena de modelos y el failover de clasificación (misma key
+// gratuita del servidor, mismo maxDuration). Caché en memoria 24 h por texto:
+// reabrir la misma noticia no quema cuota.
+const RESUMEN_CACHE_MAX = 500;
+const RESUMEN_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const resumenCache = new Map(); // clave -> { valor, ts }
+
+function cacheResumenGet(key) {
+  const hit = resumenCache.get(key);
+  if (!hit) return undefined;
+  if (Date.now() - hit.ts > RESUMEN_CACHE_TTL_MS) {
+    resumenCache.delete(key);
+    return undefined;
+  }
+  resumenCache.delete(key);
+  resumenCache.set(key, hit);
+  return hit.valor;
+}
+
+function cacheResumenSet(key, valor) {
+  resumenCache.delete(key);
+  resumenCache.set(key, { valor, ts: Date.now() });
+  if (resumenCache.size > RESUMEN_CACHE_MAX) {
+    resumenCache.delete(resumenCache.keys().next().value);
+  }
+}
+
+function construirInstruccionResumen(titulo, texto, enIngles) {
+  const cuerpo = String(texto || "").slice(0, 2000);
+  const idioma = enIngles ? "English" : "Spanish";
+  return `Summarize the following news article for a reader who does not want to read the full text. Respond ONLY a valid JSON object with this exact shape: {"puntos":["...","...","...","..."]}
+
+Rules:
+- 4 bullet points (3 minimum, 5 maximum), each one sentence, max 40 words.
+- Cover: what happened, who is involved, key figures or consequences, and outlook or next steps.
+- No intro, no markdown, no invented facts: only what the text says.
+- Write the bullets in ${idioma}.
+
+Title: ${titulo || "(sin título)"}
+
+Text:
+${cuerpo}`;
+}
+
+function extraerPuntosPropuesta(texto = "") {
+  const limpio = String(texto || "")
+    .replace(/^```json\s*|\s*```$/g, "")
+    .trim();
+  const validar = (fragmento) => {
+    const obj = JSON.parse(fragmento);
+    const lista = Array.isArray(obj) ? obj : obj?.puntos;
+    if (!Array.isArray(lista)) throw new Error("La IA no devolvió puntos");
+    const puntos = lista
+      .map((p) => String(p || "").replace(/\s+/g, " ").trim())
+      .filter((p) => p.length >= 10 && p.length <= 400)
+      .slice(0, 5);
+    if (puntos.length < 2) throw new Error("La IA devolvió muy pocos puntos");
+    return puntos;
+  };
+  try {
+    return validar(limpio);
+  } catch {
+    const coincidencia = limpio.match(/\{[\s\S]*\}/);
+    if (coincidencia) return validar(coincidencia[0]);
+    throw new Error("La IA no devolvió un resumen válido");
+  }
+}
+
+// Devuelve { puntos, proveedor, diag, cacheado }. diag: 'sin_clave' |
+// 'cuota' | 'auth' | 'modelo' | 'red' | 'respuesta' | 'corto' | null.
+export async function resumirConIA(apiKey, titulo, resumen, proveedor) {
+  const cfg = configIA(proveedor);
+  const clave = cfg.apiKey || apiKey;
+  if (!clave) {
+    return { puntos: [], proveedor: cfg.proveedor, diag: "sin_clave", cacheado: false };
+  }
+  const textoPlano = String(resumen || "").replace(/\s+/g, " ").trim();
+  if (textoPlano.length < 60) {
+    return { puntos: [], proveedor: cfg.proveedor, diag: "corto", cacheado: false };
+  }
+  const cacheKey = normalizarClaveClasificacion(titulo, textoPlano);
+  const hit = cacheResumenGet(cacheKey);
+  if (hit) return { ...hit, cacheado: true };
+  const enIngles = /\b(the|and|with|from|that|this|will|have|has|were|their|there)\b/i.test(
+    `${titulo} ${textoPlano}`.slice(0, 500)
+  );
+  try {
+    const texto = await ejecutarCadenaIA(
+      clave,
+      construirInstruccionResumen(titulo, textoPlano, enIngles),
+      600,
+      20000,
+      cfg.proveedor
+    );
+    const puntos = extraerPuntosPropuesta(texto);
+    const valor = { puntos, proveedor: cfg.proveedor, diag: null };
+    cacheResumenSet(cacheKey, valor);
+    return { ...valor, cacheado: false };
+  } catch (error) {
+    const codigo = error?.cause?.codigo;
+    const mensaje = error?.message || "";
+    let diag = "respuesta";
+    if (codigo === "auth" || /HTTP 40[013]/.test(mensaje)) diag = "auth";
+    else if (codigo === "cuota" || /429|cuota/i.test(mensaje)) diag = "cuota";
+    else if (codigo === "modelo" || /404|model_not_found|does not exist|decommissioned|deprecated/i.test(mensaje)) diag = "modelo";
+    else if (error?.name === "AbortError") diag = "red";
+    return { puntos: [], proveedor: cfg.proveedor, diag, cacheado: false };
+  }
+}
