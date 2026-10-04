@@ -262,6 +262,44 @@ function mejorSrcset(srcset) {
   return mejor;
 }
 
+function puntuarImgTarjeta($, img) {
+  const texto = `${img.attr("src") || ""} ${img.attr("srcset") || ""} ${img.attr("alt") || ""} ${img.attr("class") || ""}`.toLowerCase();
+  if (/avatar|logo|favicon|sprite|emoji|badge/i.test(texto)) return -50;
+  let puntos = 0;
+  const w = parseInt(img.attr("width") || "0", 10) || 0;
+  if (w >= 600) puntos += 25;
+  else if (w >= 300) puntos += 15;
+  else if (w >= 120) puntos += 5;
+  const srcset = img.attr("srcset") || "";
+  const m = srcset.match(/(\d+)w/g);
+  if (m) {
+    const maxW = Math.max(...m.map((x) => parseInt(x, 10) || 0));
+    if (maxW >= 600) puntos += 15;
+    else if (maxW >= 300) puntos += 8;
+  }
+  if (String(img.attr("alt") || "").trim().length >= 8) puntos += 10;
+  return puntos;
+}
+
+function mejorImgTarjeta($, ambito, a, base) {
+  let mejor = null;
+  let mejorPuntos = -Infinity;
+  const considerar = (img) => {
+    const cruda =
+      img.attr("src") || img.attr("srcset") || img.attr("data-src") || img.attr("data-lazy-src") || "";
+    if (!cruda || esImagenTracker(cruda)) return;
+    if (!esImagenValida(absolver(cruda, base))) return;
+    const puntos = puntuarImgTarjeta($, img);
+    if (puntos > mejorPuntos) {
+      mejorPuntos = puntos;
+      mejor = img;
+    }
+  };
+  ambito.find("img").slice(0, 8).each((_, el) => considerar($(el)));
+  if (!mejor) a.find("img").slice(0, 4).each((_, el) => considerar($(el)));
+  return mejor;
+}
+
 function imagenDeImg($, img, base) {
   if (!img || !img.length) return "";
   const cruda =
@@ -459,10 +497,10 @@ function extraerArticuloUnico($, base, baseHost, jsonLd) {
       autorDeJsonLd(primeroJsonLd || {}) ||
       meta($, "article:author", "author").split(/[,\/]/)[0].trim(),
     imagen:
+      imagenDeImg($, mejorImgTarjeta($, $("article").first().length ? $("article").first() : $(":root"), $("article").first(), base) || $("article img").first(), base) ||
       (esImagenValida(absolver(meta($, "og:image", "twitter:image"), base))
         ? absolver(meta($, "og:image", "twitter:image"), base)
-        : "") ||
-      imagenDeImg($, $("article img").first(), base),
+        : ""),
     video: videoDePagina($, base),
   };
 }
@@ -529,8 +567,8 @@ function itemsDesdeLista($, base, baseHost) {
     let puntuacion = Math.min(titulo.length, 120);
     if (a.closest("article").length) puntuacion += 40;
     if (ambito.find("time").length) puntuacion += 25;
-    const img = ambito.find("img").first();
-    const imagen = imagenDeImg($, img.length ? img : a.find("img").first(), base);
+    const imgElegida = mejorImgTarjeta($, ambito, a, base);
+    const imagen = imgElegida ? imagenDeImg($, imgElegida, base) : "";
     if (imagen) puntuacion += 20;
     if (resumen) puntuacion += 15;
     try {

@@ -249,22 +249,62 @@ async function extraerVideoDePagina(url) {
   return vacio;
 }
 
+function puntuarImagenCuerpo($, img) {
+  // Relevancia editorial: tamaño declarado, alt descriptivo y ubicación.
+  // Avatares/logos/iconos restan (nunca son foto de la noticia).
+  const texto = `${img.attr("src") || ""} ${img.attr("data-src") || ""} ${img.attr("alt") || ""} ${img.attr("class") || ""}`.toLowerCase();
+  if (/avatar|logo|favicon|sprite|emoji|badge|firma|firma-autor|author-avatar/i.test(texto)) return -50;
+  let puntos = 0;
+  if (img.closest("figure").length > 0) puntos += 40;
+  else if (img.closest("article").length > 0) puntos += 25;
+  const w = parseInt(img.attr("width") || "0", 10) || 0;
+  const h = parseInt(img.attr("height") || "0", 10) || 0;
+  const area = w * h;
+  if (area >= 800 * 450) puntos += 30;
+  else if (area >= 400 * 225) puntos += 20;
+  else if (area >= 200 * 100) puntos += 10;
+  const srcset = img.attr("srcset") || "";
+  const m = srcset.match(/(\d+)w/g);
+  if (m) {
+    const maxW = Math.max(...m.map((x) => parseInt(x, 10) || 0));
+    if (maxW >= 800) puntos += 20;
+    else if (maxW >= 400) puntos += 10;
+  }
+  const alt = String(img.attr("alt") || "").trim();
+  if (alt.length >= 10) puntos += 15;
+  else if (alt.length >= 4) puntos += 5;
+  return puntos;
+}
+
+function mejorImagenCuerpo($, baseFinal) {
+  let mejor = "";
+  let mejorPuntos = -Infinity;
+  $("article img, main img, figure img").slice(0, 12).each((_, el) => {
+    const img = $(el);
+    const src = img.attr("src") || img.attr("data-src");
+    const abs = absolverUrlMultimedia(src, baseFinal);
+    if (!abs || !esImagenValida(abs) || esTrackerMultimedia(img, abs)) return;
+    const puntos = puntuarImagenCuerpo($, img);
+    if (puntos > mejorPuntos) {
+      mejorPuntos = puntos;
+      mejor = abs;
+    }
+  });
+  return mejor;
+}
+
 async function extraerImagenDirecta(url) {
-  // Solo imágenes nativas del contenido: primero <img> del cuerpo
-  // (article/main/figure), og:image solo como respaldo. Capturas de
-  // pantalla (screenshotapi/urlbox/...) y placeholders se descartan: sin
-  // imagen válida se devuelve null y el lector oculta el contenedor.
+  // Solo imágenes nativas del contenido: mejor <img> del cuerpo por
+  // relevancia editorial (tamaño/alt/ubicación), og:image solo como
+  // respaldo. Capturas de pantalla y placeholders se descartan: sin imagen
+  // válida se devuelve null y el lector oculta el contenedor.
   const pagina = await obtenerHtmlPagina(url, "imagen");
   if (!pagina) return null;
   const { html, baseFinal } = pagina;
   try {
     const $ = cheerio.load(html);
-    const img = $("article img, main img, figure img").first();
-    if (img.length) {
-      const src = img.attr("src") || img.attr("data-src");
-      const abs = absolverUrlMultimedia(src, baseFinal);
-      if (abs && esImagenValida(abs) && !esTrackerMultimedia(img, abs)) return abs;
-    }
+    const cuerpo = mejorImagenCuerpo($, baseFinal);
+    if (cuerpo) return cuerpo;
     const meta = $('meta[property="og:image"]').attr("content") || $('meta[name="twitter:image"]').attr("content");
     if (meta) {
       try {
