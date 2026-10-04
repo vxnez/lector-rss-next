@@ -7,6 +7,7 @@ import {
   createFuente,
   deleteFuente,
   getArticulos,
+  getArticuloResumen,
   getArticulosBulk,
   getFuentes,
   getStats,
@@ -708,6 +709,36 @@ export async function GET(req) {
     }
 
     if (tipo === "categorias") return NextResponse.json(CATEGORIAS_DISPONIBLES);
+
+    // Resumen extendido bajo demanda: el backend re-extrae de url_original
+    // (caché 24h) y devuelve {resumen,completo,obsoleto,cacheado,reextraido}.
+    // Solo se llama desde el lector cuando resumen_completo=1.
+    if (tipo === "resumen") {
+      const crudo = (searchParams.get("id") || "").trim();
+      const idNumerico = Number(crudo);
+      if (!crudo || !Number.isInteger(idNumerico) || idNumerico <= 0) {
+        return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+      }
+      try {
+        const r = await getArticuloResumen(idNumerico, userId, { timeoutMs: 30000 });
+        const resumen = limpiarTextoResumen(r?.resumen ?? "");
+        return NextResponse.json({
+          id: r?.id ?? idNumerico,
+          url: r?.url ?? null,
+          resumen,
+          completo: r?.completo ?? true,
+          obsoleto: Boolean(r?.obsoleto),
+          cacheado: Boolean(r?.cacheado),
+          reextraido: Boolean(r?.reextraido),
+          longitud: Number(r?.longitud) || resumen.length,
+        });
+      } catch (error) {
+        if (Number(error?.status) === 404) {
+          return NextResponse.json({ error: "Resumen no encontrado" }, { status: 404 });
+        }
+        return NextResponse.json({ error: "No se pudo cargar el texto completo" }, { status: 500 });
+      }
+    }
 
     if (tipo === "imagen") {
       const cruda = (searchParams.get("url") || "").trim();

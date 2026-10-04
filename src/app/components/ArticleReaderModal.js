@@ -32,6 +32,19 @@ function esFechaEstimada(article) {
   return marca === 1 || marca === "1" || marca === true;
 }
 
+// Resumen truncado en ingesta (1200): el backend marca resumen_completo=1 y
+// longitud_resumen=original. Solo entonces se ofrece "Leer completo".
+function esResumenTruncado(article) {
+  const marca = article?.resumen_completo;
+  return marca === 1 || marca === "1" || marca === true;
+}
+
+function longitudOriginal(article) {
+  const n = Number(article?.longitud_resumen);
+  if (Number.isFinite(n) && n > 0) return n;
+  return String(article?.resumen || "").length;
+}
+
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
   const { t, locale, idioma } = useIdioma();
   const [savingAction, setSavingAction] = useState("");
@@ -82,6 +95,12 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Text-to-Speech nativo (Web Speech API)
   const [hablando, setHablando] = useState(false);
+  // Texto completo bajo demanda (solo cuando resumen_completo=1).
+  const [resumenExtendido, setResumenExtendido] = useState(null);
+  const [cargandoCompleto, setCargandoCompleto] = useState(false);
+  const [errorCompleto, setErrorCompleto] = useState("");
+  const [metaCompleto, setMetaCompleto] = useState(null);
+  const resumenMostrado = resumenExtendido || article?.resumen || "";
   useEffect(() => {
     return () => {
       if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -97,11 +116,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       setHablando(false);
       return;
     }
-    const texto = `${limpiarTextoResumen(article?.titulo) || ""}. ${resumenPlano(article?.resumen) || ""}`;
+    const texto = `${limpiarTextoResumen(article?.titulo) || ""}. ${resumenPlano(resumenMostrado) || ""}`;
     const utterance = new SpeechSynthesisUtterance(texto);
     // La traducción de noticias la hace el navegador del usuario: la voz
     // sigue el idioma detectado del texto original (heurística local).
-    const idiomaVoz = detectarIdiomaTexto(article?.titulo, article?.resumen);
+    const idiomaVoz = detectarIdiomaTexto(article?.titulo, resumenMostrado);
     utterance.lang =
       idiomaVoz === "en" ? "en-US"
       : idiomaVoz === "fr" ? "fr-FR"
@@ -125,6 +144,30 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Copiar enlace y Web Share API
   const [copiado, setCopiado] = useState(false);
+  // Carga bajo demanda del texto completo (backend: re-extracción SSRF-safe,
+  // caché 24h; nunca tumba el listado porque vive solo en el lector).
+  const cargarCompleto = async () => {
+    if (cargandoCompleto || resumenExtendido || !article?.id) return;
+    setCargandoCompleto(true);
+    setErrorCompleto("");
+    try {
+      const res = await fetch(`/api/rss?tipo=resumen&id=${encodeURIComponent(article.id)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Error");
+      if (data?.resumen) {
+        setResumenExtendido(data.resumen);
+        setMetaCompleto({ obsoleto: Boolean(data.obsoleto), reextraido: Boolean(data.reextraido) });
+      } else {
+        throw new Error("Vacío");
+      }
+    } catch {
+      setErrorCompleto(t("lector.err_completo"));
+    } finally {
+      setCargandoCompleto(false);
+    }
+  };
   const compartirArticulo = async () => {
     const url = article?.url_original || article?.link;
     if (!url) return;
@@ -360,7 +403,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   };
 
   const fechaFormateada = formatFechaArticulo(article.fecha_publicacion, t, locale);
-  const minutosLectura = tiempoLecturaMinutos(article.titulo, article.resumen);
+  const minutosLectura = tiempoLecturaMinutos(article.titulo, resumenMostrado);
+  const truncado = esResumenTruncado(article) && !resumenExtendido;
+  const badgeResumenCorto = esResumenTruncado(article)
+    ? t("lector.resumen_corto_badge", { n: longitudOriginal(article) })
+    : null;
 
   return (
     <div
@@ -590,13 +637,40 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </h2>
 
           {/* Cuerpo / Resumen estructurado completo (subtítulos, párrafos,
-              viñetas) con opacidad uniforme: sin clamp, sin fades, sin botón
-              de expansión. El scroll interno lo muestra todo. */}
+              viñetas) con opacidad uniforme: sin clamp, sin fades. El scroll
+              interno lo muestra todo; si viene truncado de ingesta se ofrece
+              el texto completo bajo demanda. */}
+          {badgeResumenCorto && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 notranslate" translate="no">
+              <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
+                {resumenExtendido
+                  ? metaCompleto?.obsoleto
+                    ? t("lector.completo_respaldo")
+                    : t("lector.completo_listo")
+                  : badgeResumenCorto}
+              </span>
+              {truncado && (
+                <button
+                  type="button"
+                  onClick={cargarCompleto}
+                  disabled={cargandoCompleto}
+                  className="btn-press inline-flex min-h-[36px] items-center rounded-full bg-[var(--accent-strong)] px-3 py-1.5 text-[11px] font-semibold text-[var(--on-accent-strong)] disabled:opacity-60"
+                >
+                  {cargandoCompleto ? t("lector.cargando_completo") : t("lector.leer_completo")}
+                </button>
+              )}
+            </div>
+          )}
           <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
             <ResumenEstructurado
-              texto={article.resumen || t("lector.sin_resumen")}
+              texto={resumenMostrado || t("lector.sin_resumen")}
             />
           </div>
+          {errorCompleto && (
+            <p role="alert" className="mt-3 text-sm text-rose-400">
+              {errorCompleto}
+            </p>
+          )}
         </div>
 
         {actionError && (

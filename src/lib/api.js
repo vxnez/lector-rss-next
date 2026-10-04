@@ -495,3 +495,14 @@ export async function getIAProgreso(usuario_id) {
     timeoutMs: 8000,
   });
 }
+
+// ---- Resumen extendido bajo demanda (backend re-extrae y cachea 24h) ----
+// GET /api/data/articulos/:id/resumen?usuario_id= →
+// {id,url,resumen,completo,obsoleto,cacheado,reextraido,longitud}.
+// 404 si el id no existe/no pertenece; nunca tumba el listado.
+export async function getArticuloResumen(articulo_id, usuario_id, { timeoutMs = 30000 } = {}) {
+  return api(`/api/data/articulos/${encodeURIComponent(articulo_id)}/resumen`, {
+    query: { usuario_id: String(usuario_id) },
+    timeoutMs,
+  });
+}
