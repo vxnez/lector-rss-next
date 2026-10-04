@@ -8,6 +8,8 @@ import {
   sincronizarArticulosOffline,
   obtenerArticulosOffline,
   eliminarArticuloOffline,
+  guardarUltimoFeed,
+  leerUltimoFeed,
 } from "@/lib/offlineStorage";
 
 export function useFeedState({
@@ -48,8 +50,24 @@ export function useFeedState({
   // Error de carga de la fuente (fetch fallido, no abortado): permite
   // distinguir "cero por filtros" de "fallo de sincronización".
   const [errorFeed, setErrorFeed] = useState(null);
+  // Modo caché: sin red y con último feed guardado (vista principal).
+  // { fecha } o null. Se limpia al volver la sincronización en vivo.
+  const [modoCache, setModoCache] = useState(null);
+  // Pulso de reconexión: al volver la red se revalida el feed una vez.
+  const [pulsoOnline, setPulsoOnline] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const alConectar = () => setPulsoOnline((n) => n + 1);
+    window.addEventListener("online", alConectar);
+    return () => window.removeEventListener("online", alConectar);
+  }, []);
 
   const claveFeedActualRef = useRef("");
+  const articulosVaciosRef = useRef(true);
+  useEffect(() => {
+    articulosVaciosRef.current = articulos.length === 0;
+  }, [articulos.length]);
 
   // Debounce de búsqueda: 400ms
   useEffect(() => {
@@ -123,6 +141,20 @@ export function useFeedState({
           const total = Array.isArray(data) ? articles.length : Number(data.total) || 0;
           setArticulos(articles);
           setTotalNoticias(total);
+          setModoCache(null);
+
+          // Caché offline parcial: primera página de la vista principal sin
+          // filtros (últimas 50). Sin red, el lector las sigue mostrando.
+          if (
+            activeTab === "todas" &&
+            pagina === 1 &&
+            !busquedaAplicada.trim() &&
+            categoriasSeleccionadas.length === 0 &&
+            fuentesSeleccionadas.length === 0 &&
+            filtroIA === "todas"
+          ) {
+            guardarUltimoFeed(articles);
+          }
 
           // Sincronizar artículos guardados con IndexedDB para disponibilidad offline
           if (activeTab === "guardadas") {
@@ -207,6 +239,21 @@ export function useFeedState({
             } catch {
               // Sin IndexedDB
             }
+          } else if (activeTab === "todas" && articulosVaciosRef.current) {
+            // Fallback offline parcial: último feed guardado (solo vista
+            // principal sin filtros; el resto mantiene su error visible).
+            try {
+              const cache = leerUltimoFeed();
+              if (cache) {
+                setArticulos(cache.items);
+                setTotalNoticias(cache.items.length);
+                setLastUpdated(new Date(cache.guardado_en));
+                setModoCache({ fecha: cache.guardado_en });
+                setErrorFeed(null);
+              }
+            } catch {
+              // Sin caché disponible
+            }
           }
         }
       } finally {
@@ -230,6 +277,7 @@ export function useFeedState({
     fuentesSeleccionadas,
     filtroIA,
     nonceRecarga,
+    pulsoOnline,
     setCategoriasDisponibles,
   ]);
 
@@ -515,6 +563,7 @@ export function useFeedState({
     cargandoFeed,
     errorFeed,
     lastUpdated,
+    modoCache,
     toggleLeido,
     toggleGuardado,
     actualizarCategoria,

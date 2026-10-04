@@ -43,6 +43,21 @@ const ManageSourcesModal = dynamic(() => import("./components/ManageSourcesModal
 const PerfilModal = dynamic(() => import("./components/PerfilModal"), { ssr: false });
 const AjustesPanel = dynamic(() => import("./components/AjustesPanel"), { ssr: false });
 
+// Filtro local "Hoy": compara fecha de publicación con el día local.
+// Solo memoria, cero backend (las pestañas de StatsCards ya cubren los
+// estados leído/guardado en servidor; duplicarlas aquí saturaría la UI).
+function esDeHoy(fechaStr) {
+  if (!fechaStr) return false;
+  const f = new Date(fechaStr);
+  if (Number.isNaN(f.getTime())) return false;
+  const ahora = new Date();
+  return (
+    f.getFullYear() === ahora.getFullYear() &&
+    f.getMonth() === ahora.getMonth() &&
+    f.getDate() === ahora.getDate()
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { t, locale } = useIdioma();
@@ -145,8 +160,7 @@ export default function HomePage() {
   const [ayudaAtajosAbierta, setAyudaAtajosAbierta] = useState(false);
 
   // Modo de vista: "cards" | "magazine" | "compact"
-  const [modoVista, setModoVista] = useState(() => {
-    try {
+  const [modoVista, setModoVista] = useState(() => {    try {
       const guardado = window.localStorage.getItem("lector_modo_vista");
       return ["cards", "magazine", "compact"].includes(guardado) ? guardado : "cards";
     } catch {
@@ -162,6 +176,9 @@ export default function HomePage() {
     }
     setModoVista(nuevoModo);
   }, []);
+
+  // Píldora rápida "Hoy": filtro 100% local sobre la página cargada.
+  const [soloHoy, setSoloHoy] = useState(false);
 
   // Preferencias de usuario
   const [tema, setTema] = useState(() => {
@@ -252,6 +269,7 @@ export default function HomePage() {
     cargandoFeed,
     errorFeed,
     lastUpdated,
+    modoCache,
     toggleLeido,
     toggleGuardado,
     actualizarCategoria,
@@ -344,6 +362,17 @@ export default function HomePage() {
   );
 
   const esInvitado = Boolean(session?.user?.invitado);
+
+  // Vista filtrada "Hoy": subconjunto en memoria de la página cargada.
+  const articulosVisibles = soloHoy ? articulos.filter((a) => esDeHoy(a?.fecha_publicacion)) : articulos;
+  const horaCache = (() => {
+    try {
+      if (!modoCache?.fecha) return "";
+      return new Date(modoCache.fecha).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  })();
 
   // Vuelve todo a base (purga local + DOM + estados React): la vista de
   // autenticación pinta el tema del sistema, no el personalizado anterior.
@@ -933,6 +962,33 @@ export default function HomePage() {
 
                 {/* Selector de Modos de Vista y Atajos de Teclado */}
                 <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSoloHoy((v) => !v)}
+                    aria-pressed={soloHoy}
+                    title={t("filtros.hoy_titulo")}
+                    className={`btn-press min-h-[44px] rounded-xl border px-3.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+                      soloHoy
+                        ? "border-[var(--accent)]/70 bg-[var(--accent)]/15 text-[var(--accent-ink)]"
+                        : "border-app-line bg-app-surface text-app-muted hover:text-app-fg hover:border-[var(--accent)]/60"
+                    }`}
+                  >
+                    {t("filtros.hoy")}
+                    {soloHoy && (
+                      <span className="ml-1 tabular-nums opacity-80">· {articulosVisibles.length}</span>
+                    )}
+                  </button>
+                  {modoCache && (
+                    <span
+                      role="status"
+                      title={t("cache.modo_d")}
+                      className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-semibold text-amber-300"
+                    >
+                      <WifiOff size={13} className="shrink-0" />
+                      {t("cache.modo")}
+                      {horaCache && <span className="tabular-nums opacity-80">· {horaCache}</span>}
+                    </span>
+                  )}
                   <div className="flex items-center rounded-xl border border-app-line bg-app-surface p-1 text-app-muted">
                     <button
                       type="button"
@@ -1064,10 +1120,24 @@ export default function HomePage() {
                       )}
                     </div>
                   </div>
+                ) : soloHoy && articulos.length > 0 && articulosVisibles.length === 0 ? (
+                  <div className="bezel-outer my-8">
+                    <div className="bezel-inner p-12 text-center space-y-4">
+                      <p className="text-base font-semibold text-app-fg max-w-md mx-auto">
+                        {t("vacio.hoy")}
+                      </p>
+                      <button
+                        onClick={() => setSoloHoy(false)}
+                        className="btn-press group inline-flex items-center gap-2 rounded-full border border-app-line bg-app-raised px-5 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60"
+                      >
+                        {t("filtros.todas")}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <NewsFeed
-                      articles={articulos}
+                      articles={articulosVisibles}
                       tab={activeTab}
                       modoVista={modoVista}
                       articuloActivoId={articuloActivoId}

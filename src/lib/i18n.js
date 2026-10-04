@@ -102,6 +102,12 @@ const TEXTOS_ES = {
       ver_todas: "Ver todas ({n})",
       sin_categorias: "No hay categorías disponibles.",
       limpiar: "Limpiar filtros",
+      hoy: "Hoy",
+      hoy_titulo: "Solo noticias de hoy (filtro local, sin recargar)",
+    },
+    cache: {
+      modo: "Modo caché",
+      modo_d: "Sin conexión: últimas noticias guardadas.",
     },
     pag: {
       estado: "Página {a} de {b} · {n} noticias",
@@ -130,6 +136,7 @@ const TEXTOS_ES = {
       error_titulo: "No se pudo sincronizar la fuente.",
       error_d: "Revisa tu conexión e inténtalo de nuevo. Si el problema persiste, la fuente puede estar caída.",
       reintentar: "Reintentar",
+      hoy: "Nada de hoy en esta página.",
     },
     guia: {
       etiqueta: "Guía para nuevos usuarios",
@@ -248,6 +255,7 @@ const TEXTOS_ES = {
       completo_listo: "Texto completo",
       completo_respaldo: "Respaldo guardado (sin conexión al sitio)",
       err_completo: "No se pudo cargar el texto completo.",
+      indice: "Índice",
       error_eyebrow: "Lector",
       error_titulo: "Esta noticia no se pudo mostrar",
       error_texto: "El traductor del navegador pudo haber interferido con la vista. Reintenta para volver a cargarla.",
@@ -827,6 +835,12 @@ const TEXTOS_EN = {
       ver_todas: "Show all ({n})",
       sin_categorias: "No categories available.",
       limpiar: "Clear filters",
+      hoy: "Today",
+      hoy_titulo: "Only today's news (local filter, no reload)",
+    },
+    cache: {
+      modo: "Cached mode",
+      modo_d: "Offline: showing last saved news.",
     },
     pag: {
       estado: "Page {a} of {b} · {n} news",
@@ -855,6 +869,7 @@ const TEXTOS_EN = {
       error_titulo: "Could not sync the feed.",
       error_d: "Check your connection and try again. If the problem persists, the feed may be down.",
       reintentar: "Retry",
+      hoy: "Nothing from today on this page.",
     },
     guia: {
       etiqueta: "Guide for new users",
@@ -973,6 +988,7 @@ const TEXTOS_EN = {
       completo_listo: "Full text",
       completo_respaldo: "Saved fallback (site unreachable)",
       err_completo: "Could not load the full text.",
+      indice: "Contents",
       error_eyebrow: "Reader",
       error_titulo: "This news could not be shown",
       error_texto: "The browser translator may have interfered with the view. Retry to reload it.",

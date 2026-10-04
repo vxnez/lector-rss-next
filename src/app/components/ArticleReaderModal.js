@@ -5,7 +5,7 @@ import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, Chevr
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
-import ResumenEstructurado from "./ResumenEstructurado";
+import ResumenEstructurado, { parseResumen } from "./ResumenEstructurado";
 import { confianzaIAVisible, traducirCategoria } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
@@ -15,7 +15,7 @@ import { resumenPlano } from "./ResumenEstructurado";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // El cuerpo usa tamaño fijo "normal": la escala global la da --font-size-base
 // (slider de Ajustes > Lectura), así que el lector no necesita estados.
@@ -102,6 +102,15 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [errorCompleto, setErrorCompleto] = useState("");
   const [metaCompleto, setMetaCompleto] = useState(null);
   const resumenMostrado = resumenExtendido || article?.resumen || "";
+  // Índice dinámico: sale de los subtítulos ya parseados (cero DOM parsing,
+  // cero backend). Solo aparece con 2+ secciones.
+  const indiceContenido = useMemo(
+    () =>
+      parseResumen(resumenMostrado)
+        .map((b, i) => ({ ...b, indice: i }))
+        .filter((b) => b.tipo === "subtitulo"),
+    [resumenMostrado]
+  );
   useEffect(() => {
     return () => {
       if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -410,6 +419,21 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   const fechaFormateada = formatFechaArticulo(article.fecha_publicacion, t, locale);
   const minutosLectura = tiempoLecturaMinutos(article.titulo, resumenMostrado);
+  const irASeccion = (indice) => {
+    const contenedor = contenedorRef.current;
+    if (!contenedor) return;
+    const destino = contenedor.querySelector(`#lector-sec-${indice}`);
+    if (!destino) return;
+    let suave = true;
+    try {
+      suave = typeof window !== "undefined"
+        && window.matchMedia
+        && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      suave = true;
+    }
+    destino.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "start" });
+  };
   const truncado = esResumenTruncado(article) && !resumenExtendido;
   const badgeResumenCorto = esResumenTruncado(article)
     ? t("lector.resumen_corto_badge", { n: longitudOriginal(article) })
@@ -668,8 +692,28 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             </div>
           )}
           <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
+            {indiceContenido.length >= 2 && (
+              <details className="mb-4 rounded-xl border border-app-line bg-app-raised/50 px-4 py-2.5">
+                <summary className="btn-press cursor-pointer list-none text-xs font-bold uppercase tracking-[0.08em] text-[var(--accent-ink)] [&::-webkit-details-marker]:hidden">
+                  {t("lector.indice")} · {indiceContenido.length}
+                </summary>
+                <nav aria-label={t("lector.indice")} className="mt-2 space-y-0.5">
+                  {indiceContenido.map((s) => (
+                    <button
+                      key={s.indice}
+                      type="button"
+                      onClick={() => irASeccion(s.indice)}
+                      className="btn-press block w-full truncate rounded-lg px-2 py-2 text-left text-sm text-app-muted hover:bg-app-raised hover:text-app-fg"
+                    >
+                      {s.texto}
+                    </button>
+                  ))}
+                </nav>
+              </details>
+            )}
             <ResumenEstructurado
               texto={resumenMostrado || t("lector.sin_resumen")}
+              prefijoIndice="lector-sec"
             />
           </div>
           {errorCompleto && (

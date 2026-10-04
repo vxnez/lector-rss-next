@@ -218,7 +218,7 @@ function lineasConFormato(texto, clave) {
   ));
 }
 
-export default function ResumenEstructurado({ texto }) {
+export default function ResumenEstructurado({ texto, prefijoIndice = null }) {
   const bloques = useMemo(() => parseResumen(texto), [texto]);
   const indiceEntradilla = bloques.findIndex((b) => b.tipo === "parrafo");
 
@@ -229,7 +229,8 @@ export default function ResumenEstructurado({ texto }) {
           return (
             <h4
               key={i}
-              className="flex items-stretch gap-2.5 pt-2 text-[1.05rem] font-extrabold leading-snug tracking-tight text-app-fg first:pt-0"
+              {...(prefijoIndice ? { id: `${prefijoIndice}-${i}` } : {})}
+              className="flex scroll-mt-2 items-stretch gap-2.5 pt-2 text-[1.05rem] font-extrabold leading-snug tracking-tight text-app-fg first:pt-0"
             >
               <span aria-hidden="true" className="w-1 shrink-0 rounded-full bg-[var(--accent)]" />
               <span className="min-w-0">{conFormato(bloque.texto, `sub-${i}`)}</span>

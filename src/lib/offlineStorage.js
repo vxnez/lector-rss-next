@@ -85,8 +85,37 @@ export async function obtenerArticulosOffline() {
 }
 
 /**
- * Elimina un artículo específico de IndexedDB
+ * Caché ligera de último feed (localStorage): últimas 50 noticias de la vista
+ * principal para lectura offline parcial. ~100KB, sin migración de IndexedDB.
  */
+const CLAVE_ULTIMO_FEED = "lector_ultimo_feed";
+const TOPE_ULTIMO_FEED = 50;
+
+export function guardarUltimoFeed(articulos = []) {
+  try {
+    if (typeof window === "undefined" || !Array.isArray(articulos) || articulos.length === 0) return;
+    const items = articulos.slice(0, TOPE_ULTIMO_FEED);
+    window.localStorage.setItem(
+      CLAVE_ULTIMO_FEED,
+      JSON.stringify({ guardado_en: new Date().toISOString(), items })
+    );
+  } catch {
+    // Cuota llena o sin almacenamiento: el feed en vivo sigue mandando.
+  }
+}
+
+export function leerUltimoFeed() {
+  try {
+    if (typeof window === "undefined") return null;
+    const crudo = window.localStorage.getItem(CLAVE_ULTIMO_FEED);
+    if (!crudo) return null;
+    const data = JSON.parse(crudo);
+    if (!data || !Array.isArray(data.items) || data.items.length === 0) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
 export async function eliminarArticuloOffline(id) {
   try {
     const db = await abrirDB();
