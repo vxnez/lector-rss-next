@@ -31,7 +31,10 @@ export function firmarInvitado(id) {
 
 export function invitadoIdDesdeValor(valor) {
   try {
-    const [id, firma] = String(valor || "").split(".");
+    const partes = String(valor || "").split(".");
+    // Formato exacto id.firma: segmentos extra se rechazan.
+    if (partes.length !== 2) return null;
+    const [id, firma] = partes;
     if (!id || !firma) return null;
     const esperada = crypto.createHmac("sha256", secreto()).update(String(id)).digest("hex");
     if (firma.length !== esperada.length) return null;

@@ -18,6 +18,12 @@ async function esInvitadoValido(id) {
     const data = await getUser(id);
     const u = data?.user || data?.usuario || data;
     if (!u?.id) return null;
+    // Solo cuentas de invitado (proveedor CSV, p. ej. "invitado"): una cookie
+    // firmada nunca debe operar sobre una cuenta real.
+    const proveedores = String(u.proveedor || "")
+      .split(",")
+      .map((s) => s.trim());
+    if (!proveedores.includes(INVITADO_PROVEEDOR)) return null;
     return u;
   } catch {
     return null;
@@ -40,7 +46,9 @@ export async function POST(req) {
 
     if (action === "salir") {
       const id = invitadoIdDesdeRequest(req);
-      if (id) {
+      // Solo se borra si es invitado verificado; si no, solo se limpia la
+      // cookie (nunca una cuenta real).
+      if (id && (await esInvitadoValido(id))) {
         try {
           await deleteUser(id);
         } catch (error) {
@@ -85,7 +93,7 @@ export async function POST(req) {
 
 export async function DELETE(req) {
   const id = invitadoIdDesdeRequest(req);
-  if (id) {
+  if (id && (await esInvitadoValido(id))) {
     try {
       await deleteUser(id);
     } catch (error) {

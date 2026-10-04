@@ -109,14 +109,14 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
         }
       });
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !guardando) onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       controller.abort();
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose, t]);
+  }, [isOpen, onClose, t, guardando]);
 
   if (!isOpen) return null;
 
@@ -201,14 +201,15 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
       className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50"
       role="presentation"
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (!guardando && event.target === event.currentTarget) onClose();
       }}
     >
       <div className="anim-modal bg-app-surface border border-app-line p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto box-border max-h-[calc(100dvh-2rem)] overflow-hidden overflow-x-hidden shadow-2xl relative flex flex-col">
         <button
           onClick={onClose}
+          disabled={guardando}
           aria-label={t("perfil.cerrar_aria")}
-          className="btn-press absolute top-4 right-4 z-10 text-app-muted hover:text-app-fg p-1.5 rounded-lg hover:bg-app-raised/40"
+          className="btn-press absolute top-4 right-4 z-10 text-app-muted hover:text-app-fg p-1.5 rounded-lg hover:bg-app-raised/40 disabled:opacity-50 disabled:pointer-events-none"
         >
           <X size={18} />
         </button>
@@ -376,13 +377,14 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="btn-press px-3 sm:px-4 py-2 rounded-xl border border-transparent bg-transparent text-sm font-medium text-app-fg hover:bg-app-raised/40"
+                disabled={guardando}
+                className="btn-press px-3 sm:px-4 py-2 rounded-xl border border-transparent bg-transparent text-sm font-medium text-app-fg hover:bg-app-raised/40 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {t("perfil.cancelar")}
               </button>
               <button
                 type="submit"
-                disabled={guardando}
+                disabled={guardando || (!perfil && Boolean(error))}
                 className="btn-press px-3 sm:px-4 py-2 bg-[var(--accent-strong)] hover:opacity-90 rounded-xl text-sm font-medium text-[var(--on-accent-strong)] disabled:opacity-50 flex items-center justify-center gap-2 min-w-0"
               >
                 <Save size={16} />
