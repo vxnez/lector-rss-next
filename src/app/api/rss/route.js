@@ -137,6 +137,7 @@ import { CATEGORIAS_DISPONIBLES } from "@/lib/categoryClassifier";
 import { fetchPublico, leerBufferLimitado, leerTextoLimitado } from "@/lib/ssrf";
 import { convertirPaginaAFeed } from "@/lib/webToRss";
 import { limpiarTextoResumen, limpiarTitulo } from "@/lib/limpiezaTexto";
+import { esImagenValida } from "@/lib/imagenes";
 
 export const maxDuration = 60;
 
@@ -249,25 +250,29 @@ async function extraerVideoDePagina(url) {
 }
 
 async function extraerImagenDirecta(url) {
+  // Solo imágenes nativas del contenido: primero <img> del cuerpo
+  // (article/main/figure), og:image solo como respaldo. Capturas de
+  // pantalla (screenshotapi/urlbox/...) y placeholders se descartan: sin
+  // imagen válida se devuelve null y el lector oculta el contenedor.
   const pagina = await obtenerHtmlPagina(url, "imagen");
   if (!pagina) return null;
   const { html, baseFinal } = pagina;
   try {
     const $ = cheerio.load(html);
-    const meta = $('meta[property="og:image"]').attr("content") || $('meta[name="twitter:image"]').attr("content");
-    if (meta) {
-      try {
-        const abs = new URL(meta.trim(), baseFinal).href;
-        if (/^https?:\/\//i.test(abs)) return abs;
-      } catch {
-        // Seguir con el fallback.
-      }
-    }
     const img = $("article img, main img, figure img").first();
     if (img.length) {
       const src = img.attr("src") || img.attr("data-src");
       const abs = absolverUrlMultimedia(src, baseFinal);
-      if (abs && !esTrackerMultimedia(img, abs)) return abs;
+      if (abs && esImagenValida(abs) && !esTrackerMultimedia(img, abs)) return abs;
+    }
+    const meta = $('meta[property="og:image"]').attr("content") || $('meta[name="twitter:image"]').attr("content");
+    if (meta) {
+      try {
+        const abs = new URL(meta.trim(), baseFinal).href;
+        if (/^https?:\/\//i.test(abs) && esImagenValida(abs)) return abs;
+      } catch {
+        // Seguir sin imagen: el lector oculta el contenedor.
+      }
     }
     return null;
   } catch {

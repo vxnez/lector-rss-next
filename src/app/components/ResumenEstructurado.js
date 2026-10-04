@@ -1,10 +1,13 @@
-// src/app/components/ResumenEstructurado.js — Resumen con estructura visual.
-// Convierte texto plano (o Markdown ligero del backend) en bloques React:
-// subtítulos, párrafos y listas con viñetas. Sin HTML crudo por construcción
-// (no hay dangerouslySetInnerHTML: todo se arma con elementos React desde
-// texto), así que es seguro ante contenido no sanitizado.
+// src/app/components/ResumenEstructurado.js — Cuerpo editorial del lector.
+// Convierte texto plano (o Markdown ligero del backend) en bloques React con
+// jerarquía tipográfica: entradilla, subtítulos con filete de acento,
+// citas, avisos (callouts), listas y separadores. Sin HTML crudo por
+// construcción (no hay dangerouslySetInnerHTML: todo se arma con elementos
+// React desde texto), así que es seguro ante contenido no sanitizado.
 // Subset soportado: `## subtítulo`, `- ` / `* ` / `• ` / `1. ` viñetas,
-// `**negrita**` en línea y párrafos separados por línea en blanco.
+// `> cita`, `**negrita**`, `` `código` ``, `[texto](url)`, `---` y párrafos
+// separados por línea en blanco. Párrafos tipo `Nota: ...` / `Clave: ...`
+// se elevan a aviso.
 "use client";
 
 import { useMemo } from "react";
@@ -12,7 +15,12 @@ import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
 
 const RE_VINETA = /^\s*(?:[-*•]|\d+[.)])\s+/;
 const RE_SUBTITULO = /^#{1,3}\s+/;
+const RE_CITA = /^>\s?/;
+const RE_SEPARADOR = /^(-{3,}|\*{3,}|_{3,})\s*$/;
 const RE_NEGRITA = /\*\*(.+?)\*\*/g;
+const RE_CODIGO = /`([^`\n]+)`/g;
+const RE_ENLACE = /\[([^\]]+)\]\((https?:[^)\s]+)\)/g;
+const RE_AVISO = /^(nota|importante|advertencia|aviso|clave|dato|resumen|en resumen|tl;dr|conclusi[oó]n|recomendaci[oó]n)\s*[:-]\s*/i;
 
 function limpiarVineta(linea) {
   return linea.replace(RE_VINETA, "").trim();
@@ -22,13 +30,13 @@ function limpiarSubtitulo(linea) {
   return linea.replace(RE_SUBTITULO, "").trim();
 }
 
-/** Divide el texto en bloques { tipo: subtitulo|parrafo|lista }. */
+/** Divide el texto en bloques { tipo: subtitulo|parrafo|lista|cita|aviso|separador }. */
 export function parseResumen(texto) {
   // Sanitización previa: el backend puede mandar HTML/entities en resúmenes
   // extendidos; aquí solo llega texto plano al render.
   const saneado = limpiarTextoResumen(texto);
   // Muros de texto sin saltos (extractos largos de una línea): se segmentan
-  // cada ~800 caracteres por frase para no pintar un solo <p> gigante.
+  // por frase para no pintar un solo <p> gigante.
   const conSegmentos = saneado.includes("\n")
     ? saneado
     : saneado.length > 800
@@ -41,7 +49,18 @@ export function parseResumen(texto) {
 
   const cerrarParrafo = () => {
     const junto = parrafo.join(" ").trim();
-    if (junto) bloques.push({ tipo: "parrafo", texto: junto });
+    if (junto) {
+      const m = junto.match(RE_AVISO);
+      if (m) {
+        bloques.push({
+          tipo: "aviso",
+          etiqueta: m[1].trim(),
+          texto: junto.slice(m[0].length).trim() || junto,
+        });
+      } else {
+        bloques.push({ tipo: "parrafo", texto: junto });
+      }
+    }
     parrafo = [];
   };
   const cerrarLista = () => {
@@ -56,11 +75,24 @@ export function parseResumen(texto) {
       cerrarLista();
       continue;
     }
+    if (RE_SEPARADOR.test(linea)) {
+      cerrarParrafo();
+      cerrarLista();
+      bloques.push({ tipo: "separador" });
+      continue;
+    }
     if (RE_SUBTITULO.test(linea)) {
       cerrarParrafo();
       cerrarLista();
-      const texto = limpiarSubtitulo(linea);
-      if (texto) bloques.push({ tipo: "subtitulo", texto });
+      const titulo = limpiarSubtitulo(linea);
+      if (titulo) bloques.push({ tipo: "subtitulo", texto: titulo });
+      continue;
+    }
+    if (RE_CITA.test(linea)) {
+      cerrarParrafo();
+      cerrarLista();
+      const cita = linea.replace(RE_CITA, "").trim();
+      if (cita) bloques.push({ tipo: "cita", texto: cita });
       continue;
     }
     if (RE_VINETA.test(linea)) {
@@ -80,15 +112,12 @@ export function parseResumen(texto) {
   return bloques.length > 0 ? bloques : [{ tipo: "parrafo", texto: base }];
 }
 
-/** Texto plano para tarjetas: quita marcas Markdown (** , ##, viñetas) y
-    colapsa espacios. Las tarjetas usan line-clamp sobre una sola línea
-    lógica; las marcas crudas se verían como en el bug reportado. */
+/** Texto plano para tarjetas y TTS: quita marcas Markdown y colapsa. */
 export function resumenPlano(texto) {
   // Limpieza primero (HTML/entities/residuos) y luego marcas Markdown.
-  // También enlaces [texto](url), citas > y reglas --- que llegan en
-  // resúmenes extendidos.
   return limpiarTextoResumen(texto)
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`\n]+)`/g, "$1")
     .replace(/^>\s?/gm, "")
     .replace(/^---+\s*$/gm, "")
     .replace(/\*\*(.+?)\*\*/g, "$1")
@@ -98,63 +127,140 @@ export function resumenPlano(texto) {
     .trim();
 }
 
-/** Divide un fragmento en partes normales y en negrita (**...**). */
-function partesNegrita(texto) {
+/** Divide un fragmento en partes con formato (negrita, código, enlaces). */
+function partesFormato(texto) {
   const partes = [];
+  const patron = new RegExp(
+    `${RE_ENLACE.source}|${RE_CODIGO.source}|${RE_NEGRITA.source}`,
+    "g"
+  );
   let ultimo = 0;
-  let coincidencia;
-  RE_NEGRITA.lastIndex = 0;
-  while ((coincidencia = RE_NEGRITA.exec(texto)) !== null) {
-    if (coincidencia.index > ultimo) {
-      partes.push({ texto: texto.slice(ultimo, coincidencia.index), negrita: false });
+  let m;
+  patron.lastIndex = 0;
+  while ((m = patron.exec(texto)) !== null) {
+    if (m.index > ultimo) {
+      partes.push({ texto: texto.slice(ultimo, m.index) });
     }
-    partes.push({ texto: coincidencia[1], negrita: true });
-    ultimo = coincidencia.index + coincidencia[0].length;
+    if (m[1] !== undefined && m[2] !== undefined) {
+      partes.push({ texto: m[1], enlace: m[2] });
+    } else if (m[3] !== undefined) {
+      partes.push({ texto: m[3], codigo: true });
+    } else if (m[4] !== undefined) {
+      partes.push({ texto: m[4], negrita: true });
+    }
+    ultimo = m.index + m[0].length;
   }
-  if (ultimo < texto.length) partes.push({ texto: texto.slice(ultimo), negrita: false });
-  return partes.length > 0 ? partes : [{ texto, negrita: false }];
+  if (ultimo < texto.length) partes.push({ texto: texto.slice(ultimo) });
+  return partes.length > 0 ? partes : [{ texto }];
 }
 
-function conNegrita(texto, clave) {
-  return partesNegrita(texto).map((parte, i) =>
-    parte.negrita ? (
-      <strong key={`${clave}-${i}`} className="font-semibold text-app-fg">
-        {parte.texto}
-      </strong>
-    ) : (
-      <span key={`${clave}-${i}`}>{parte.texto}</span>
-    )
-  );
+function conFormato(texto, clave) {
+  return partesFormato(texto).map((parte, i) => {
+    const key = `${clave}-${i}`;
+    if (parte.enlace) {
+      return (
+        <a
+          key={key}
+          href={parte.enlace}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-[var(--accent-ink)] underline decoration-[var(--accent)]/50 underline-offset-2 hover:decoration-[var(--accent)]"
+        >
+          {parte.texto}
+        </a>
+      );
+    }
+    if (parte.codigo) {
+      return (
+        <code
+          key={key}
+          className="rounded-md border border-app-line bg-app-raised/70 px-1.5 py-0.5 font-mono text-[0.85em] text-app-fg"
+        >
+          {parte.texto}
+        </code>
+      );
+    }
+    if (parte.negrita) {
+      return (
+        <strong key={key} className="font-semibold text-app-fg">
+          {parte.texto}
+        </strong>
+      );
+    }
+    return <span key={key}>{parte.texto}</span>;
+  });
 }
 
 export default function ResumenEstructurado({ texto }) {
   const bloques = useMemo(() => parseResumen(texto), [texto]);
+  const indiceEntradilla = bloques.findIndex((b) => b.tipo === "parrafo");
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       {bloques.map((bloque, i) => {
         if (bloque.tipo === "subtitulo") {
           return (
-            <h4 key={i} className="pt-1 text-base font-bold leading-snug text-app-fg first:pt-0">
-              {conNegrita(bloque.texto, `sub-${i}`)}
+            <h4
+              key={i}
+              className="flex items-stretch gap-2.5 pt-2 text-[1.05rem] font-extrabold leading-snug tracking-tight text-app-fg first:pt-0"
+            >
+              <span aria-hidden="true" className="w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+              <span className="min-w-0">{conFormato(bloque.texto, `sub-${i}`)}</span>
             </h4>
           );
         }
+        if (bloque.tipo === "cita") {
+          return (
+            <blockquote
+              key={i}
+              className="border-l-2 border-[var(--accent)] bg-app-raised/40 px-4 py-2.5 text-[0.95em] italic leading-relaxed text-app-muted"
+            >
+              {conFormato(bloque.texto, `cita-${i}`)}
+            </blockquote>
+          );
+        }
+        if (bloque.tipo === "aviso") {
+          return (
+            <aside
+              key={i}
+              className="rounded-xl border border-app-line bg-app-raised/60 px-4 py-3 leading-relaxed"
+            >
+              <p className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--accent-ink)]">
+                {bloque.etiqueta}
+              </p>
+              <p className="text-[0.95em] text-app-fg">{conFormato(bloque.texto, `aviso-${i}`)}</p>
+            </aside>
+          );
+        }
+        if (bloque.tipo === "separador") {
+          return <hr key={i} aria-hidden="true" className="border-t border-app-line/70" />;
+        }
         if (bloque.tipo === "lista") {
           return (
-            <ul
-              key={i}
-              className="list-disc space-y-1 pl-5 marker:text-[var(--accent)]"
-            >
+            <ul key={i} className="space-y-2 pl-1">
               {bloque.items.map((item, j) => (
-                <li key={j} className="pl-1">
-                  {conNegrita(item, `li-${i}-${j}`)}
+                <li key={j} className="flex gap-2.5 leading-relaxed">
+                  <span aria-hidden="true" className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <span className="min-w-0">{conFormato(item, `li-${i}-${j}`)}</span>
                 </li>
               ))}
             </ul>
           );
         }
-        return <p key={i}>{conNegrita(bloque.texto, `p-${i}`)}</p>;
+        // Entradilla: el primer párrafo abre con más presencia.
+        const esEntradilla = i === indiceEntradilla;
+        return (
+          <p
+            key={i}
+            className={
+              esEntradilla
+                ? "text-[1.02em] font-medium leading-[1.85] text-app-fg"
+                : "leading-[1.85] text-app-fg/95"
+            }
+          >
+            {conFormato(bloque.texto, `p-${i}`)}
+          </p>
+        );
       })}
     </div>
   );

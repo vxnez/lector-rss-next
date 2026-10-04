@@ -10,6 +10,7 @@ import { confianzaIAVisible, traducirCategoria } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
 import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
+import { esImagenValida, primeraImagenValida } from "@/lib/imagenes";
 import { resumenPlano } from "./ResumenEstructurado";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
@@ -192,7 +193,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   };
 
   const [cargandoImagen, setCargandoImagen] = useState(
-    () => Boolean(article?.url_original) && !article?.imagen_url && !article?.video_url
+    () => Boolean(article?.url_original) && !esImagenValida(article?.imagen_url) && !article?.video_url
   );
   const clicIniciadoEnFondo = useRef(false);
   const toqueInicial = useRef(null);
@@ -305,9 +306,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   }, [article, mostrarAyudaDeslizar, posicion]);
 
   useEffect(() => {
-    // Solo se descubre bajo demanda cuando el artículo no trae medios:
-    // lo hallado (imagen y/o video og:video) se persiste en el servidor.
-    if (!article || !article.url_original || article.imagen_url || article.video_url) return undefined;
+    // Solo se descubre bajo demanda cuando el artículo no trae medios
+    // nativos válidos: lo hallado (imagen del cuerpo y/o video og:video) se
+    // persiste en el servidor.
+    if (!article || !article.url_original || esImagenValida(article.imagen_url) || article.video_url) return undefined;
     let vivo = true;
     // Se envía el id para que el servidor persista la imagen hallada en el
     // artículo y no haya que re-extraerla en futuras aperturas.
@@ -317,7 +319,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!vivo) return;
-        if (data.imagen) setImagenRemota(data.imagen);
+        if (esImagenValida(data.imagen)) setImagenRemota(data.imagen);
         if (data.video) setVideoRemoto(data.video);
       })
       .catch(() => {})
@@ -331,7 +333,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   if (!article) return null;
 
-  const imagenVisible = article.imagen_url || imagenRemota;
+  // Solo imagen nativa del contenido: enclosure/media del feed o <img> del
+  // cuerpo. Capturas de página completa y thumbnails genéricos se descartan
+  // y el contenedor superior se oculta (nada de artefactos borrosos).
+  const imagenFeed = esImagenValida(article?.imagen_url) ? article.imagen_url : "";
+  const imagenVisible = primeraImagenValida(imagenFeed, imagenRemota);
   // El video (del feed o de og:video) tiene prioridad como fondo: se
   // reproduce solo, muteado y en bucle, sin controles para el usuario.
   const videoVisible = !videoRoto && (article.video_url || videoRemoto);
@@ -722,14 +728,17 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         </div>
         </div>
       {medioVisible && (
-        <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden rounded-t-2xl" aria-hidden="true">
+        // Franja ambiental sutil: la foto nativa decora sin competir con el
+        // texto (baja opacidad + scrim profundo). Sin imagen válida el bloque
+        // no se renderiza: nada de capturas borrosas con texto superpuesto.
+        <div className="absolute inset-x-0 top-0 h-[34%] overflow-hidden rounded-t-2xl" aria-hidden="true">
           {videoVisible ? (
             <>
               {/* Video de fondo: autoplay muteado (única forma permitida por
                   el navegador), en bucle y sin controles. */}
               <video
                 src={videoVisible}
-                className="h-full w-full object-cover opacity-50 sm:opacity-60 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)]"
+                className="h-full w-full object-cover opacity-25 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)]"
                 autoPlay
                 muted
                 loop
@@ -739,7 +748,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                 poster={imagenVisible || undefined}
                 onError={() => setVideoRoto(true)}
               />
-              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900" />
+              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/70 to-gray-900" />
             </>
           ) : imagenVisible ? (
             <>
@@ -752,7 +761,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   loading="lazy"
                   referrerPolicy="no-referrer"
                   onError={() => setImagenRota(true)}
-                  className="h-full w-full object-cover opacity-50 sm:opacity-60 blur-[2px] scale-105 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)]"
+                  className="h-full w-full object-cover opacity-25 blur-[1px] scale-105 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)]"
                 />
               ) : (
                 <Image
@@ -764,10 +773,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   quality={75}
                   loading="lazy"
                   onError={() => setSinOptimizar(true)}
-                  className="object-cover opacity-50 sm:opacity-60 blur-[2px] scale-105 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_98%)]"
+                  className="object-cover opacity-25 blur-[1px] scale-105 rounded-t-2xl [mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)] [-webkit-mask-image:linear-gradient(to_bottom,black_40%,transparent_98%)]"
                 />
               )}
-              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/55 to-gray-900" />
+              <div aria-hidden="true" className="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/70 to-gray-900" />
             </>
           ) : (
             <div aria-hidden="true" className="h-full w-full animate-pulse bg-gray-800 rounded-t-2xl" />

@@ -12,6 +12,7 @@
 import * as cheerio from "cheerio";
 import { fetchPublico, leerTextoLimitado } from "@/lib/ssrf";
 import { truncarResumen } from "./limpiezaTexto";
+import { esImagenValida } from "./imagenes";
 
 // Tope extendido frontend (iguala contrato backend v003: 1200 con corte en
 // palabra/bloque). Antes 300: cortaba contexto en conversiones web.
@@ -266,6 +267,8 @@ function imagenDeImg($, img, base) {
   const cruda =
     img.attr("src") || mejorSrcset(img.attr("srcset")) || img.attr("data-src") || img.attr("data-lazy-src") || "";
   if (!cruda || esImagenTracker(cruda)) return "";
+  // Sin capturas ni placeholders: solo foto/gráfico nativo del contenido.
+  if (!esImagenValida(absolver(cruda, base))) return "";
   return absolver(cruda, base);
 }
 
@@ -410,7 +413,7 @@ function itemsDesdeJsonLd(nodos, base, baseHost) {
       resumen: cortarExtendido(String(nodo.description || "").replace(/\s+/g, " ").trim()),
       fecha: fechaAISO(nodo.datePublished || nodo.dateCreated),
       autor: autorDeJsonLd(nodo),
-      imagen: typeof imagenCruda === "string" ? absolver(imagenCruda, base) : "",
+      imagen: typeof imagenCruda === "string" && esImagenValida(absolver(imagenCruda, base)) ? absolver(imagenCruda, base) : "",
       video: "",
     });
   };
@@ -456,7 +459,9 @@ function extraerArticuloUnico($, base, baseHost, jsonLd) {
       autorDeJsonLd(primeroJsonLd || {}) ||
       meta($, "article:author", "author").split(/[,\/]/)[0].trim(),
     imagen:
-      absolver(meta($, "og:image", "twitter:image"), base) ||
+      (esImagenValida(absolver(meta($, "og:image", "twitter:image"), base))
+        ? absolver(meta($, "og:image", "twitter:image"), base)
+        : "") ||
       imagenDeImg($, $("article img").first(), base),
     video: videoDePagina($, base),
   };
@@ -1011,7 +1016,7 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
       isoDate: item.fecha || ahora,
       pubDate: item.fecha || ahora,
     };
-    if (item.imagen && /^https?:\/\//i.test(item.imagen)) {
+    if (item.imagen && esImagenValida(item.imagen)) {
       entrada.enclosure = { url: item.imagen };
     }
     if (item.video && /\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)/i.test(item.video)) {
