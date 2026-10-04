@@ -808,6 +808,17 @@ export async function GET(req) {
       }
       imagenPaginaCache.set(verificada, medios);
       if (imagenPaginaCache.size > 500) imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);
+      // Persistencia best-effort: si el lector mandó id, se guarda el hallazgo
+      // en el artículo (el backend re-valida; screenshot ⇒ NULL) para no
+      // re-scrapear en futuras aperturas. Nunca rompe la respuesta.
+      const idCrudo = (searchParams.get("id") || "").trim();
+      const idNum = Number(idCrudo);
+      if (Number.isInteger(idNum) && idNum > 0 && (medios.imagen || medios.video)) {
+        await marcarArticulo(idNum, userId, {
+          ...(medios.imagen ? { imagen_url: medios.imagen } : {}),
+          ...(medios.video ? { video_url: medios.video } : {}),
+        }).catch((err) => console.warn("No se pudo persistir imagen:", err?.message || err));
+      }
       return NextResponse.json(medios);
     }
 
