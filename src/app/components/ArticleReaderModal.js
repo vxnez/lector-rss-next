@@ -110,7 +110,22 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // Panel externo en el backdrop: "fijo" (anclado arriba-derecha) o
   // "flotante" (arrastrable + redimensionable nativo con `resize`).
   const [modoIndice, setModoIndice] = useState("fijo");
-  // Posición persistente del panel flotante (solo modo flotante).
+  // Ref del panel: al reacoplar se limpian las dimensiones inline que deja
+  // el `resize` nativo (si no, el tamaño manual sangra al modo fijo).
+  const panelIndiceRef = useRef(null);
+  const fijarIndice = () => {
+    try {
+      const el = panelIndiceRef.current;
+      if (el) {
+        el.style.width = "";
+        el.style.height = "";
+      }
+    } catch {
+      // Sin DOM accesible: las clases ya mandan.
+    }
+    setPosFlotante(null);
+    setModoIndice("fijo");
+  };  // Posición persistente del panel flotante (solo modo flotante).
   const [posFlotante, setPosFlotante] = useState(() => {
     try {
       const crudo = window.localStorage.getItem("lector_indice_pos");
@@ -926,8 +941,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                     arriba-derecha o flotante arrastrable/redimensionable. Solo xl+. */}
                 {indiceContenido.length >= 2 && railVisible && (
                   <nav
+                    ref={panelIndiceRef}
                     aria-label={t("lector.indice")}
-                    style={posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
+                    style={modoIndice === "flotante" && posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
                     className={`fixed right-0 top-20 z-[60] hidden w-60 flex-col overflow-hidden rounded-l-2xl border border-r-0 border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
                       modoIndice === "flotante"
                         ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto rounded-r-2xl border-r"
@@ -947,8 +963,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                       <button
                         type="button"
                         onClick={() => {
-                          setModoIndice((m) => (m === "fijo" ? "flotante" : "fijo"));
-                          setPosFlotante(null);
+                          if (modoIndice === "fijo") setModoIndice("flotante");
+                          else fijarIndice();
                         }}
                         title={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
                         aria-label={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
