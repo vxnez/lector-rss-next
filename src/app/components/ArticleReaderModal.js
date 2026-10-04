@@ -16,6 +16,7 @@ import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // El cuerpo usa tamaño fijo "normal": la escala global la da --font-size-base
 // (slider de Ajustes > Lectura), así que el lector no necesita estados.
@@ -109,7 +110,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // Panel externo en el backdrop: "fijo" (anclado arriba-derecha) o
   // "flotante" (arrastrable + redimensionable nativo con `resize`).
   const [modoIndice, setModoIndice] = useState("fijo");
-  const [posFlotante, setPosFlotante] = useState(null);
+  // Posición persistente del panel flotante (solo modo flotante).
+  const [posFlotante, setPosFlotante] = useState(() => {
+    try {
+      const crudo = window.localStorage.getItem("lector_indice_pos");
+      if (!crudo) return null;
+      const p = JSON.parse(crudo);
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+      const x = Math.min(Math.max(p.x, 8), Math.max(window.innerWidth - 120, 8));
+      const y = Math.min(Math.max(p.y, 8), Math.max(window.innerHeight - 80, 8));
+      return { x, y };
+    } catch {
+      return null;
+    }
+  });
+  // Portal a <body>: el panel vive fuera del árbol del modal (nada de
+  // overflow/blur/transform heredados) con fixed real a viewport.
+  const puedePortal = typeof document !== "undefined";
   // Arrastre del panel en modo flotante (Pointer Events, sin librerías).
   const iniciarArrastre = (event) => {
     if (modoIndice !== "flotante") return;
@@ -125,6 +142,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       const x = Math.min(Math.max(rect.left + (ev.clientX - inicioX), 8), window.innerWidth - 120);
       const y = Math.min(Math.max(rect.top + (ev.clientY - inicioY), 8), window.innerHeight - 80);
       setPosFlotante({ x, y });
+      try {
+        window.localStorage.setItem("lector_indice_pos", JSON.stringify({ x, y }));
+      } catch {
+        // Sin almacenamiento: la posición vive solo la sesión.
+      }
     };
     const soltar = () => {
       window.removeEventListener("pointermove", mover);
@@ -493,7 +515,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     ? t("lector.resumen_corto_badge", { n: longitudOriginal(article) })
     : null;
 
-  return (
+  return (<>
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50 animate-fadeIn"
       role="presentation"
@@ -825,90 +847,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
         </div>
-      {/* Índice en el backdrop (fuera de la caja del artículo): fijo
-          arriba-derecha o flotante arrastrable/redimensionable. Solo xl+. */}
-      {indiceContenido.length >= 2 && railVisible && (
-        <nav
-          aria-label={t("lector.indice")}
-          style={posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
-          className={`fixed right-4 top-20 z-20 hidden w-60 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
-            modoIndice === "flotante"
-              ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto"
-              : "max-h-[calc(50dvh-6rem)]"
-          }`}
-        >
-          <div
-            onPointerDown={iniciarArrastre}
-            className={`flex items-center gap-1.5 border-b border-app-line/70 px-3 py-2 ${
-              modoIndice === "flotante" ? "cursor-move touch-none select-none" : ""
-            }`}
-          >
-            <List size={13} className="shrink-0 text-[var(--accent-ink)]" />
-            <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
-              {t("lector.indice")} · {indiceContenido.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setModoIndice((m) => (m === "fijo" ? "flotante" : "fijo"));
-                setPosFlotante(null);
-              }}
-              title={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
-              aria-label={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
-              aria-pressed={modoIndice === "flotante"}
-              className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
-            >
-              {modoIndice === "fijo" ? <Move size={13} /> : <Pin size={13} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRailVisible(false)}
-              aria-label={t("comun.cerrar")}
-              className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <div className="scroll-sutil min-h-0 flex-1 overflow-y-auto p-1.5">
-            {indiceContenido.map((s) => {
-              const activa = seccionActiva === `lector-sec-${s.indice}`;
-              return (
-                <button
-                  key={s.indice}
-                  type="button"
-                  onClick={() => irASeccion(s.indice)}
-                  aria-current={activa ? "true" : undefined}
-                  title={s.texto}
-                  className={`btn-press flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] leading-snug transition-[background-color,color] duration-200 ${
-                    activa
-                      ? "bg-[var(--accent)]/15 font-semibold text-app-fg"
-                      : "text-app-muted hover:bg-app-raised/70 hover:text-app-fg"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`size-1.5 shrink-0 rounded-full transition-[background-color] duration-200 ${
-                      activa ? "bg-[var(--accent)]" : "bg-app-muted/40"
-                    }`}
-                  />
-                  <span className="min-w-0 truncate">{s.texto}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      )}
-      {indiceContenido.length >= 2 && !railVisible && (
-        <button
-          type="button"
-          onClick={() => setRailVisible(true)}
-          title={t("lector.indice")}
-          aria-label={t("lector.indice")}
-          className="btn-press fixed right-4 top-20 z-20 hidden rounded-full border border-app-line bg-app-surface/70 p-2.5 text-app-muted shadow-xl backdrop-blur-md hover:text-app-fg xl:block"
-        >
-          <List size={15} />
-        </button>
-      )}
       {medioVisible && (
         // Franja ambiental sutil: la foto nativa decora sin competir con el
         // texto (baja opacidad + scrim profundo). Sin imagen válida el bloque
@@ -980,5 +918,96 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         </div>
       )}
     </div>
-  );
+      {puedePortal &&
+        indiceContenido.length >= 2 &&
+        createPortal(
+          <>
+      {/* Índice en el backdrop (fuera de la caja del artículo): fijo
+                    arriba-derecha o flotante arrastrable/redimensionable. Solo xl+. */}
+                {indiceContenido.length >= 2 && railVisible && (
+                  <nav
+                    aria-label={t("lector.indice")}
+                    style={posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
+                    className={`fixed right-4 top-20 z-[60] hidden w-60 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
+                      modoIndice === "flotante"
+                        ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto"
+                        : "max-h-[calc(50dvh-6rem)]"
+                    }`}
+                  >
+                    <div
+                      onPointerDown={iniciarArrastre}
+                      className={`flex items-center gap-1.5 border-b border-app-line/70 px-3 py-2 ${
+                        modoIndice === "flotante" ? "cursor-move touch-none select-none" : ""
+                      }`}
+                    >
+                      <List size={13} className="shrink-0 text-[var(--accent-ink)]" />
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                        {t("lector.indice")} · {indiceContenido.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModoIndice((m) => (m === "fijo" ? "flotante" : "fijo"));
+                          setPosFlotante(null);
+                        }}
+                        title={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
+                        aria-label={modoIndice === "fijo" ? t("lector.indice_libre") : t("lector.indice_fijo")}
+                        aria-pressed={modoIndice === "flotante"}
+                        className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
+                      >
+                        {modoIndice === "fijo" ? <Move size={13} /> : <Pin size={13} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRailVisible(false)}
+                        aria-label={t("comun.cerrar")}
+                        className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                    <div className="scroll-sutil min-h-0 flex-1 overflow-y-auto p-1.5">
+                      {indiceContenido.map((s) => {
+                        const activa = seccionActiva === `lector-sec-${s.indice}`;
+                        return (
+                          <button
+                            key={s.indice}
+                            type="button"
+                            onClick={() => irASeccion(s.indice)}
+                            aria-current={activa ? "true" : undefined}
+                            title={s.texto}
+                            className={`btn-press flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] leading-snug transition-[background-color,color] duration-200 ${
+                              activa
+                                ? "bg-[var(--accent)]/15 font-semibold text-app-fg"
+                                : "text-app-muted hover:bg-app-raised/70 hover:text-app-fg"
+                            }`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`size-1.5 shrink-0 rounded-full transition-[background-color] duration-200 ${
+                                activa ? "bg-[var(--accent)]" : "bg-app-muted/40"
+                              }`}
+                            />
+                            <span className="min-w-0 truncate">{s.texto}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </nav>
+                )}
+                {indiceContenido.length >= 2 && !railVisible && (
+                  <button
+                    type="button"
+                    onClick={() => setRailVisible(true)}
+                    title={t("lector.indice")}
+                    aria-label={t("lector.indice")}
+                    className="btn-press fixed right-4 top-20 z-[60] hidden rounded-full border border-app-line bg-app-surface/70 p-2.5 text-app-muted shadow-xl backdrop-blur-md hover:text-app-fg xl:block"
+                  >
+                    <List size={15} />
+                  </button>
+                )}
+                    </>,
+          document.body
+        )}
+  </>);
 }
