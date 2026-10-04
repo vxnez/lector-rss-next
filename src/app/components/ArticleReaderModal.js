@@ -928,10 +928,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   <nav
                     aria-label={t("lector.indice")}
                     style={posFlotante ? { left: posFlotante.x, top: posFlotante.y, right: "auto" } : undefined}
-                    className={`fixed right-4 top-20 z-[60] hidden w-60 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
+                    className={`fixed right-0 top-20 z-[60] hidden w-60 flex-col overflow-hidden rounded-l-2xl border border-r-0 border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex ${
                       modoIndice === "flotante"
-                        ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto"
-                        : "max-h-[calc(50dvh-6rem)]"
+                        ? "max-h-[70dvh] min-h-[160px] max-w-[min(320px,calc(100vw-2rem))] min-w-[180px] resize overflow-auto rounded-r-2xl border-r"
+                        : "max-h-[calc(100dvh-7rem)]"
                     }`}
                   >
                     <div
