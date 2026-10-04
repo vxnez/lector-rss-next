@@ -55,14 +55,18 @@ export function decodificarEntidades(texto = "") {
   return s;
 }
 
-const ETIQUETAS_BLOQUE = /<\s*\/?\s*(p|div|br|li|ul|ol|h[1-6]|blockquote|pre|hr|tr|section|article)\b[^>]*>/gi;
+const ETIQUETAS_SALTO = /<\s*br\b[^>]*>/gi;
+const ETIQUETAS_BLOQUE_CIERRE =
+  /<\s*\/\s*(p|div|li|ul|ol|h[1-6]|blockquote|pre|tr|section|article)\b[^>]*>|<\s*hr\b[^>]*>/gi;
 
 export function stripHtml(texto = "") {
   let s = String(texto || "");
   if (!s || !s.includes("<")) return s;
-  // Los bloques pasan a salto de línea para no pegar párrafos.
-  s = s.replace(ETIQUETAS_BLOQUE, "\n");
-  // Resto de etiquetas fuera.
+  // <br> = salto suave (una línea); cierre de bloque (</p>, </div>, ...) =
+  // separación de párrafo (línea en blanco). Así no se fusionan párrafos.
+  s = s.replace(ETIQUETAS_SALTO, "\n");
+  s = s.replace(ETIQUETAS_BLOQUE_CIERRE, "\n\n");
+  // Resto de etiquetas (aperturas, inline) fuera.
   s = s.replace(/<[^>]*>/g, " ");
   return s;
 }
@@ -96,17 +100,25 @@ export function limpiarTextoResumen(texto = "") {
   s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFD]/g, "");
   // Escapes literales residuales.
   s = s.replace(/\\n|\\r|\\t/g, " ");
-  // Normaliza saltos y espacios por línea.
+  // Normaliza saltos y espacios por línea. Las líneas vacías se conservan
+  // como separadores de párrafo (si se filtraran, los <p> se fusionarían).
   s = s.replace(/\r\n?/g, "\n");
-  const lineas = s
-    .split("\n")
-    .map((l) => l.replace(/[ \t\u00A0]+/g, " ").trim())
-    .filter((l) => !esLineaBasura(l));
-  s = lineas.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  // Colapsa espacios dentro de cada línea sin pegar párrafos.
+  const crudas = s.split("\n").map((l) => l.replace(/[ \t\u00A0]+/g, " ").trim());
+  const filtradas = [];
+  for (const l of crudas) {
+    if (!l) {
+      filtradas.push("");
+      continue;
+    }
+    if (esLineaBasura(l)) continue;
+    filtradas.push(l);
+  }
+  s = filtradas.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  // Colapsa espacios dentro de cada línea sin pegar párrafos, y pega la
+  // puntuación a la palabra anterior (las etiquetas inline dejan huecos).
   s = s
     .split("\n")
-    .map((l) => l.replace(/\s+/g, " ").trim())
+    .map((l) => (l ? l.replace(/\s+/g, " ").replace(/\s+([.,;:!?…)»”’])/g, "$1").trim() : ""))
     .join("\n");
   return s;
 }

@@ -46,11 +46,14 @@ export function parseResumen(texto) {
   const bloques = [];
   let parrafo = [];
   let listaActual = null;
+  let citaActual = null;
 
   const cerrarParrafo = () => {
-    const junto = parrafo.join(" ").trim();
+    // Las líneas contiguas sin línea en blanco son saltos suaves (<br>):
+    // se conservan como \n y el render los pinta con <br>, nunca fundidos.
+    const junto = parrafo.join("\n").trim();
     if (junto) {
-      const m = junto.match(RE_AVISO);
+      const m = junto.split("\n")[0].match(RE_AVISO);
       if (m) {
         bloques.push({
           tipo: "aviso",
@@ -67,23 +70,30 @@ export function parseResumen(texto) {
     if (listaActual && listaActual.items.length > 0) bloques.push(listaActual);
     listaActual = null;
   };
+  const cerrarCita = () => {
+    if (citaActual && citaActual.texto) bloques.push(citaActual);
+    citaActual = null;
+  };
 
   for (const cruda of lineas) {
     const linea = cruda.trim();
     if (!linea) {
       cerrarParrafo();
       cerrarLista();
+      cerrarCita();
       continue;
     }
     if (RE_SEPARADOR.test(linea)) {
       cerrarParrafo();
       cerrarLista();
+      cerrarCita();
       bloques.push({ tipo: "separador" });
       continue;
     }
     if (RE_SUBTITULO.test(linea)) {
       cerrarParrafo();
       cerrarLista();
+      cerrarCita();
       const titulo = limpiarSubtitulo(linea);
       if (titulo) bloques.push({ tipo: "subtitulo", texto: titulo });
       continue;
@@ -92,21 +102,27 @@ export function parseResumen(texto) {
       cerrarParrafo();
       cerrarLista();
       const cita = linea.replace(RE_CITA, "").trim();
-      if (cita) bloques.push({ tipo: "cita", texto: cita });
+      if (cita) {
+        // Citas contiguas = un solo bloque con saltos suaves.
+        citaActual = citaActual ? { tipo: "cita", texto: `${citaActual.texto}\n${cita}` } : { tipo: "cita", texto: cita };
+      }
       continue;
     }
     if (RE_VINETA.test(linea)) {
       cerrarParrafo();
+      cerrarCita();
       if (!listaActual) listaActual = { tipo: "lista", items: [] };
       const item = limpiarVineta(linea);
       if (item) listaActual.items.push(item);
       continue;
     }
     cerrarLista();
+    cerrarCita();
     parrafo.push(linea);
   }
   cerrarParrafo();
   cerrarLista();
+  cerrarCita();
 
   const base = String(saneado || "").trim();
   return bloques.length > 0 ? bloques : [{ tipo: "parrafo", texto: base }];
@@ -191,6 +207,17 @@ function conFormato(texto, clave) {
   });
 }
 
+/** Render con saltos suaves: cada \n del bloque se pinta como <br/>. */
+function lineasConFormato(texto, clave) {
+  const lineas = String(texto || "").split("\n");
+  return lineas.map((linea, k) => (
+    <span key={`${clave}-l${k}`}>
+      {conFormato(linea, `${clave}-l${k}`)}
+      {k < lineas.length - 1 && <br />}
+    </span>
+  ));
+}
+
 export default function ResumenEstructurado({ texto }) {
   const bloques = useMemo(() => parseResumen(texto), [texto]);
   const indiceEntradilla = bloques.findIndex((b) => b.tipo === "parrafo");
@@ -213,9 +240,9 @@ export default function ResumenEstructurado({ texto }) {
           return (
             <blockquote
               key={i}
-              className="border-l-2 border-[var(--accent)] bg-app-raised/40 px-4 py-2.5 text-[0.95em] italic leading-relaxed text-app-muted"
+              className="space-y-2 border-l-2 border-[var(--accent)] bg-app-raised/40 px-4 py-2.5 text-[0.95em] italic leading-relaxed text-app-muted"
             >
-              {conFormato(bloque.texto, `cita-${i}`)}
+              {lineasConFormato(bloque.texto, `cita-${i}`)}
             </blockquote>
           );
         }
@@ -228,7 +255,7 @@ export default function ResumenEstructurado({ texto }) {
               <p className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--accent-ink)]">
                 {bloque.etiqueta}
               </p>
-              <p className="text-[0.95em] text-app-fg">{conFormato(bloque.texto, `aviso-${i}`)}</p>
+              <p className="text-[0.95em] leading-relaxed text-app-fg">{lineasConFormato(bloque.texto, `aviso-${i}`)}</p>
             </aside>
           );
         }
@@ -258,7 +285,7 @@ export default function ResumenEstructurado({ texto }) {
                 : "leading-[1.85] text-app-fg/95"
             }
           >
-            {conFormato(bloque.texto, `p-${i}`)}
+            {lineasConFormato(bloque.texto, `p-${i}`)}
           </p>
         );
       })}
