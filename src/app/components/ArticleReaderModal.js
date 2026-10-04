@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -102,6 +102,10 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   const [errorCompleto, setErrorCompleto] = useState("");
   const [metaCompleto, setMetaCompleto] = useState(null);
   const resumenMostrado = resumenExtendido || article?.resumen || "";
+  // Rail lateral estilo Skiper: sección activa + visibilidad (por noticia;
+  // el modal se remonta por `key` así que el inicial basta).
+  const [seccionActiva, setSeccionActiva] = useState(null);
+  const [railVisible, setRailVisible] = useState(true);
   // Índice dinámico: sale de los subtítulos ya parseados (cero DOM parsing,
   // cero backend). Solo aparece con 2+ secciones.
   const indiceContenido = useMemo(
@@ -339,6 +343,29 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       vivo = false;
     };
   }, [article]);
+
+  // Scroll tracking del índice lateral: IntersectionObserver nativo sobre
+  // las secciones del cuerpo (root = scroll interno del modal). Sin
+  // librerías, sin costo de servidor; se limpia al cambiar de noticia.
+  useEffect(() => {
+    const contenedor = contenedorRef.current;
+    if (!contenedor || typeof IntersectionObserver === "undefined") return undefined;
+    const secciones = contenedor.querySelectorAll('[id^="lector-sec-"]');
+    if (secciones.length < 2) {
+      setSeccionActiva(null);
+      return undefined;
+    }
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        for (const entrada of entradas) {
+          if (entrada.isIntersecting) setSeccionActiva(entrada.target.id);
+        }
+      },
+      { root: contenedor, rootMargin: "-25% 0px -65% 0px", threshold: 0 }
+    );
+    secciones.forEach((s) => observador.observe(s));
+    return () => observador.disconnect();
+  }, [resumenMostrado]);
 
   if (!article) return null;
 
@@ -693,7 +720,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           )}
           <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
             {indiceContenido.length >= 2 && (
-              <details className="mb-4 rounded-xl border border-app-line bg-app-raised/50 px-4 py-2.5">
+              <details className="mb-4 rounded-xl border border-app-line bg-app-raised/50 px-4 py-2.5 xl:hidden">
                 <summary className="btn-press cursor-pointer list-none text-xs font-bold uppercase tracking-[0.08em] text-[var(--accent-ink)] [&::-webkit-details-marker]:hidden">
                   {t("lector.indice")} · {indiceContenido.length}
                 </summary>
@@ -771,6 +798,68 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </a>
         </div>
         </div>
+      {/* Índice lateral estilo Skiper: rail flotante translúcido solo en
+          escritorio (xl+), con tracking de sección activa en tiempo real.
+          En móvil/tablet manda el <details> colapsable del cuerpo. */}
+      {indiceContenido.length >= 2 && railVisible && (
+        <nav
+          aria-label={t("lector.indice")}
+          className="absolute right-3 top-1/2 z-20 hidden max-h-[55%] w-40 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-app-line bg-app-surface/70 shadow-xl backdrop-blur-md xl:flex"
+        >
+          <div className="flex items-center gap-1.5 border-b border-app-line/70 px-3 py-2">
+            <List size={13} className="shrink-0 text-[var(--accent-ink)]" />
+            <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
+              {t("lector.indice")} · {indiceContenido.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRailVisible(false)}
+              aria-label={t("comun.cerrar")}
+              className="btn-press shrink-0 rounded-md p-1 text-app-muted hover:bg-app-raised hover:text-app-fg"
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <div className="scroll-sutil min-h-0 flex-1 overflow-y-auto p-1.5">
+            {indiceContenido.map((s) => {
+              const activa = seccionActiva === `lector-sec-${s.indice}`;
+              return (
+                <button
+                  key={s.indice}
+                  type="button"
+                  onClick={() => irASeccion(s.indice)}
+                  aria-current={activa ? "true" : undefined}
+                  title={s.texto}
+                  className={`btn-press flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] leading-snug transition-[background-color,color] duration-200 ${
+                    activa
+                      ? "bg-[var(--accent)]/15 font-semibold text-app-fg"
+                      : "text-app-muted hover:bg-app-raised/70 hover:text-app-fg"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 rounded-full transition-[background-color] duration-200 ${
+                      activa ? "bg-[var(--accent)]" : "bg-app-muted/40"
+                    }`}
+                  />
+                  <span className="min-w-0 truncate">{s.texto}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+      {indiceContenido.length >= 2 && !railVisible && (
+        <button
+          type="button"
+          onClick={() => setRailVisible(true)}
+          title={t("lector.indice")}
+          aria-label={t("lector.indice")}
+          className="btn-press absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-app-line bg-app-surface/70 p-2.5 text-app-muted shadow-xl backdrop-blur-md hover:text-app-fg xl:block"
+        >
+          <List size={15} />
+        </button>
+      )}
       {medioVisible && (
         // Franja ambiental sutil: la foto nativa decora sin competir con el
         // texto (baja opacidad + scrim profundo). Sin imagen válida el bloque
