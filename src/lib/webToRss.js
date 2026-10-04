@@ -11,6 +11,17 @@
 // cada carga, solo al agregar y al refrescar la fuente.
 import * as cheerio from "cheerio";
 import { fetchPublico, leerTextoLimitado } from "@/lib/ssrf";
+import { truncarResumen } from "./limpiezaTexto";
+
+// Tope extendido frontend (iguala contrato backend v003: 1200 con corte en
+// palabra/bloque). Antes 300: cortaba contexto en conversiones web.
+const TOPE_RESUMEN_EXTENDIDO = 1200;
+
+function cortarExtendido(texto = "") {
+  const s = String(texto || "").replace(/\s+/g, " ").trim();
+  if (s.length <= TOPE_RESUMEN_EXTENDIDO) return s;
+  return truncarResumen(s, TOPE_RESUMEN_EXTENDIDO);
+}
 
 const TIMEOUT_MS = 12000;
 const MAX_ITEMS = 25;
@@ -304,25 +315,25 @@ function extraerResumenDeTarjeta($, a, ambito, bloque, titulo) {
   });
   const padre = a.parent();
   if (padre && padre.length) recolectar(padre.parent());
-  if (candidatos.length > 0) return candidatos[0].slice(0, 300);
-  // Respaldo extractivo: une hasta 3 párrafos cortos del bloque (cada uno
-  // ≥15 caracteres) hasta ~300; exige un mínimo total para no guardar ruido.
+  if (candidatos.length > 0) return cortarExtendido(candidatos.slice(0, 3).join("\n\n"));
+  // Respaldo extractivo: une hasta 5 párrafos cortos del bloque (cada uno
+  // ≥15 caracteres) hasta ~1200; exige un mínimo total para no guardar ruido.
   const cortos = [];
   const recolectarCortos = (raiz) => {
-    if (!raiz || !raiz.length || cortos.join(" ").length >= 300) return;
+    if (!raiz || !raiz.length || cortos.join(" ").length >= TOPE_RESUMEN_EXTENDIDO) return;
     raiz.find("p").each((_, el) => {
-      if (cortos.join(" ").length >= 300) return;
+      if (cortos.join(" ").length >= TOPE_RESUMEN_EXTENDIDO) return;
       const t = String($(el).text() || "").replace(/\s+/g, " ").trim();
       if (t.length >= 15 && !TEXTO_CTA.test(t) && t !== titulo && !vistos.has(t)) {
         vistos.add(t);
         cortos.push(t);
-        if (cortos.length >= 3) return;
+        if (cortos.length >= 5) return;
       }
     });
   };
   recolectarCortos(ambito);
   if (bloque && (!ambito.length || bloque[0] !== ambito[0])) recolectarCortos(bloque);
-  const unido = cortos.join(" ").slice(0, 300);
+  const unido = cortarExtendido(cortos.join("\n\n"));
   return unido.length >= 60 ? unido : "";
 }
 
@@ -396,7 +407,7 @@ function itemsDesdeJsonLd(nodos, base, baseHost) {
     items.push({
       titulo,
       url: limpio,
-      resumen: String(nodo.description || "").replace(/\s+/g, " ").trim().slice(0, 300),
+      resumen: cortarExtendido(String(nodo.description || "").replace(/\s+/g, " ").trim()),
       fecha: fechaAISO(nodo.datePublished || nodo.dateCreated),
       autor: autorDeJsonLd(nodo),
       imagen: typeof imagenCruda === "string" ? absolver(imagenCruda, base) : "",
@@ -426,8 +437,8 @@ function extraerArticuloUnico($, base, baseHost, jsonLd) {
     textoLimpio($, "h1").slice(0, 200);
   if (!titulo || titulo.length < 10) return null;
   const cuerpo =
-    textoLimpio($, "article").slice(0, 300) ||
-    meta($, "og:description", "description").slice(0, 300);
+    cortarExtendido(textoLimpio($, "article")) ||
+    cortarExtendido(meta($, "og:description", "description"));
   const canonica = $('link[rel="canonical"]').first().attr("href");
   const url = limpiarEnlaceNoticia(absolver(canonica || meta($, "og:url") || base, base));
   if (!url) return null;
@@ -989,10 +1000,9 @@ export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = 
   const ahora = new Date().toISOString();
   const itemsFeed = [];
   for (const item of unicos.slice(0, MAX_ITEMS_TOTAL)) {
-    const descripcion = [item.resumen, item.autor ? `Por ${item.autor}` : ""]
-      .filter(Boolean)
-      .join(" · ")
-      .slice(0, 320);
+    const descripcion = cortarExtendido(
+      [item.resumen, item.autor ? `Por ${item.autor}` : ""].filter(Boolean).join(" · ")
+    );
     const entrada = {
       title: item.titulo,
       link: item.url,

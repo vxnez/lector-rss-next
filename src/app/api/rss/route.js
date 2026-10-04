@@ -135,6 +135,7 @@ import * as cheerio from "cheerio";
 import { CATEGORIAS_DISPONIBLES } from "@/lib/categoryClassifier";
 import { fetchPublico, leerBufferLimitado, leerTextoLimitado } from "@/lib/ssrf";
 import { convertirPaginaAFeed } from "@/lib/webToRss";
+import { limpiarTextoResumen, limpiarTitulo } from "@/lib/limpiezaTexto";
 
 export const maxDuration = 60;
 
@@ -307,7 +308,8 @@ async function buscarFuenteDuplicada(userId, candidatas = []) {
 }
 
 function derivarNombreFuente(feed = {}, urlFinal = "") {
-  let nombre = String(feed.title || "").replace(/\s+/g, " ").trim();
+  // Normalización frontend: trim + colapso + tope 40 (alta), sin tocar backend.
+  let nombre = limpiarTextoResumen(feed.title || "").replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
   nombre = nombre
     .replace(/\s*[|•·–—/-]\s*(latest[^|•·–—/-]*|últimas[^|•·–—/-]*|ultimas[^|•·–—/-]*)$/i, "")
     .replace(/\s*\b(latest articles|latest news|latest updates|rss feed|atom feed|feed)\s*$/i, "")
@@ -366,7 +368,21 @@ async function intentarParsearFeed(url, validadores = {}) {
     if (contenido.startsWith("{")) {
       const json = JSON.parse(contenido);
       if (Array.isArray(json.items)) {
-        feed = { title: json.title || "Fuente RSS", items: json.items.map((i) => ({ title: i.title, link: i.url })) };
+        // Normalización JSON Feed → forma rss-parser (título/link + contenido,
+        // fecha, imagen y autor cuando existen; antes solo title/link).
+        feed = {
+          title: limpiarTitulo(json.title || "Fuente RSS", 300),
+          items: json.items.map((i) => ({
+            title: limpiarTitulo(i.title || "", 300),
+            link: i.url || i.id || "",
+            contentSnippet: limpiarTextoResumen(
+              i.content_text || i.content_html || i.summary || ""
+            ).slice(0, 1200),
+            isoDate: i.date_published || i.date_modified || "",
+            image: i.image || i.banner_image || "",
+            author: typeof i.author === "string" ? i.author : i.author?.name || "",
+          })),
+        };
       }
     } else {
       feed = await parser.parseString(contenido);
@@ -493,10 +509,19 @@ function repararTextoMalDecodificado(texto = "") {
 }
 
 function repararFilaArticulo(row) {
+  // Mojibake + limpieza frontend (HTML/entities/espacios/CTA) antes de pintar.
+  // No muta el backend: solo normaliza lo que el lector muestra/lee.
+  const titulo = limpiarTitulo(
+    repararTextoMalDecodificado(row.titulo ?? row.title ?? ""),
+    300
+  );
+  const resumen = limpiarTextoResumen(
+    repararTextoMalDecodificado(row.resumen ?? row.summary ?? "")
+  );
   return {
     ...row,
-    titulo: repararTextoMalDecodificado(row.titulo ?? row.title ?? ""),
-    resumen: repararTextoMalDecodificado(row.resumen ?? row.summary ?? ""),
+    titulo,
+    resumen,
     fuente_nombre: repararTextoMalDecodificado(row.fuente_nombre ?? row.fuente ?? ""),
   };
 }

@@ -9,6 +9,8 @@ import ResumenEstructurado from "./ResumenEstructurado";
 import { confianzaIAVisible, traducirCategoria } from "@/lib/categoryStyles";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
+import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
+import { resumenPlano } from "./ResumenEstructurado";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useIdioma } from "@/lib/i18n";
@@ -95,7 +97,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       setHablando(false);
       return;
     }
-    const texto = `${article?.titulo || ""}. ${article?.resumen || ""}`;
+    const texto = `${limpiarTextoResumen(article?.titulo) || ""}. ${resumenPlano(article?.resumen) || ""}`;
     const utterance = new SpeechSynthesisUtterance(texto);
     // La traducción de noticias la hace el navegador del usuario: la voz
     // sigue el idioma detectado del texto original (heurística local).

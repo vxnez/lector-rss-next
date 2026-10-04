@@ -8,6 +8,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
 
 const RE_VINETA = /^\s*(?:[-*•]|\d+[.)])\s+/;
 const RE_SUBTITULO = /^#{1,3}\s+/;
@@ -23,7 +24,17 @@ function limpiarSubtitulo(linea) {
 
 /** Divide el texto en bloques { tipo: subtitulo|parrafo|lista }. */
 export function parseResumen(texto) {
-  const lineas = String(texto || "").split(/\r?\n/);
+  // Sanitización previa: el backend puede mandar HTML/entities en resúmenes
+  // extendidos; aquí solo llega texto plano al render.
+  const saneado = limpiarTextoResumen(texto);
+  // Muros de texto sin saltos (extractos largos de una línea): se segmentan
+  // cada ~800 caracteres por frase para no pintar un solo <p> gigante.
+  const conSegmentos = saneado.includes("\n")
+    ? saneado
+    : saneado.length > 800
+      ? saneado.replace(/([.!?…])\s+(?=[A-ZÁÉÍÓÚÑ¿¡“"])/g, "$1\n")
+      : saneado;
+  const lineas = String(conSegmentos || "").split(/\r?\n/);
   const bloques = [];
   let parrafo = [];
   let listaActual = null;
@@ -65,7 +76,7 @@ export function parseResumen(texto) {
   cerrarParrafo();
   cerrarLista();
 
-  const base = String(texto || "").trim();
+  const base = String(saneado || "").trim();
   return bloques.length > 0 ? bloques : [{ tipo: "parrafo", texto: base }];
 }
 
@@ -73,7 +84,13 @@ export function parseResumen(texto) {
     colapsa espacios. Las tarjetas usan line-clamp sobre una sola línea
     lógica; las marcas crudas se verían como en el bug reportado. */
 export function resumenPlano(texto) {
-  return String(texto || "")
+  // Limpieza primero (HTML/entities/residuos) y luego marcas Markdown.
+  // También enlaces [texto](url), citas > y reglas --- que llegan en
+  // resúmenes extendidos.
+  return limpiarTextoResumen(texto)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^>\s?/gm, "")
+    .replace(/^---+\s*$/gm, "")
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/^#{1,3}\s+/gm, "")
     .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
