@@ -488,6 +488,18 @@ export async function getStats(usuario_id) {
   return api("/api/data/stats", { query: { usuario_id: String(usuario_id) } });
 }
 
+// ---- Resumen IA vía backend servxn (caché compartida 24h) ----
+// POST /api/ia/resumen {usuario_id,titulo,resumen} → {puntos,diag,cacheado}.
+// Sin claves LLM en servxn responde diag 'sin_clave' (el llamante decide el
+// fallback). 429 con Retry-After ante cuota.
+export async function resumirIaBackend({ usuario_id, titulo, resumen, timeoutMs = 30000 } = {}) {
+  return api("/api/ia/resumen", {
+    method: "POST",
+    body: { usuario_id: String(usuario_id), titulo, resumen },
+    timeoutMs,
+  });
+}
+
 // ---- Progreso IA (telemetría barata: 1 COUNT en el backend) ----
 export async function getIAProgreso(usuario_id) {
   return api("/api/ia/progreso", {

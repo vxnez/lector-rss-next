@@ -14,6 +14,7 @@ import {
   marcarArticulo,
   patchFuente,
   refreshFuentes,
+  resumirIaBackend,
 } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
 import { clasificarLoteConIA, configIA, resumirConIA } from "@/lib/clasificadorIA";
@@ -607,9 +608,10 @@ export async function POST(req) {
       return clasificarPendientesResponse(userId, body);
     }
 
-    // Resumen IA por artículo (viñetas): reutiliza la cadena de modelos y la
-    // key gratuita del servidor. Con auth obligatoria: sin sesión no hay
-    // inferencia (la cuota no se quema en anónimo).
+    // Resumen IA por artículo (viñetas): primero el backend servxn (caché
+    // compartida 24h entre dispositivos); si responde sin_clave/vacío/falla,
+    // fallback a la cadena local con la key de Vercel. 429 del backend se
+    // respeta tal cual (no se quema la otra cuota encima).
     if (body.action === "resumir_articulo") {
       const titulo = limpiarTitulo(body.titulo || "", 300);
       const texto = limpiarTextoResumen(body.resumen || "")
@@ -619,17 +621,40 @@ export async function POST(req) {
       if (!texto) {
         return NextResponse.json({ puntos: [], diag: "corto", proveedor: null, cacheado: false });
       }
-      try {
+      const local = async () => {
         const r = await resumirConIA(undefined, titulo, texto, body.proveedor);
-        return NextResponse.json({
+        return {
           puntos: r.puntos,
           proveedor: r.proveedor,
           diag: r.diag,
           cacheado: Boolean(r.cacheado),
-        });
+        };
+      };
+      try {
+        const b = await resumirIaBackend({ usuario_id: userId, titulo, resumen: texto });
+        if (Array.isArray(b?.puntos) && b.puntos.length > 0) {
+          return NextResponse.json({
+            puntos: b.puntos,
+            proveedor: b.proveedor || "servxn",
+            diag: b.diag || null,
+            cacheado: Boolean(b.cacheado),
+          });
+        }
+        if (b?.diag === "cuota") {
+          return NextResponse.json({ puntos: [], diag: "cuota", proveedor: null, cacheado: false });
+        }
+        return NextResponse.json(await local());
       } catch (error) {
-        console.error("Error resumiendo con IA:", error?.message || error);
-        return NextResponse.json({ puntos: [], diag: "respuesta", proveedor: null, cacheado: false });
+        if (Number(error?.status) === 429) {
+          return NextResponse.json({ puntos: [], diag: "cuota", proveedor: null, cacheado: false });
+        }
+        console.warn("Resumen backend no disponible, fallback local:", error?.message || error);
+        try {
+          return NextResponse.json(await local());
+        } catch (errorLocal) {
+          console.error("Error resumiendo con IA:", errorLocal?.message || errorLocal);
+          return NextResponse.json({ puntos: [], diag: "respuesta", proveedor: null, cacheado: false });
+        }
       }
     }
 

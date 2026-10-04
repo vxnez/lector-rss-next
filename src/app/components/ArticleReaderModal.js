@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List, Pin, Move } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List, Pin, Move, ArrowUpToLine } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -511,8 +511,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   const fechaFormateada = formatFechaArticulo(article.fecha_publicacion, t, locale);
   const minutosLectura = tiempoLecturaMinutos(article.titulo, resumenMostrado);
-  const irASeccion = (indice) => {
-    const contenedor = contenedorRef.current;
+  const irASeccion = (indice) => {    const contenedor = contenedorRef.current;
     if (!contenedor) return;
     const destino = contenedor.querySelector(`#lector-sec-${indice}`);
     if (!destino) return;
@@ -525,6 +524,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       suave = true;
     }
     destino.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "start" });
+  };
+  // Título raíz del índice: vuelve al inicio sin scroll manual. Activo
+  // cuando ninguna sección está en foco (cima del artículo).
+  const tituloIndice = limpiarTextoResumen(article?.titulo || "");
+  const irAlInicio = () => {
+    const contenedor = contenedorRef.current;
+    if (!contenedor) return;
+    let suave = true;
+    try {
+      suave = typeof window !== "undefined"
+        && window.matchMedia
+        && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      suave = true;
+    }
+    contenedor.scrollTo({ top: 0, behavior: suave ? "smooth" : "auto" });
+    setSeccionActiva(null);
   };
   const truncado = esResumenTruncado(article) && !resumenExtendido;
   const badgeResumenCorto = esResumenTruncado(article)
@@ -790,12 +806,22 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                   {t("lector.indice")} · {indiceContenido.length}
                 </summary>
                 <nav aria-label={t("lector.indice")} className="mt-2 space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={irAlInicio}
+                    aria-current={seccionActiva === null ? "true" : undefined}
+                    title={tituloIndice}
+                    className="btn-press flex w-full items-center gap-2 rounded-lg border-b border-app-line/70 px-2 pb-2.5 pt-1 text-left text-sm font-bold leading-snug text-app-fg hover:bg-app-raised"
+                    >
+                      <ArrowUpToLine size={14} className="shrink-0 text-[var(--accent)]" />
+                      <span className="min-w-0 break-words">{tituloIndice}</span>
+                    </button>
                   {indiceContenido.map((s) => (
                     <button
                       key={s.indice}
                       type="button"
                       onClick={() => irASeccion(s.indice)}
-                      className="btn-press block w-full truncate rounded-lg px-2 py-2 text-left text-sm text-app-muted hover:bg-app-raised hover:text-app-fg"
+                      className="btn-press block w-full break-words rounded-lg px-2 py-2 text-left text-sm leading-snug text-app-muted hover:bg-app-raised hover:text-app-fg"
                     >
                       {s.texto}
                     </button>
@@ -984,6 +1010,16 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                       </button>
                     </div>
                     <div className="scroll-sutil min-h-0 flex-1 overflow-y-auto p-1.5">
+                      <button
+                        type="button"
+                        onClick={irAlInicio}
+                        aria-current={seccionActiva === null ? "true" : undefined}
+                        title={tituloIndice}
+                        className="btn-press mb-1 flex w-full items-center gap-2 rounded-lg border-b border-app-line/70 px-2 pb-2.5 pt-1 text-left text-[11px] font-bold leading-snug text-app-fg hover:bg-app-raised/70"
+                        >
+                          <ArrowUpToLine size={13} className="shrink-0 text-[var(--accent)]" />
+                          <span className="min-w-0 break-words">{tituloIndice}</span>
+                        </button>
                       {indiceContenido.map((s) => {
                         const activa = seccionActiva === `lector-sec-${s.indice}`;
                         return (
@@ -1005,7 +1041,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                                 activa ? "bg-[var(--accent)]" : "bg-app-muted/40"
                               }`}
                             />
-                            <span className="min-w-0 truncate">{s.texto}</span>
+                            <span className="min-w-0 break-words">{s.texto}</span>
                           </button>
                         );
                       })}
