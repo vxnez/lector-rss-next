@@ -411,7 +411,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50 animate-fadeIn"
       role="presentation"
       onMouseDown={(event) => {
         clicIniciadoEnFondo.current = event.target === event.currentTarget;
@@ -443,7 +443,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         <ChevronRight size={22} />
       </button>
       <div
-        className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-3xl shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-hidden overscroll-contain flex flex-col ${
+        className={`bg-app-surface border border-app-line rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl lg:max-w-3xl mx-auto box-border shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-hidden overscroll-contain flex flex-col ${
           direccionEntrada > 0
             ? "anim-articulo-siguiente"
             : direccionEntrada < 0

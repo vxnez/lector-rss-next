@@ -1005,7 +1005,7 @@ export default function AjustesPanel({
       {/* Confirmación grande de eliminar cuenta: centrada, con consecuencias */}
       {(pasoEliminar === "modal" || pasoEliminar === "eliminando") && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/80 p-4 backdrop-blur-sm"
           role="presentation"
           onClick={() => {
             if (pasoEliminar === "modal") setPasoEliminar("idle");
@@ -1016,7 +1016,7 @@ export default function AjustesPanel({
             aria-modal="true"
             aria-labelledby="titulo-eliminar-cuenta"
             onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-red-900/60 bg-gray-900 p-6 shadow-2xl sm:p-8"
+            className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto box-border rounded-2xl border border-red-900/60 bg-gray-900 p-6 shadow-2xl sm:p-8"
           >
             <div className="mx-auto mb-4 grid h-14 w-14 place-content-center rounded-full border border-red-500/40 bg-red-500/15 text-red-400">
               <TriangleAlert size={26} />

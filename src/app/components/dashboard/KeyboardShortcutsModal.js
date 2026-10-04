@@ -61,12 +61,12 @@ export default function KeyboardShortcutsModal({ abierto, onCerrar, t }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="titulo-atajos"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm anim-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 bg-black/70 backdrop-blur-sm anim-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCerrar();
       }}
     >
-      <div className="bezel-outer w-full max-w-lg overflow-hidden shadow-2xl">
+      <div className="bezel-outer w-full max-w-[calc(100vw-2rem)] sm:max-w-lg mx-auto box-border overflow-hidden overflow-x-hidden shadow-2xl">
         <div className="bezel-inner p-6 space-y-6 bg-app-surface text-app-fg">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-app-line/70 pb-4">

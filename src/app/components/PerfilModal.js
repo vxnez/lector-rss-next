@@ -198,13 +198,13 @@ export default function PerfilModal({ isOpen, onClose, onSuccess, onNotify }) {
 
   return (
     <div
-      className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50"
       role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="anim-modal bg-app-surface border border-app-line p-4 sm:p-6 rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden shadow-2xl relative flex flex-col">
+      <div className="anim-modal bg-app-surface border border-app-line p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto box-border max-h-[calc(100dvh-2rem)] overflow-hidden overflow-x-hidden shadow-2xl relative flex flex-col">
         <button
           onClick={onClose}
           aria-label={t("perfil.cerrar_aria")}

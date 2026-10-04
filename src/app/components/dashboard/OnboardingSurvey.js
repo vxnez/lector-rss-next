@@ -247,13 +247,13 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
 
 
   return (
-    <div ref={overlayRef} className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div ref={overlayRef} className="anim-overlay fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/80 p-4 backdrop-blur-sm">
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
-        className="anim-modal scroll-oculto relative flex max-h-[90vh] max-h-[90dvh] w-full max-w-3xl max-w-[calc(100vw-2rem)] flex-col gap-6 overflow-hidden overflow-x-hidden rounded-2xl border border-app-line bg-app-surface p-4 shadow-2xl sm:p-8"
+        className="anim-modal scroll-oculto relative mx-auto flex max-h-[90vh] max-h-[90dvh] w-full max-w-[calc(100vw-2rem)] flex-col gap-6 overflow-hidden overflow-x-hidden rounded-2xl border border-app-line bg-app-surface p-4 shadow-2xl sm:max-w-2xl sm:p-8 lg:max-w-3xl"
       >
         <button
           onClick={handleOmitir}

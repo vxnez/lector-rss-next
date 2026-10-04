@@ -592,8 +592,8 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
   if (!isOpen) return null;
 
   return (
-    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl max-w-[calc(100vw-2rem)] w-full p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col overflow-x-hidden box-border">
+    <div className="anim-overlay fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/80 backdrop-blur-sm p-4">
+      <div className="anim-modal bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-xl lg:max-w-2xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] flex flex-col overflow-x-hidden box-border">
         
         {/* Cabecera en dos filas: título + cerrar arriba, acciones debajo.
             Así el título nunca se desfasa por falta de espacio. */}
@@ -1121,7 +1121,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
         {confirmarEliminarId && (
           <div
-            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
             role="presentation"
             onClick={() => setConfirmarEliminarId(null)}
           >
@@ -1130,7 +1130,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               aria-modal="true"
               aria-labelledby="titulo-eliminar-fuente"
               onClick={(event) => event.stopPropagation()}
-              className="anim-modal w-full max-w-sm space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
+              className="anim-modal w-full max-w-[calc(100vw-2rem)] sm:max-w-sm mx-auto box-border space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
             >
               <h3 id="titulo-eliminar-fuente" className="text-lg font-bold text-app-fg">
                 {t("fuentes.eliminar_modal_titulo")}
@@ -1162,7 +1162,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
 
         {confirmarLote && (
           <div
-            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            className="anim-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
             role="presentation"
             onClick={() => setConfirmarLote(false)}
           >
@@ -1171,7 +1171,7 @@ export default function ManageSourcesModal({ isOpen, onClose, onChange, onNotify
               aria-modal="true"
               aria-labelledby="titulo-eliminar-fuentes"
               onClick={(event) => event.stopPropagation()}
-              className="anim-modal w-full max-w-sm space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
+              className="anim-modal w-full max-w-[calc(100vw-2rem)] sm:max-w-sm mx-auto box-border space-y-4 rounded-2xl border border-red-900/60 bg-app-surface p-6 shadow-2xl"
             >
               <h3 id="titulo-eliminar-fuentes" className="text-lg font-bold text-app-fg">
                 {t("fuentes.eliminar_lote_titulo", { n: seleccionadas.length })}
