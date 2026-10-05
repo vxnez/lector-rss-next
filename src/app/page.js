@@ -19,7 +19,7 @@ import { urlBase64ToUint8Array } from "@/lib/feed-utils";
 import { useCapaGuardia, useCapaHistorial } from "@/lib/historialCapas";
 import { bumpCacheVersion } from "@/lib/fetchCache";
 import { inicializarMicrointeracciones } from "@/lib/animaciones";
-import { aplicarAparienciaBase, purgarSesionLocal } from "@/lib/ajustesPorDefecto";
+import { aplicarAparienciaBase, migrarAlmacenamiento, purgarSesionLocal } from "@/lib/ajustesPorDefecto";
 
 import { useSourcesManager } from "@/lib/hooks/useSourcesManager";
 import { useIACategorizer } from "@/lib/hooks/useIACategorizer";
@@ -65,7 +65,9 @@ export default function HomePage() {
   // Inyecta public/tema-inicial.js sin usar <script>
   // en JSX (Turbopack advierte sobre scripts dentro de componentes React).
   // useEffect (no useLayoutEffect) para no romper la hidratación.
+  // La migración del almacenamiento corre aquí: una vez por arranque.
   useEffect(() => {
+    migrarAlmacenamiento();
     try {
       if (document.querySelector('script[data-tema-inicial]')) return;
       const script = document.createElement('script');

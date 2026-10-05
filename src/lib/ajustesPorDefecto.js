@@ -6,20 +6,19 @@
 // Este módulo es la única fuente de verdad para "valores por defecto":
 // restablecer = eliminar claves para que cada lector caiga a su default.
 import { CLAVES_NOTIFICACIONES } from "@/lib/hooks/useNotificaciones";
-import { TEMA_POR_DEFECTO, aplicarTema, temaPreferidoSistema } from "@/lib/temas";
+import { TEMA_POR_DEFECTO, aplicarTema, esTemaValido } from "@/lib/temas";
 import { FUENTE_POR_DEFECTO, FUENTE_PX_DEFECTO, aplicarFuente, aplicarFuentePx } from "@/lib/fuentes";
 
 export const AJUSTES_POR_DEFECTO = {
-  lector_tema: null, // null = preferencia del sistema (ver temas.temaPreferidoSistema)
+  lector_tema: null, // null = Vainilla (ver temas.TEMA_POR_DEFECTO)
   lector_fuente_app: null, // null = Readex Pro (ver fuentes.FUENTE_POR_DEFECTO)
   lector_fuente_px: null, // null = 16 px base (ver fuentes.FUENTE_PX_DEFECTO)
   lector_familia_fuente: null, // legado del lector (botón Sans eliminado): se purga
   lector_tamano_fuente: null, // legado del lector (botones Normal/Grande/Extra): se purga
   lector_tamano_pagina: "30",
-  lector_auto_leido: "0",
+  lector_auto_leido: "1",
   lector_movimiento: "completo",
   lector_densidad: "comoda",
-  lector_tamano_fuente: "normal",
   lector_imagen_oculta: "0",
 };
 
@@ -51,8 +50,8 @@ function clavesRastroCuenta() {
 
 /**
  * Vuelve a los valores por defecto del sistema: elimina las claves de
- * lectura/apariencia para que cada lector use su default (tema del SO,
- * página 30, auto-leído off, movimiento completo, densidad cómoda...).
+ * lectura/apariencia para que cada lector use su default (Vainilla,
+ * página 30, auto-leído on, movimiento completo, densidad cómoda...).
  */
 export function restablecerAjustesLocales() {
   try {
@@ -105,7 +104,33 @@ export function purgarSesionLocal() {
 }
 
 /**
- * Devuelve el DOM a la apariencia base (tema del sistema + fuente/tamaño
+ * Migración de arranque (una vez por versión de almacenamiento): purga las
+ * claves obsoletas que ningún lector lee (restos heredados) y fija
+ * Vainilla cuando el tema guardado falta o es inválido. Las elecciones
+ * válidas (incluido medianoche) se respetan siempre: aquí no se borran
+ * preferencias, solo residuos.
+ */
+const VERSION_ALMACEN = 2;
+const CLAVE_VERSION = "lector_store_v";
+const CLAVES_OBSOLETAS = ["lector_familia_fuente", "lector_tamano_fuente"];
+
+export function migrarAlmacenamiento() {
+  try {
+    if (typeof window === "undefined") return;
+    const actual = Number(window.localStorage.getItem(CLAVE_VERSION)) || 0;
+    if (actual >= VERSION_ALMACEN) return;
+    CLAVES_OBSOLETAS.forEach((clave) => window.localStorage.removeItem(clave));
+    if (!esTemaValido(window.localStorage.getItem("lector_tema"))) {
+      window.localStorage.setItem("lector_tema", TEMA_POR_DEFECTO);
+    }
+    window.localStorage.setItem(CLAVE_VERSION, String(VERSION_ALMACEN));
+  } catch {
+    // Sin almacenamiento disponible: nada que migrar.
+  }
+}
+
+/**
+ * Devuelve el DOM a la apariencia base (Vainilla + fuente/tamaño
  * por defecto, sin movimiento reducido ni densidad compacta). Solo cliente;
  * llamar tras purgarSesionLocal() para que la vista de autenticación pinte
  * el estado base en vez del tema personalizado anterior.
@@ -115,7 +140,7 @@ export function aplicarAparienciaBase() {
   let fuente = FUENTE_POR_DEFECTO;
   let fuentePx = FUENTE_PX_DEFECTO;
   try {
-    tema = aplicarTema(temaPreferidoSistema()).id;
+    tema = aplicarTema(TEMA_POR_DEFECTO).id;
     fuente = aplicarFuente(FUENTE_POR_DEFECTO).id;
     fuentePx = aplicarFuentePx(FUENTE_PX_DEFECTO);
     delete document.documentElement.dataset.motion;
