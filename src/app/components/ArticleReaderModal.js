@@ -93,6 +93,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Text-to-Speech nativo (Web Speech API)
   const [hablando, setHablando] = useState(false);
+  // Texto completo por defecto: el resumen de ingesta se reemplaza por el
+  // extendido en cuanto llega (autocarga silenciosa al abrir).
+  const [resumenExtendido, setResumenExtendido] = useState(null);
   const resumenMostrado = resumenExtendido || article?.resumen || "";
   // Rail lateral estilo Skiper: sección activa + visibilidad (por noticia;
   // el modal se remonta por `key` así que el inicial basta).
