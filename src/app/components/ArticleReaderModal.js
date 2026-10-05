@@ -36,15 +36,18 @@ function esFechaEstimada(article) {
   return marca === 1 || marca === "1" || marca === true;
 }
 
-// Resumen truncado en ingesta: el backend marca resumen_completo=1, pero
-// también vale que longitud_resumen supere a lo visible (filas sin marca
-// con corte y "…" final). En ambos casos se autocarga el extendido.
-function esResumenTruncado(article) {
+// ¿Merece texto completo? 1) flag de truncado del backend, 2) longitud
+// original mayor que lo visible, 3) extracto corto de feed (solo
+// <description>, sin content:encoded): el cuerpo real se re-extrae de
+// url_original al abrir vía /:id/resumen (caché 24 h en servidor).
+function necesitaTextoCompleto(article) {
+  if (!article?.id || !article?.url_original) return false;
   const marca = article?.resumen_completo;
   if (marca === 1 || marca === "1" || marca === true) return true;
   const original = Number(article?.longitud_resumen);
-  const visible = String(article?.resumen || "").length;
-  return Number.isFinite(original) && original > visible + 50;
+  const visible = String(article?.resumen || "").trim().length;
+  if (Number.isFinite(original) && original > visible + 50) return true;
+  return visible < 500;
 }
 
 
@@ -417,7 +420,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // reintento). Cadena .then: sin setState
   // síncrono en el cuerpo del efecto.
   useEffect(() => {
-    if (!article || !esResumenTruncado(article) || !article.id) return undefined;
+    if (!article || !necesitaTextoCompleto(article) || !article.id) return undefined;
     const ctrl = new AbortController();
     fetch(`/api/rss?tipo=resumen&id=${encodeURIComponent(article.id)}`, {
       cache: "no-store",
