@@ -10,7 +10,7 @@
 // se elevan a aviso.
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
 
 const RE_VINETA = /^\s*(?:[-*•]|\d+[.)])\s+/;
@@ -30,7 +30,7 @@ function limpiarSubtitulo(linea) {
   return linea.replace(RE_SUBTITULO, "").trim();
 }
 
-/** Divide el texto en bloques { tipo: subtitulo|parrafo|lista|cita|aviso|separador }. */
+/** Divide el texto en bloques { tipo: subtitulo|parrafo|lista|cita|aviso|separador|codigo }. */
 export function parseResumen(texto) {
   // Sanitización previa: el backend puede mandar HTML/entities en resúmenes
   // extendidos; aquí solo llega texto plano al render.
@@ -47,6 +47,8 @@ export function parseResumen(texto) {
   let parrafo = [];
   let listaActual = null;
   let citaActual = null;
+  let enCodigo = false;
+  let codigo = [];
 
   const cerrarParrafo = () => {
     // Las líneas contiguas sin línea en blanco son saltos suaves (<br>):
@@ -74,8 +76,29 @@ export function parseResumen(texto) {
     if (citaActual && citaActual.texto) bloques.push(citaActual);
     citaActual = null;
   };
+  const cerrarCodigo = () => {
+    const texto = codigo.join("\n").replace(/^\n+|\n+$/g, "");
+    if (texto) bloques.push({ tipo: "codigo", texto });
+    codigo = [];
+  };
 
   for (const cruda of lineas) {
+    // Cercas de código: el contenido va verbatim (con indentación), nunca
+    // trim ni filtrado.
+    if (/^```/.test(cruda.trim())) {
+      if (enCodigo) cerrarCodigo();
+      else {
+        cerrarParrafo();
+        cerrarLista();
+        cerrarCita();
+      }
+      enCodigo = !enCodigo;
+      continue;
+    }
+    if (enCodigo) {
+      codigo.push(cruda.replace(/\s+$/g, ""));
+      continue;
+    }
     const linea = cruda.trim();
     if (!linea) {
       cerrarParrafo();
@@ -123,15 +146,20 @@ export function parseResumen(texto) {
   cerrarParrafo();
   cerrarLista();
   cerrarCita();
+  // Cerca sin cerrar al final: se pinta igual (tolerante).
+  if (enCodigo) cerrarCodigo();
 
   const base = String(saneado || "").trim();
   return bloques.length > 0 ? bloques : [{ tipo: "parrafo", texto: base }];
 }
 
-/** Texto plano para tarjetas y TTS: quita marcas Markdown y colapsa. */
+/** Texto plano para tarjetas y TTS: quita marcas Markdown y colapsa.
+ *  Los bloques de código se excluyen (no se leen en voz alta). */
 export function resumenPlano(texto) {
   // Limpieza primero (HTML/entities/residuos) y luego marcas Markdown.
   return limpiarTextoResumen(texto)
+    .replace(/^```.*\n([\s\S]*?)\n```/gm, "")
+    .replace(/^```.*$/gm, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/`([^`\n]+)`/g, "$1")
     .replace(/^>\s?/gm, "")
@@ -207,9 +235,42 @@ function conFormato(texto, clave) {
   });
 }
 
+/** Bloque consola/terminal: fondo oscuro fijo en ambos temas, monoespaciado,
+ *  scroll horizontal propio y botón copiar. */
+function BloqueCodigo({ texto, t }) {
+  const [copiado, setCopiado] = useState(false);
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      return;
+    }
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+  return (
+    <figure className="overflow-hidden rounded-xl border border-gray-800 bg-gray-950 shadow-sm">
+      <div className="flex items-center gap-1.5 border-b border-gray-800/80 px-3 py-2">
+        <span aria-hidden="true" className="size-2.5 rounded-full bg-rose-500/80" />
+        <span aria-hidden="true" className="size-2.5 rounded-full bg-amber-400/80" />
+        <span aria-hidden="true" className="size-2.5 rounded-full bg-emerald-400/80" />
+        <button
+          type="button"
+          onClick={copiar}
+          className="btn-press ml-auto inline-flex min-h-[36px] items-center rounded-lg px-2.5 text-[11px] font-medium text-gray-400 transition hover:bg-gray-800 hover:text-white"
+        >
+          {copiado ? t("lector.copiado") : t("lector.copiar")}
+        </button>
+      </div>
+      <pre className="scroll-sutil max-h-80 overflow-auto p-3.5 font-mono text-[12.5px] leading-relaxed text-gray-100">
+        <code className="whitespace-pre">{texto}</code>
+      </pre>
+    </figure>
+  );
+}
+
 /** Render con saltos suaves: cada \n del bloque se pinta como <br/>. */
-function lineasConFormato(texto, clave) {
-  const lineas = String(texto || "").split("\n");
+function lineasConFormato(texto, clave) {  const lineas = String(texto || "").split("\n");
   return lineas.map((linea, k) => (
     <span key={`${clave}-l${k}`}>
       {conFormato(linea, `${clave}-l${k}`)}
@@ -218,9 +279,10 @@ function lineasConFormato(texto, clave) {
   ));
 }
 
-export default function ResumenEstructurado({ texto, prefijoIndice = null }) {
+export default function ResumenEstructurado({ texto, prefijoIndice = null, t = null }) {
   const bloques = useMemo(() => parseResumen(texto), [texto]);
   const indiceEntradilla = bloques.findIndex((b) => b.tipo === "parrafo");
+  const tr = (clave) => (typeof t === "function" ? t(clave) : clave);
 
   return (
     <div className="space-y-4">
@@ -262,6 +324,9 @@ export default function ResumenEstructurado({ texto, prefijoIndice = null }) {
         }
         if (bloque.tipo === "separador") {
           return <hr key={i} aria-hidden="true" className="border-t border-app-line/70" />;
+        }
+        if (bloque.tipo === "codigo") {
+          return <BloqueCodigo key={i} texto={bloque.texto} t={tr} />;
         }
         if (bloque.tipo === "lista") {
           return (

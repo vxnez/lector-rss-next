@@ -854,6 +854,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             <ResumenEstructurado
               texto={resumenMostrado || t("lector.sin_resumen")}
               prefijoIndice="lector-sec"
+              t={t}
             />
           </div>
           {errorCompleto && (

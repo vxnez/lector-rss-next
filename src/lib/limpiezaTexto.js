@@ -58,15 +58,31 @@ export function decodificarEntidades(texto = "") {
 const ETIQUETAS_SALTO = /<\s*br\b[^>]*>/gi;
 const ETIQUETAS_BLOQUE_CIERRE =
   /<\s*\/\s*(p|div|li|ul|ol|h[1-6]|blockquote|pre|tr|section|article)\b[^>]*>|<\s*hr\b[^>]*>/gi;
+const ETIQUETAS_PRE = /<\s*pre\b[^>]*>([\s\S]*?)<\s*\/\s*pre\s*>/gi;
 
 export function stripHtml(texto = "") {
   let s = String(texto || "");
   if (!s || !s.includes("<")) return s;
+  // Bloques de código (<pre>) se conservan como cercas ``` para que el
+  // lector los pinte como consola; el resto del HTML se limpia igual.
+  s = s.replace(ETIQUETAS_PRE, (m, interior) => {
+    const codigo = String(interior || "")
+      .replace(/<\s*br\b[^>]*>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .trim();
+    if (!codigo) return "\n\n";
+    return `\n\n\`\`\`\n${codigo}\n\`\`\`\n\n`;
+  });
   // <br> = salto suave (una línea); cierre de bloque (</p>, </div>, ...) =
   // separación de párrafo (línea en blanco). Así no se fusionan párrafos.
   s = s.replace(ETIQUETAS_SALTO, "\n");
   s = s.replace(ETIQUETAS_BLOQUE_CIERRE, "\n\n");
-  // Resto de etiquetas (aperturas, inline) fuera.
+  // Resto de etiquetas (aperturas, inline) fuera. El <code> en línea se
+  // conserva como `código` para el render.
+  s = s.replace(/<\s*code\b[^>]*>([\s\S]*?)<\s*\/\s*code\s*>/gi, (_, interior) =>
+    `\`${String(interior || "").replace(/<[^>]*>/g, "").trim()}\``
+  );
   s = s.replace(/<[^>]*>/g, " ");
   return s;
 }
@@ -91,6 +107,13 @@ export function limpiarTextoResumen(texto = "") {
   let s = String(texto || "");
   if (!s) return "";
   s = stripHtml(s);
+  // Las cercas de código se apartan: ni el trim por línea ni el filtro de
+  // ruido deben tocarlas (indentación y líneas como `}` son contenido).
+  const cercas = [];
+  s = s.replace(/^```[^\S\n]*\r?\n([\s\S]*?)\r?\n```/gm, (m, codigo) => {
+    cercas.push(decodificarEntidades(String(codigo || "")));
+    return `@@BLOQUECODIGO${cercas.length - 1}@@`;
+  });
   s = decodificarEntidades(s);
   // Doble decodificación residual (feeds con &amp;amp;).
   if (s.includes("&") && /&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);/.test(s)) {
@@ -120,6 +143,11 @@ export function limpiarTextoResumen(texto = "") {
     .split("\n")
     .map((l) => (l ? l.replace(/\s+/g, " ").replace(/\s+([.,;:!?…)»”’])/g, "$1").trim() : ""))
     .join("\n");
+  // Se devuelven los bloques de código intactos (con su indentación).
+  s = s.replace(/^@@BLOQUECODIGO(\d+)@@$/gm, (_, n) => {
+    const codigo = cercas[Number(n)];
+    return codigo !== undefined ? `\`\`\`\n${codigo}\n\`\`\`` : "";
+  });
   return s;
 }
 
