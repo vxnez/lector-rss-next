@@ -36,11 +36,15 @@ function esFechaEstimada(article) {
   return marca === 1 || marca === "1" || marca === true;
 }
 
-// Resumen truncado en ingesta (1200): el backend marca resumen_completo=1 y
-// longitud_resumen=original. Solo entonces se ofrece "Leer completo".
+// Resumen truncado en ingesta: el backend marca resumen_completo=1, pero
+// también vale que longitud_resumen supere a lo visible (filas sin marca
+// con corte y "…" final). En ambos casos se autocarga el extendido.
 function esResumenTruncado(article) {
   const marca = article?.resumen_completo;
-  return marca === 1 || marca === "1" || marca === true;
+  if (marca === 1 || marca === "1" || marca === true) return true;
+  const original = Number(article?.longitud_resumen);
+  const visible = String(article?.resumen || "").length;
+  return Number.isFinite(original) && original > visible + 50;
 }
 
 
@@ -97,6 +101,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // Texto completo por defecto: el resumen de ingesta se reemplaza por el
   // extendido en cuanto llega (autocarga silenciosa al abrir).
   const [resumenExtendido, setResumenExtendido] = useState(null);
+  const [falloCompleto, setFalloCompleto] = useState(false);
+  const [reintentando, setReintentando] = useState(false);
   const resumenMostrado = resumenExtendido || article?.resumen || "";
   // Rail lateral estilo Skiper: sección activa + visibilidad (por noticia;
   // el modal se remonta por `key` así que el inicial basta).
@@ -225,6 +231,24 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Copiar enlace y Web Share API
   const [copiado, setCopiado] = useState(false);
+  // Solo si la autocarga falló: reintenta el texto completo una vez.
+  const reintentarCompleto = async () => {
+    if (reintentando || resumenExtendido || !article?.id) return;
+    setReintentando(true);
+    setFalloCompleto(false);
+    try {
+      const res = await fetch(`/api/rss?tipo=resumen&id=${encodeURIComponent(article.id)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.resumen) throw new Error(data?.error || "Error");
+      setResumenExtendido(data.resumen);
+    } catch {
+      setFalloCompleto(true);
+    } finally {
+      setReintentando(false);
+    }
+  };
   const compartirArticulo = async () => {
     const url = article?.url_original || article?.link;
     if (!url) return;
@@ -378,7 +402,9 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         if (esImagenValida(data.imagen)) setImagenRemota(data.imagen);
         if (data.video) setVideoRemoto(data.video);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!ctrl.signal.aborted) setFalloCompleto(true);
+      })
       .finally(() => {
         if (vivo) setCargandoImagen(false);
       });
@@ -387,8 +413,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     };
   }, [article]);
   // Texto completo inmediato: si la ingesta lo truncó (1200), se trae el
-  // extendido al abrir sin esperar al botón. Falla en silencio (el botón
-  // Leer completo queda para reintentar). Cadena .then: sin setState
+  // extendido al abrir. Ante fallo marca falloCompleto (aviso discreto con
+  // reintento). Cadena .then: sin setState
   // síncrono en el cuerpo del efecto.
   useEffect(() => {
     if (!article || !esResumenTruncado(article) || !article.id) return undefined;
@@ -399,7 +425,11 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
-        if (ctrl.signal.aborted || !res.ok || !data?.resumen) return;
+        if (ctrl.signal.aborted) return;
+        if (!res.ok || !data?.resumen) {
+          setFalloCompleto(true);
+          return;
+        }
         setResumenExtendido(data.resumen);
       })
       .catch(() => {})
@@ -807,6 +837,19 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               t={t}
             />
           </div>
+          {falloCompleto && !resumenExtendido && (
+            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-app-muted">
+              <span>{t("lector.err_completo")}</span>
+              <button
+                type="button"
+                onClick={reintentarCompleto}
+                disabled={reintentando}
+                className="btn-press font-semibold text-[var(--accent-ink)] underline decoration-[var(--accent)]/50 underline-offset-2 hover:decoration-[var(--accent)] disabled:opacity-60"
+              >
+                {reintentando ? t("lector.cargando_completo") : t("lector.reintentar")}
+              </button>
+            </p>
+          )}
         </div>
 
         {actionError && (
