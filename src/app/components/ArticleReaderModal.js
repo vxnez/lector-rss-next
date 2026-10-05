@@ -42,11 +42,6 @@ function esResumenTruncado(article) {
   return marca === 1 || marca === "1" || marca === true;
 }
 
-function longitudOriginal(article) {
-  const n = Number(article?.longitud_resumen);
-  if (Number.isFinite(n) && n > 0) return n;
-  return String(article?.resumen || "").length;
-}
 
 export default function ArticleReaderModal({ article, onClose, onToggleRead, onToggleSave, onUpdateCategory, onIrAId, anteriorId, siguienteId, posicion, total }) {
   const { t, locale, idioma } = useIdioma();
@@ -98,11 +93,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Text-to-Speech nativo (Web Speech API)
   const [hablando, setHablando] = useState(false);
-  // Texto completo bajo demanda (solo cuando resumen_completo=1).
-  const [resumenExtendido, setResumenExtendido] = useState(null);
-  const [cargandoCompleto, setCargandoCompleto] = useState(false);
-  const [errorCompleto, setErrorCompleto] = useState("");
-  const [metaCompleto, setMetaCompleto] = useState(null);
   const resumenMostrado = resumenExtendido || article?.resumen || "";
   // Rail lateral estilo Skiper: sección activa + visibilidad (por noticia;
   // el modal se remonta por `key` así que el inicial basta).
@@ -223,30 +213,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
 
   // Copiar enlace y Web Share API
   const [copiado, setCopiado] = useState(false);
-  // Carga bajo demanda del texto completo (backend: re-extracción SSRF-safe,
-  // caché 24h; nunca tumba el listado porque vive solo en el lector).
-  const cargarCompleto = async () => {
-    if (cargandoCompleto || resumenExtendido || !article?.id) return;
-    setCargandoCompleto(true);
-    setErrorCompleto("");
-    try {
-      const res = await fetch(`/api/rss?tipo=resumen&id=${encodeURIComponent(article.id)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Error");
-      if (data?.resumen) {
-        setResumenExtendido(data.resumen);
-        setMetaCompleto({ obsoleto: Boolean(data.obsoleto), reextraido: Boolean(data.reextraido) });
-      } else {
-        throw new Error("Vacío");
-      }
-    } catch {
-      setErrorCompleto(t("lector.err_completo"));
-    } finally {
-      setCargandoCompleto(false);
-    }
-  };
   const compartirArticulo = async () => {
     const url = article?.url_original || article?.link;
     if (!url) return;
@@ -423,7 +389,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         const data = await res.json().catch(() => ({}));
         if (ctrl.signal.aborted || !res.ok || !data?.resumen) return;
         setResumenExtendido(data.resumen);
-        setMetaCompleto({ obsoleto: Boolean(data.obsoleto), reextraido: Boolean(data.reextraido) });
       })
       .catch(() => {})
     return () => {
@@ -564,10 +529,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
     contenedor.scrollTo({ top: 0, behavior: suave ? "smooth" : "auto" });
     setSeccionActiva(null);
   };
-  const truncado = esResumenTruncado(article) && !resumenExtendido;
-  const badgeResumenCorto = esResumenTruncado(article)
-    ? t("lector.resumen_corto_badge", { n: longitudOriginal(article) })
-    : null;
 
   return (<>
     <div
@@ -796,31 +757,8 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
             {article.titulo}
           </h2>
 
-          {/* Cuerpo / Resumen estructurado completo (subtítulos, párrafos,
-              viñetas) con opacidad uniforme: sin clamp, sin fades. El scroll
-              interno lo muestra todo; si viene truncado de ingesta se ofrece
-              el texto completo bajo demanda. */}
-          {badgeResumenCorto && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 notranslate" translate="no">
-              <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
-                {resumenExtendido
-                  ? metaCompleto?.obsoleto
-                    ? t("lector.completo_respaldo")
-                    : t("lector.completo_listo")
-                  : badgeResumenCorto}
-              </span>
-              {truncado && (
-                <button
-                  type="button"
-                  onClick={cargarCompleto}
-                  disabled={cargandoCompleto}
-                  className="btn-press inline-flex min-h-[36px] items-center rounded-full bg-[var(--accent-strong)] px-3 py-1.5 text-[11px] font-semibold text-[var(--on-accent-strong)] disabled:opacity-60"
-                >
-                  {cargandoCompleto ? t("lector.cargando_completo") : t("lector.leer_completo")}
-                </button>
-              )}
-            </div>
-          )}
+          {/* Cuerpo en modo extendido por defecto: el texto completo
+              autocarga al abrir, sin insignias ni botones de resumen corto. */}
           <div className="text-app-fg text-sm md:text-base leading-relaxed break-words">
             {indiceContenido.length >= 2 && (
               <details className="mb-4 rounded-xl border border-app-line bg-app-raised/50 px-4 py-2.5 xl:hidden">
@@ -857,11 +795,6 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               t={t}
             />
           </div>
-          {errorCompleto && (
-            <p role="alert" className="mt-3 text-sm text-rose-400">
-              {errorCompleto}
-            </p>
-          )}
         </div>
 
         {actionError && (

@@ -44,7 +44,6 @@ const TarjetaCards = memo(function TarjetaCards({
   const nombreFuente = nombreFuenteDeArticulo(art, t("tarjeta.fuente_generica"));
   const fechaFormateada = formatFecha(art.fecha_publicacion, t("tarjeta.reciente"), locale);
   const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
-  const truncado = art?.resumen_completo === 1 || art?.resumen_completo === "1" || art?.resumen_completo === true;
 
   const fijarSpot = useCallback((event) => {
     const el = event.currentTarget;
@@ -96,14 +95,6 @@ const TarjetaCards = memo(function TarjetaCards({
                 <Clock size={11} className="opacity-75" />
                 <span>{t("tarjeta.min", { n: minutosLectura })}</span>
               </span>
-              {truncado && (
-                <span
-                  className="flex items-center gap-1 border border-amber-500/40 bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded text-[11px] font-semibold"
-                  title={t("tarjeta.resumen_corto")}
-                >
-                  <span>{t("tarjeta.resumen_corto")}</span>
-                </span>
-              )}
             </div>
             <button
               onClick={() => onDelete(art.id)}
@@ -197,7 +188,6 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
   const nombreFuente = nombreFuenteDeArticulo(art, t("tarjeta.fuente_generica"));
   const fechaFormateada = formatFecha(art.fecha_publicacion, t("tarjeta.reciente"), locale);
   const minutosLectura = tiempoLecturaMinutos(art.titulo, art.resumen);
-  const truncado = art?.resumen_completo === 1 || art?.resumen_completo === "1" || art?.resumen_completo === true;
 
   return (
     <div
@@ -230,11 +220,6 @@ const TarjetaMagazine = memo(function TarjetaMagazine({
               <Clock size={11} className="opacity-70" />
               {t("tarjeta.min", { n: minutosLectura })}
             </span>
-            {truncado && (
-              <span className="text-[10px] font-semibold text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                {t("tarjeta.resumen_corto")}
-              </span>
-            )}
             <InsigniaCategoria
               categoria={art.categoria}
               t={t}
