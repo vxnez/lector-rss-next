@@ -114,6 +114,10 @@ export function limpiarTextoResumen(texto = "") {
     cercas.push(decodificarEntidades(String(codigo || "")));
     return `@@BLOQUECODIGO${cercas.length - 1}@@`;
   });
+  s = s.replace(/^~~~[^\S\n]*\r?\n([\s\S]*?)\r?\n~~~/gm, (m, codigo) => {
+    cercas.push(decodificarEntidades(String(codigo || "")));
+    return `@@BLOQUECODIGO${cercas.length - 1}@@`;
+  });
   s = decodificarEntidades(s);
   // Doble decodificación residual (feeds con &amp;amp;).
   if (s.includes("&") && /&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);/.test(s)) {

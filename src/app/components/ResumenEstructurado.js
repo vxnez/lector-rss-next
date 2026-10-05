@@ -83,9 +83,9 @@ export function parseResumen(texto) {
   };
 
   for (const cruda of lineas) {
-    // Cercas de código: el contenido va verbatim (con indentación), nunca
-    // trim ni filtrado.
-    if (/^```/.test(cruda.trim())) {
+    // Cercas de código (``` o ~~~): el contenido va verbatim (con
+    // indentación), nunca trim ni filtrado.
+    if (/^```/.test(cruda.trim()) || /^~~~/.test(cruda.trim())) {
       if (enCodigo) cerrarCodigo();
       else {
         cerrarParrafo();
@@ -159,7 +159,9 @@ export function resumenPlano(texto) {
   // Limpieza primero (HTML/entities/residuos) y luego marcas Markdown.
   return limpiarTextoResumen(texto)
     .replace(/^```.*\n([\s\S]*?)\n```/gm, "")
+    .replace(/^~~~.*\n([\s\S]*?)\n~~~/gm, "")
     .replace(/^```.*$/gm, "")
+    .replace(/^~~~.*$/gm, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/`([^`\n]+)`/g, "$1")
     .replace(/^>\s?/gm, "")
