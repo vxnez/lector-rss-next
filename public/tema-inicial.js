@@ -6,7 +6,7 @@
     var validos = ["medianoche", "duna", "mineral", "bosque", "ebano", "obsidiana", "celeste", "menta", "celadon", "marfil", "vainilla", "alabastro"];
     var t = localStorage.getItem("lector_tema");
     if (validos.indexOf(t) < 0) {
-      t = (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "menta" : "medianoche";
+      t = "vainilla"; // Defecto absoluto (con elección guardada manda el guardado).
     }
     var claros = { celeste: 1, menta: 1, celadon: 1, marfil: 1, vainilla: 1, alabastro: 1 };
     document.documentElement.dataset.theme = t;

@@ -7,14 +7,14 @@ Aplicación web full-stack para centralizar, organizar y leer noticias de fuente
 | Capa | Tecnología |
 |---|---|
 | Framework | Next.js 16 (App Router), React 19, JavaScript |
-| Estilos | Tailwind CSS 4, tema oscuro editorial, 8 temas configurables |
-| Iconos | lucide-react + morphicons (iconos animados) |
+| Estilos | Tailwind CSS 4, 12 temas configurables (6 oscuros + 6 claros, Vainilla claro por defecto) |
+| Iconos | lucide-react + morphicons (iconos animados con morphing) |
 | Tipografía | 5 Google Fonts (`next/font`): Momo Trust Display, LINE Seed JP, Readex Pro (predeterminada), Cal Sans, Press Start 2P + slider global 12–24px |
 | Interfaz | Bilingüe ES/EN nativa con switch en bienvenida y ajustes (`src/lib/i18n.js`) |
 | Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `bcryptjs`, `animejs`) vía `src/lib/api.js` a la API interna |
 | Autenticación | NextAuth 5 beta: credenciales, Google OAuth, GitHub OAuth |
 | Base de datos | MySQL 8.4 en servidor local Ubuntu Server, acceso solo vía API interna (`https://servxn-mysql.duckdns.org`, header `x-api-key`). Sin `mysql2`, sin `DATABASE_URL`, sin credenciales MySQL en el frontend |
-| IA | Gemini REST (`gemini-3.5-flash-lite` principal, `gemini-2.5-flash` alterno) |
+| IA | Gemini REST + Groq OpenAI-compatible (failover, caché en memoria); clasificación por lotes y resúmenes por artículo con claves del servidor o del usuario |
 | Notificaciones | Web Push API (VAPID) + Service Worker |
 | CI | GitHub Actions (build + lint en Node 20.x y 22.x) |
 
@@ -56,16 +56,22 @@ Tablas principales:
 Contrato de listados: artículos con `total` sin paginar; fuentes con `articulos_count`; `descartado=1` excluido de listados y conteos. Columnas de clasificación creadas de forma idempotente. Soporte UTF-8 / ISO-8859-1 / Windows-1252 con reparación de mojibake.
 
 ### 6. Interfaz y accesibilidad
-Tema oscuro editorial, responsive, skeleton loaders, toasts, filtros por texto / categoría / fuente. Checkboxes personalizados con icono Lucide real. Imagen lateral del feed en el lector (solo visualización remota, se oculta si falla). `aria-labels`, `focus-visible`, cierre con Escape, `role="status"`. Soporte para **reduced motion** y densidad compacta/cómoda persistidas en `localStorage`.
+12 temas con identidad fija (6 oscuros + 6 claros; **Vainilla** claro por defecto, Mineral como contraparte oscura, ambos elegibles en la bienvenida), responsive, skeleton loaders, toasts, filtros por texto / categoría / fuente, píldora rápida **Hoy** (filtro 100% local). Checkboxes personalizados con icono Lucide real. `aria-labels`, `focus-visible`, cierre con Escape, `role="status"`. Soporte para **reduced motion** y densidad compacta/cómoda persistidas en `localStorage`.
+
+### 6b. Lectura offline parcial
+`src/lib/offlineStorage.js`: guardados en IndexedDB + últimas 50 noticias de la vista principal en `localStorage`. Sin red, el feed muestra la caché con badge **Modo caché** y revalida al reconectar. Sin cambios visuales ni de UX cuando hay red.
 
 ### 7. Lector modal con navegación fluida
 - Navegación teclado (←/→), swipe táctil, rueda del mouse en desktop
 - Animaciones de entrada/salida según dirección
-- Marcado automático como leído al pasar a la siguiente noticia (opcional)
+- Marcado automático como leído al pasar a la siguiente noticia (**activado por defecto**)
 - Edición de categoría inline con catálogo desplegable
-- Badge IA / Manual / Sin IA con confianza
+- Badge IA / Manual / Sin IA con confianza + badge **Resumen corto** con longitud original
+- Texto completo bajo demanda (autocarga al abrir si la ingesta lo truncó) y **Resumen IA** en panel lateral
+- **Índice de lectura**: tabla de contenido con scroll-tracking (`IntersectionObserver`); en móvil `<details>` colapsable, en desktop rail en el backdrop (fijo, flotante arrastrable/redimensionable, minimizable, posición persistente)
 - Tamaño de texto global (slider 12–24px en ajustes, escala toda la app)
-- Imagen del artículo como fondo lateral (gradiente, máscara, solo visual)
+- Solo imágenes nativas del contenido (scoring editorial cuerpo > OG; capturas/placeholders descartados; sin imagen válida se oculta el contenedor)
+- Respeto de párrafos y saltos originales (`<p>`/`<br>` nunca fusionados)
 
 ### 8. Onboarding de nuevos usuarios
 Encuesta de preferencias al primer ingreso que sugiere feeds recomendados (curados en `src/data/recommended-feeds.json`, 108 feeds verificados) y permite agregarlos con un clic. Incluye la categoría **Developers** (🧑‍💻) con 7 fuentes curadas y verificadas: GitHub Blog, Hacker News, DEV Community, Stack Overflow Blog, CSS-Tricks, Smashing Magazine y Martin Fowler. Verificación automática semanal de feeds recomendados via GitHub Action.
@@ -74,7 +80,7 @@ Encuesta de preferencias al primer ingreso que sugiere feeds recomendados (curad
 Web Push API con VAPID. Service Worker registrado en cliente. Suscripción/desuscripción desde panel de ajustes. Clave pública servida desde `/api/push`. Tras cada refresco (manual o cron) con novedades, el servidor envía push VAPID a los suscriptores del usuario (`src/lib/push.js`).
 
 ### 10. Seguridad
-Consultas parametrizadas (anti SQL injection), contraseñas con bcrypt, aislamiento por usuario, clave de Gemini solo en servidor, `.env*` ignorados en Git.
+Consultas parametrizadas (anti SQL injection), contraseñas con bcrypt, aislamiento por usuario, claves de IA solo en servidor (o aportadas por el usuario en su navegador vía Ajustes > Datos y privacidad > APIs de IA, nunca persistidas en BD), invitado verificado por proveedor, `.env*` ignorados en Git.
 
 ### 11. Caché client-side del dashboard
 `src/lib/fetchCache.js`: deduplicación de peticiones concurrentes idénticas, TTL por endpoint (fuentes, facetas, páginas) y versión global que invalida todo al mutar (o al cambiar de cuenta). El feed usa stale-while-revalidate por vista (pintado instantáneo + revalidación) con prefetch de páginas vecinas y guarda anti-carreras. Sin cambios visuales ni de UX.
@@ -97,6 +103,8 @@ src/
 │   │   ├── ManageSourcesModal.js# Editar, refrescar y eliminar fuentes
 │   │   ├── NewsFeed.js          # Tarjetas de noticias (memo, stagger, spotlight)
 │   │   ├── ArticleReaderModal.js# Lector modal con badge IA/Sin IA y confianza
+│   │   ├── ResumenEstructurado.js# Cuerpo editorial: entradilla, citas, avisos, listas, índice
+│   │   ├── PanelResumenIA.js    # Resumen IA en panel lateral izquierdo (portal, fijo/flotante)
 │   │   ├── ErrorBoundary.js     # Aisla fallos del lector sin tumbar el dashboard
 │   │   ├── MorphIcon.js         # Iconos animados (morphicons)
 │   │   └── dashboard/           # StatsCards, Paginacion, Toast, WelcomeModal, etc.
@@ -115,7 +123,10 @@ src/
 │   │   └── repo/                # Info del repositorio
 ├── lib/
 │   ├── api.js                   # Wrapper servidor -> API interna (única vía de datos, `x-api-key`)
-│   ├── ssrf.js                  # Guarda de egreso: IP pública, redirects, tope de bytes
+│   ├── clasificadorIA.js      # Pipeline IA servidor: clasificación por lotes + resúmenes (Gemini/Groq, caché)
+│   ├── clavesIA.js            # Claves de IA del usuario (solo localStorage de su navegador)
+│   ├── limpiezaTexto.js       # Sanitización central: strip HTML, entities, ruido, truncado extendido
+│   ├── imagenes.js            # Validación anti-capturas/placeholders + scoring editorial│   ├── ssrf.js                  # Guarda de egreso: IP pública, redirects, tope de bytes
 │   ├── webToRss.js              # Motor web→RSS: extracción, paginación, fechas/autor
 │   ├── fetchCache.js            # Caché client-side: dedupe, TTL, SWR, prefetch
 │   ├── ajustesPorDefecto.js     # Defaults y limpieza de ajustes locales por cuenta
@@ -126,7 +137,8 @@ src/
 │   ├── formato.js               # Formato fecha, dominio, truncado
 │   ├── lectura.js               # Estimación tiempo de lectura
 │   ├── i18n.js                  # Interfaz bilingüe ES/EN con switch nativo
-│   ├── temas.js                 # 8 temas (oscuros + claros) + aplicador
+│   ├── temas.js                 # 12 temas (6 oscuros + 6 claros, Vainilla por defecto) + aplicador
+│   ├── offlineStorage.js      # IndexedDB (guardadas) + último feed en localStorage (modo caché)
 │   ├── useBloquearScroll.js     # Hook: bloquea scroll body al abrir modal
 │   ├── opml.js                  # Export/import OPML
 │   ├── invitado.js              # Lógica modo invitado
@@ -186,6 +198,8 @@ AUTH_SECRET
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 GITHUB_ID, GITHUB_SECRET
 GEMINI_API_KEY
+IA_API_KEY, IA_PROVEEDOR, IA_MODELOS, GROQ_API_KEY
+CRON_SECRET
 NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 ```
@@ -196,7 +210,8 @@ Sin `mysql2`, sin `DATABASE_URL`, sin `DB_HOST/DB_USER/DB_PASSWORD`: no existe n
 
 - `npm run lint` limpio
 - Pruebas en vivo de clasificación (lotes de 6 en ~1.4 s con categoría correcta)
-- **Límites**: cuota gratuita Gemini (~20 RPM, backoff automático), caché IA solo en memoria, algunos sitios bloquean scraping pese a encabezados
+- Resúmenes IA con caché 24 h (reaperturas sin cuota) y fallback local si el backend no tiene clave
+- **Límites**: cuotas gratuitas Gemini/Groq (backoff + failover automático), cachés IA solo en memoria, algunos sitios bloquean scraping pese a encabezados
 - Verificación semanal de feeds recomendados via GitHub Action (`.github/workflows/verify-feeds.yml`)
 
 ## Despliegue

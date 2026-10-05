@@ -204,9 +204,10 @@ export default function HomePage() {
   });
   const [autoMarcarLeida, setAutoMarcarLeida] = useState(() => {
     try {
-      return window.localStorage.getItem("lector_auto_leido") === "1";
+      const v = window.localStorage.getItem("lector_auto_leido");
+      return v === null ? true : v === "1";
     } catch {
-      return false;
+      return true;
     }
   });
   const [movimientoReducido, setMovimientoReducido] = useState(() => {
@@ -384,7 +385,12 @@ export default function HomePage() {
     setFuentePx(base.fuentePx);
     setDensidad("comoda");
     setMovimientoReducido(false);
-    setAutoMarcarLeida(false);
+    setAutoMarcarLeida(true);
+    try {
+      window.localStorage.setItem("lector_auto_leido", "1");
+    } catch {
+      // Sin almacenamiento.
+    }
   }, [setTema, setFuenteApp, setFuentePx, setDensidad, setMovimientoReducido, setAutoMarcarLeida]);
 
   const salirInvitado = useCallback(async () => {
@@ -1274,6 +1280,8 @@ export default function HomePage() {
         t={t}
         onCompletado={handleRefresh}
         onAgregarFuente={handleAgregarFuenteOnboarding}
+        tema={tema}
+        onTema={cambiarTema}
       />
 
       <AjustesPanel

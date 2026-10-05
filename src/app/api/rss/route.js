@@ -76,8 +76,13 @@ async function clasificarPendientesResponse(userId, body = {}) {
 
   // Failover entre proveedores: el cliente puede pedir "groq"|"gemini" por
   // lote (tras cuota/sin_clave/auth/modelo del otro). Campo aditivo.
+  // Clave del usuario (body.clave_api, desde Datos y privacidad): manda sobre
+  // la del servidor y nunca se persiste en ningún lado.
   const cfgIA = configIA(body.proveedor);
-  const apiKey = cfgIA.apiKey;
+  const claveUsuario = typeof body.clave_api === "string" && body.clave_api.trim().length > 0 && body.clave_api.trim().length <= 500
+    ? body.clave_api.trim()
+    : "";
+  const apiKey = claveUsuario || cfgIA.apiKey;
   if (!apiKey) {
     return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave", proveedor: cfgIA.proveedor });
   }
@@ -622,7 +627,8 @@ export async function POST(req) {
         return NextResponse.json({ puntos: [], diag: "corto", proveedor: null, cacheado: false });
       }
       const local = async () => {
-        const r = await resumirConIA(undefined, titulo, texto, body.proveedor);
+        const clave = typeof body.clave_api === "string" && body.clave_api.trim() ? body.clave_api.trim().slice(0, 500) : undefined;
+        const r = await resumirConIA(clave, titulo, texto, body.proveedor);
         return {
           puntos: r.puntos,
           proveedor: r.proveedor,
@@ -631,7 +637,7 @@ export async function POST(req) {
         };
       };
       try {
-        const b = await resumirIaBackend({ usuario_id: userId, titulo, resumen: texto });
+        const b = await resumirIaBackend({ usuario_id: userId, titulo, resumen: texto, proveedor: body.proveedor });
         if (Array.isArray(b?.puntos) && b.puntos.length > 0) {
           return NextResponse.json({
             puntos: b.puntos,

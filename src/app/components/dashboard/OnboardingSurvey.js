@@ -8,6 +8,7 @@ import { useIdioma } from "@/lib/i18n";
 import { iconoDeCategoria } from "@/lib/iconosCategorias";
 import MorphIcon from "../MorphIcon";
 import { traducirCategoria } from "@/lib/categoryStyles";
+import { TEMAS } from "@/lib/temas";
 import { animarAperturaModal, animarCierreModal } from "@/lib/animaciones";
 import RecommendedFeedsList from "./RecommendedFeedsList";
 
@@ -49,7 +50,7 @@ function CategoryPill({ category, selected, onClick, t }) {
 // Eliminado FeedCard ya que está en RecommendedFeedsList
 
 
-export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente }) {
+export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, onAgregarFuente, tema, onTema }) {
   const { idioma, setIdioma } = useIdioma();
   const [paso, setPaso] = useState(1); // 1: categorías, 2: feeds, 3: completado
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
@@ -328,6 +329,60 @@ export default function OnboardingSurvey({ abierto, onCerrar, t, onCompletado, o
                     </button>
                   );
                 })}
+              </div>
+            </div>
+            <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">
+              <h4 className="text-sm font-semibold text-app-fg mb-1">{t("onboarding.tema_titulo")}</h4>
+              <p className="text-xs text-app-muted mb-3">{t("onboarding.tema_d")}</p>
+              <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t("onboarding.tema_titulo")}>
+                {(() => {
+                  const op = TEMAS.find((x) => x.id === "vainilla");
+                  const activo = tema === "vainilla";
+                  return (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={activo}
+                      onClick={() => onTema && onTema(op.id)}
+                      className={`min-w-0 flex items-center gap-2 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                        activo
+                          ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                          : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-4 shrink-0 rounded-full border border-app-line"
+                        style={{ backgroundColor: op.bg }}
+                      />
+                      {op.nombre}
+                    </button>
+                  );
+                })()}
+                {(() => {
+                  const op = TEMAS.find((x) => x.id === "mineral");
+                  const activo = tema === "mineral";
+                  return (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={activo}
+                      onClick={() => onTema && onTema(op.id)}
+                      className={`min-w-0 flex items-center gap-2 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                        activo
+                          ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                          : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-4 shrink-0 rounded-full border border-app-line"
+                        style={{ backgroundColor: op.bg }}
+                      />
+                      {op.nombre}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
             <div className="bg-app-bg/60 p-4 rounded-xl border border-app-line">

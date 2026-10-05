@@ -2,6 +2,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { authIA } from "@/lib/clavesIA";
+
+// Clave del usuario (o {}): si la configuró en Datos y privacidad, clasifica
+// con la suya en vez de la del servidor.
 
 // Diags que ameritan failover al otro proveedor (una vez por corrida).
 const DIAG_CON_FAILOVER = new Set(["cuota", "sin_clave", "auth", "modelo"]);
@@ -14,6 +18,11 @@ function proveedorAlterno(proveedor) {
 
 function etiquetaProveedor(proveedor) {
   return String(proveedor).trim().toLowerCase() === "groq" ? "Groq" : "Gemini";
+}
+
+function paramsAuthIA() {
+  const a = authIA();
+  return a.clave ? { proveedor: a.proveedor, clave_api: a.clave } : {};
 }
 
 export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteClasificado, notify, t }) {
@@ -34,7 +43,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir: excluidos }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir: excluidos, ...paramsAuthIA() }),
         });
         if (!res.ok) break;
         const data = await res.json().catch(() => ({}));
@@ -77,7 +86,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir, proveedor: proveedorRef.current }),
+          body: JSON.stringify({ action: "clasificar_pendientes", lote: 24, excluir, ...paramsAuthIA(), ...(proveedorRef.current ? { proveedor: proveedorRef.current } : {}) }),
         });
         if (!res.ok) throw new Error(t("avisos.ia_err"));
         const data = await res.json().catch(() => ({}));

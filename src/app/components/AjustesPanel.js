@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { useCapaHistorial } from "@/lib/historialCapas";
+import { leerClavesIA, guardarClavesIA } from "@/lib/clavesIA";
 import { useIdioma } from "@/lib/i18n";
 import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -165,6 +166,9 @@ export default function AjustesPanel({
   onAbrirGuia,
 }) {
   const [vista, setVista] = useState(null);
+  // Claves de IA del usuario (solo este navegador; nunca salen de aquí
+  // salvo adjuntas a la petición de resumen/clasificación en curso).
+  const [clavesIA, setClavesIA] = useState(() => leerClavesIA());
   const [perfil, setPerfil] = useState(null);
   const [actividad, setActividad] = useState(null);
   const [infoRepo, setInfoRepo] = useState(null);
@@ -909,6 +913,63 @@ export default function AjustesPanel({
                   </button>
                 </>
               )}
+              <TituloGrupo>{t("ajustes.apis_t")}</TituloGrupo>
+              <p className="px-1 text-xs leading-relaxed text-app-muted">
+                {t("ajustes.apis_d")}
+              </p>
+              <div className="flex gap-1.5" role="radiogroup" aria-label={t("ajustes.apis_prov")}>
+                {["auto", "gemini", "groq"].map((prov) => {
+                  const activo = (clavesIA.proveedor || "auto") === prov;
+                  return (
+                    <button
+                      key={prov}
+                      type="button"
+                      role="radio"
+                      aria-checked={activo}
+                      onClick={() => setClavesIA((c) => ({ ...c, proveedor: prov }))}
+                      className={`min-w-0 flex-1 truncate rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                        activo
+                          ? "border-[var(--accent)]/60 bg-transparent text-app-fg"
+                          : "border-transparent bg-transparent text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                      }`}
+                    >
+                      {prov === "auto" ? t("ajustes.apis_auto") : prov === "gemini" ? "Gemini" : "Groq"}
+                    </button>
+                  );
+                })}
+              </div>
+              <label className="block space-y-1">
+                <span className="px-1 text-xs font-medium text-app-muted">Gemini API key</span>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={clavesIA.gemini || ""}
+                  onChange={(e) => setClavesIA((c) => ({ ...c, gemini: e.target.value }))}
+                  placeholder="AIza…"
+                  className="field-focus w-full rounded-xl border border-app-line bg-app-raised/50 px-3 py-2 text-sm text-app-fg placeholder:text-app-muted focus:outline-none"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="px-1 text-xs font-medium text-app-muted">Groq API key</span>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={clavesIA.groq || ""}
+                  onChange={(e) => setClavesIA((c) => ({ ...c, groq: e.target.value }))}
+                  placeholder="gsk_…"
+                  className="field-focus w-full rounded-xl border border-app-line bg-app-raised/50 px-3 py-2 text-sm text-app-fg placeholder:text-app-muted focus:outline-none"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  guardarClavesIA(clavesIA);
+                  onNotify?.(t("ajustes.apis_ok"), "success");
+                }}
+                className="btn-press flex w-full items-center justify-center gap-1.5 rounded-xl border border-app-line bg-app-raised px-3 py-2.5 text-sm font-medium text-app-fg hover:border-[var(--accent)]/60"
+              >
+                {t("ajustes.apis_guardar")}
+              </button>
             </section>
           )}
 

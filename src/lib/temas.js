@@ -17,7 +17,7 @@ export const TEMAS = [
   { id: "alabastro", nombre: "Alabastro", claro: true, bg: "#ffffff", accent: "#3e7c5b" },
 ];
 
-export const TEMA_POR_DEFECTO = "medianoche";
+export const TEMA_POR_DEFECTO = "vainilla";
 const CLAVE_TEMA = "lector_tema";
 
 // Color de la barra del navegador por tema (meta theme-color).
@@ -47,6 +47,7 @@ export function temaGuardado() {
 // Tema del primer arranque (sin elección guardada): respeta
 // prefers-color-scheme del SO (claro → menta, oscuro → medianoche).
 // La elección manual posterior siempre gana y se persiste.
+// (Legado: ya no decide el inicio; el defecto absoluto es Vainilla.)
 export function temaPreferidoSistema() {
   try {
     if (
@@ -69,7 +70,8 @@ export function temaInicial() {
   } catch {
     // Sin almacenamiento: se cae a la preferencia del sistema.
   }
-  return temaPreferidoSistema();
+  // Sin elección guardada: Vainilla por defecto, sin excepción.
+  return "vainilla";
 }
 
 // Aplica el tema al <html>: dataset para el CSS + persistencia + theme-color.

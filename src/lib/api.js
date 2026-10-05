@@ -492,10 +492,10 @@ export async function getStats(usuario_id) {
 // POST /api/ia/resumen {usuario_id,titulo,resumen} → {puntos,diag,cacheado}.
 // Sin claves LLM en servxn responde diag 'sin_clave' (el llamante decide el
 // fallback). 429 con Retry-After ante cuota.
-export async function resumirIaBackend({ usuario_id, titulo, resumen, timeoutMs = 30000 } = {}) {
+export async function resumirIaBackend({ usuario_id, titulo, resumen, proveedor, timeoutMs = 30000 } = {}) {
   return api("/api/ia/resumen", {
     method: "POST",
-    body: { usuario_id: String(usuario_id), titulo, resumen },
+    body: { usuario_id: String(usuario_id), titulo, resumen, ...(proveedor ? { proveedor } : {}) },
     timeoutMs,
   });
 }

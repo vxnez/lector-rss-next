@@ -408,6 +408,28 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       vivo = false;
     };
   }, [article]);
+  // Texto completo inmediato: si la ingesta lo truncó (1200), se trae el
+  // extendido al abrir sin esperar al botón. Falla en silencio (el botón
+  // Leer completo queda para reintentar). Cadena .then: sin setState
+  // síncrono en el cuerpo del efecto.
+  useEffect(() => {
+    if (!article || !esResumenTruncado(article) || !article.id) return undefined;
+    const ctrl = new AbortController();
+    fetch(`/api/rss?tipo=resumen&id=${encodeURIComponent(article.id)}`, {
+      cache: "no-store",
+      signal: ctrl.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (ctrl.signal.aborted || !res.ok || !data?.resumen) return;
+        setResumenExtendido(data.resumen);
+        setMetaCompleto({ obsoleto: Boolean(data.obsoleto), reextraido: Boolean(data.reextraido) });
+      })
+      .catch(() => {})
+    return () => {
+      ctrl.abort();
+    };
+  }, [article]);
 
   // Scroll tracking del índice lateral: IntersectionObserver nativo sobre
   // las secciones del cuerpo (root = scroll interno del modal). Sin

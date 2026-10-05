@@ -9,6 +9,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Sparkles, Pin, Move, RotateCw } from "lucide-react";
 import { resumenPlano } from "./ResumenEstructurado";
+import { authIA } from "@/lib/clavesIA";
+
+// Credenciales del usuario (o {}): se adjuntan a la petición para usar su
+// key en vez de la del servidor. Nunca se guardan fuera de su navegador.
+function paramsAuthIA() {
+  const a = authIA();
+  return a.clave ? { proveedor: a.proveedor, clave_api: a.clave } : {};
+}
 
 const CLAVE_POS = "lector_resumen_pos";
 
@@ -53,7 +61,7 @@ export default function PanelResumenIA({ article, t }) {
         const res = await fetch("/api/rss", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto }),
+          body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto, ...paramsAuthIA() }),
           signal,
         });
         const data = await res.json().catch(() => ({}));
@@ -82,7 +90,7 @@ export default function PanelResumenIA({ article, t }) {
     fetch("/api/rss", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto }),
+      body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto, ...paramsAuthIA() }),
       signal: ctrl.signal,
     })
       .then(async (res) => {
