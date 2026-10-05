@@ -61,3 +61,10 @@ export function authIA() {
   if (c.groq) return { proveedor: "groq", clave: c.groq };
   return {};
 }
+
+// Objeto listo para el body ({proveedor, clave_api} o {}) sin exponer
+// la forma del storage a cada llamante.
+export function paramsAuthIA() {
+  const a = authIA();
+  return a.clave ? { proveedor: a.proveedor, clave_api: a.clave } : {};
+}

@@ -157,6 +157,9 @@ export default function HomePage() {
   }, []);
   const [articuloActivoId, setArticuloActivoId] = useState(null);
   const [articuloParaAbrir, setArticuloParaAbrir] = useState(null);
+  // El lector vive en NewsFeed: esta bandera refleja su apertura para
+  // ocultar el FAB de filtros en móvil mientras se lee.
+  const [lectorAbierto, setLectorAbierto] = useState(false);
   const [ayudaAtajosAbierta, setAyudaAtajosAbierta] = useState(false);
 
   // Modo de vista: "cards" | "magazine" | "compact"
@@ -359,7 +362,8 @@ export default function HomePage() {
       showOnboardingSurvey ||
       panelAjustes ||
       ayudaAtajosAbierta ||
-      articuloParaAbrir
+      articuloParaAbrir ||
+      lectorAbierto
   );
 
   const esInvitado = Boolean(session?.user?.invitado);
@@ -386,6 +390,7 @@ export default function HomePage() {
     setDensidad("comoda");
     setMovimientoReducido(false);
     setAutoMarcarLeida(true);
+    setLectorAbierto(false);
     try {
       window.localStorage.setItem("lector_auto_leido", "1");
     } catch {
@@ -1148,7 +1153,11 @@ export default function HomePage() {
                       modoVista={modoVista}
                       articuloActivoId={articuloActivoId}
                       articuloParaAbrir={articuloParaAbrir}
-                      onLectorCerrado={() => setArticuloParaAbrir(null)}
+                      onLectorCerrado={() => {
+                        setArticuloParaAbrir(null);
+                        setLectorAbierto(false);
+                      }}
+                      onLectorAbierto={() => setLectorAbierto(true)}
                       onToggleRead={toggleLeido}
                       onToggleSave={toggleGuardado}
                       onUpdateCategory={actualizarCategoria}
@@ -1176,21 +1185,24 @@ export default function HomePage() {
                 className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] lg:hidden"
               />
             )}
-            <button
-              type="button"
-              onClick={() => (panelMovilAbierto ? cerrarPanelMovil() : setPanelMovilAbierto(true))}
-              title={t("controles.abrir")}
-              aria-label={t("controles.abrir")}
-              aria-expanded={panelMovilAbierto}
-              className="btn-press fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-transparent bg-[var(--accent-strong)] p-2.5 text-[var(--on-accent-strong)] hover:opacity-90 lg:hidden"
-            >
-              <span className="relative block">
-                <MorphIcon icon={panelMovilAbierto ? XData : FilterData} size={21} strokeWidth={2.25} />
-                {hayFiltrosActivos && (
-                  <span aria-hidden="true" className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" />
-                )}
-              </span>
-            </button>
+            {/* Sin FAB de filtros sobre el lector ni modales (móvil). */}
+            {!algunModalAbierto && (
+              <button
+                type="button"
+                onClick={() => (panelMovilAbierto ? cerrarPanelMovil() : setPanelMovilAbierto(true))}
+                title={t("controles.abrir")}
+                aria-label={t("controles.abrir")}
+                aria-expanded={panelMovilAbierto}
+                className="btn-press fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-transparent bg-[var(--accent-strong)] p-2.5 text-[var(--on-accent-strong)] hover:opacity-90 lg:hidden"
+              >
+                <span className="relative block">
+                  <MorphIcon icon={panelMovilAbierto ? XData : FilterData} size={21} strokeWidth={2.25} />
+                  {hayFiltrosActivos && (
+                    <span aria-hidden="true" className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" />
+                  )}
+                </span>
+              </button>
+            )}
 
             <DashboardSidebar
               controlsOpen={controlsOpen}

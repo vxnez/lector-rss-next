@@ -394,6 +394,7 @@ export default function NewsFeed({
   articuloActivoId = null,
   articuloParaAbrir = null,
   onLectorCerrado = null,
+  onLectorAbierto = null,
   onToggleRead,
   onToggleSave,
   onUpdateCategory,
@@ -491,7 +492,8 @@ export default function NewsFeed({
   const abrirArticuloCb = useCallback((art) => {
     setListaModal(articlesRef.current || []);
     setSelectedArticle(art);
-  }, []);
+    onLectorAbierto?.();
+  }, [onLectorAbierto]);
 
   // Seleccionar componente según el modo de vista
   const ComponenteTarjeta =

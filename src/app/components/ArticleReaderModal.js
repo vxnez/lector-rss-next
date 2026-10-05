@@ -1,7 +1,7 @@
 // src/app/components/ArticleReaderModal.js
 "use client";
 
-import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List, Pin, Move, ArrowUpToLine } from "lucide-react";
+import { X, ExternalLink, Tag, Globe, Calendar, Pencil, Save, ChevronLeft, ChevronRight, MoveHorizontal, Clock, Share2, Volume2, VolumeX, Check, List, Pin, Move, ArrowUpToLine, Sparkles, RotateCw } from "lucide-react";
 import Image from "next/image";
 import { Check as CheckData, CheckCheck as CheckCheckData, Eye as EyeData, EyeOff as EyeOffData, Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
@@ -12,6 +12,7 @@ import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos, detectarIdiomaTexto } from "@/lib/lectura";
 import { limpiarTextoResumen } from "@/lib/limpiezaTexto";
 import { esImagenValida, primeraImagenValida } from "@/lib/imagenes";
+import { useResumenIA } from "@/lib/hooks/useResumenIA";
 import { resumenPlano } from "./ResumenEstructurado";
 import { formatFecha } from "@/lib/formato";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
@@ -101,6 +102,14 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
   // el modal se remonta por `key` así que el inicial basta).
   const [seccionActiva, setSeccionActiva] = useState(null);
   const [railVisible, setRailVisible] = useState(true);
+  // Sheets móviles (xl:hidden): índice e IA como bottom-sheet; en desktop
+  // mandan los paneles laterales en portales.
+  const [sheetMovil, setSheetMovil] = useState(null);
+  const textoIAMovil = useMemo(
+    () => resumenPlano(article?.resumen || "").slice(0, 2000),
+    [article]
+  );
+  const resumenMovil = useResumenIA(article?.titulo || "", textoIAMovil, sheetMovil === "ia");
   // Panel externo en el backdrop: "fijo" (anclado arriba-derecha) o
   // "flotante" (arrastrable + redimensionable nativo con `resize`).
   const [modoIndice, setModoIndice] = useState("fijo");
@@ -808,6 +817,135 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
       </div>
       </div>
 
+        {/* Disparadores móviles (xl:hidden): sobre el pie de acciones, sin taparlo. */}
+        {!sheetMovil && (
+          <div className="absolute bottom-24 right-3 z-20 flex flex-col gap-2 xl:hidden">
+            <button
+              type="button"
+              onClick={() => setSheetMovil("ia")}
+              title={t("lector.resumen_ia")}
+              aria-label={t("lector.resumen_ia")}
+              className="btn-press grid size-12 place-content-center rounded-full border border-app-line bg-app-surface/85 text-[var(--accent-ink)] shadow-xl backdrop-blur-md"
+            >
+              <Sparkles size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSheetMovil("indice")}
+              title={t("lector.indice")}
+              aria-label={t("lector.indice")}
+              className="btn-press grid size-12 place-content-center rounded-full border border-app-line bg-app-surface/85 text-app-muted shadow-xl backdrop-blur-md"
+            >
+              <List size={19} />
+            </button>
+          </div>
+        )}
+        {/* Bottom-sheets móviles: índice e IA con scroll propio. */}
+        {sheetMovil && (
+          <>
+            <div
+              aria-hidden="true"
+              onClick={() => setSheetMovil(null)}
+              className="absolute inset-0 z-30 bg-black/50 xl:hidden"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={sheetMovil === "ia" ? t("lector.resumen_ia") : t("lector.indice")}
+              className="absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] flex-col overflow-hidden rounded-t-3xl border-t border-app-line bg-app-surface shadow-2xl xl:hidden"
+            >
+              <div className="flex items-center gap-2 border-b border-app-line/70 px-4 py-3">
+                {sheetMovil === "ia" ? (
+                  <Sparkles size={15} className="shrink-0 text-[var(--accent-ink)]" />
+                ) : (
+                  <List size={15} className="shrink-0 text-[var(--accent-ink)]" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
+                  {sheetMovil === "ia" ? t("lector.resumen_ia") : `${t("lector.indice")} · ${indiceContenido.length}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSheetMovil(null)}
+                  aria-label={t("comun.cerrar")}
+                  className="btn-press rounded-lg p-2 text-app-muted hover:bg-app-raised/40 hover:text-app-fg"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+              <div className="scroll-sutil min-h-0 flex-1 overflow-y-auto p-4">
+                {sheetMovil === "indice" ? (
+                  <nav aria-label={t("lector.indice")} className="space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        irAlInicio();
+                        setSheetMovil(null);
+                      }}
+                      title={tituloIndice}
+                      className="btn-press flex w-full items-center gap-2.5 rounded-xl border-b border-app-line/70 px-2.5 py-3 text-left text-sm font-bold leading-snug text-app-fg"
+                    >
+                      <ArrowUpToLine size={15} className="shrink-0 text-[var(--accent)]" />
+                      <span className="min-w-0 break-words">{tituloIndice}</span>
+                    </button>
+                    {indiceContenido.map((s) => (
+                      <button
+                        key={s.indice}
+                        type="button"
+                        onClick={() => {
+                          irASeccion(s.indice);
+                          setSheetMovil(null);
+                        }}
+                        title={s.texto}
+                        className="btn-press block w-full break-words rounded-xl px-2.5 py-3 text-left text-sm leading-snug text-app-muted"
+                      >
+                        {s.texto}
+                      </button>
+                    ))}
+                  </nav>
+                ) : resumenMovil.estado === "cargando" ? (
+                  <div className="space-y-2.5" aria-label={t("lector.resumiendo")}>
+                    <p className="flex items-center gap-2 text-xs font-semibold text-app-muted">
+                      <Sparkles size={13} className="animate-pulse text-[var(--accent-ink)]" />
+                      {t("lector.resumiendo")}
+                    </p>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="skeleton-shimmer h-10 rounded-xl" />
+                    ))}
+                  </div>
+                ) : resumenMovil.estado === "ok" ? (
+                  <ul className="space-y-2.5">
+                    {resumenMovil.puntos.map((p, i) => (
+                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-app-fg/95">
+                        <span aria-hidden="true" className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+                        <span className="min-w-0">{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="space-y-3">
+                    <p role="alert" className="text-sm leading-relaxed text-app-muted">
+                      {resumenMovil.diag === "sin_clave"
+                        ? t("lector.resumen_sin_clave")
+                        : resumenMovil.diag === "cuota"
+                          ? t("lector.resumen_cuota")
+                          : resumenMovil.diag === "corto"
+                            ? t("lector.resumen_corto")
+                            : t("lector.err_resumen")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={resumenMovil.reintentar}
+                      className="btn-press inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-[var(--accent-strong)] px-4 py-2 text-xs font-semibold text-[var(--on-accent-strong)]"
+                    >
+                      <RotateCw size={13} />
+                      {t("lector.reintentar")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
         {/* Pie fijo fuera del scroll */}
         <div className="relative z-10 shrink-0 border-t border-app-line bg-app-surface px-4 py-3 sm:px-6 sm:py-4 md:px-8 notranslate" translate="no">
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">

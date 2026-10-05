@@ -1,22 +1,14 @@
 // src/app/components/PanelResumenIA.js — Resumen IA en panel lateral izquierdo.
 // Espejo del índice derecho: fijo al borde (left-0) o flotante arrastrable +
 // redimensionable, minimizable, en portal a <body> (fixed real a viewport),
-// solo escritorio (xl+). La inferencia reutiliza la cadena Gemini/Groq del
-// servidor con su caché (cero costo extra, cero cuota en reaperturas).
+// solo escritorio (xl+). Consume useResumenIA compartido con la sheet móvil.
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Sparkles, Pin, Move, RotateCw } from "lucide-react";
 import { resumenPlano } from "./ResumenEstructurado";
-import { authIA } from "@/lib/clavesIA";
-
-// Credenciales del usuario (o {}): se adjuntan a la petición para usar su
-// key en vez de la del servidor. Nunca se guardan fuera de su navegador.
-function paramsAuthIA() {
-  const a = authIA();
-  return a.clave ? { proveedor: a.proveedor, clave_api: a.clave } : {};
-}
+import { useResumenIA } from "@/lib/hooks/useResumenIA";
 
 const CLAVE_POS = "lector_resumen_pos";
 
@@ -44,79 +36,28 @@ export default function PanelResumenIA({ article, t }) {
       return null;
     }
   });
-  const [estado, setEstado] = useState("cargando"); // cargando|ok|error
-  const [puntos, setPuntos] = useState([]);
-  const [diag, setDiag] = useState(null);
-  const [proveedor, setProveedor] = useState("");
+  // En móvil el panel está oculto por CSS pero montado: no se infiere hasta
+  // escritorio (la sheet móvil tiene su propia llamada).
+  const [enEscritorio, setEnEscritorio] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(min-width: 1280px)").matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const alCambiar = (e) => setEnEscritorio(e.matches);
+    mq.addEventListener("change", alCambiar);
+    return () => mq.removeEventListener("change", alCambiar);
+  }, []);
   const panelRef = useRef(null);
   const titulo = article?.titulo || "";
   const texto = resumenPlano(article?.resumen || "").slice(0, 2000);
-
-  const ejecutar = useCallback(
-    async (signal) => {
-      setEstado("cargando");
-      setDiag(null);
-      setPuntos([]);
-      try {
-        const res = await fetch("/api/rss", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto, ...paramsAuthIA() }),
-          signal,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || "Error");
-        if (Array.isArray(data?.puntos) && data.puntos.length > 0) {
-          setPuntos(data.puntos);
-          setProveedor(data.proveedor || "");
-          setEstado("ok");
-        } else {
-          setDiag(data?.diag || "respuesta");
-          setEstado("error");
-        }
-      } catch (err) {
-        if (signal?.aborted) return;
-        setDiag("respuesta");
-        setEstado("error");
-      }
-    },
-    [titulo, texto]
+  const { estado, puntos, diag, proveedor, reintentar } = useResumenIA(
+    titulo,
+    texto,
+    visible && enEscritorio
   );
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    const temporizador = setTimeout(() => ctrl.abort(), 30000);
-    // Cadena .then (no setState síncrono en el cuerpo del efecto).
-    fetch("/api/rss", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "resumir_articulo", titulo, resumen: texto, ...paramsAuthIA() }),
-      signal: ctrl.signal,
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (ctrl.signal.aborted) return;
-        if (!res.ok) throw new Error(data?.error || "Error");
-        if (Array.isArray(data?.puntos) && data.puntos.length > 0) {
-          setPuntos(data.puntos);
-          setProveedor(data.proveedor || "");
-          setEstado("ok");
-        } else {
-          setDiag(data?.diag || "respuesta");
-          setEstado("error");
-        }
-      })
-      .catch(() => {
-        if (ctrl.signal.aborted) return;
-        setDiag("respuesta");
-        setEstado("error");
-      })
-      .finally(() => clearTimeout(temporizador));
-    return () => {
-      clearTimeout(temporizador);
-      ctrl.abort();
-    };
-  }, [titulo, texto]);
 
   const fijar = () => {
     try {
@@ -249,7 +190,7 @@ export default function PanelResumenIA({ article, t }) {
             </p>
             <button
               type="button"
-              onClick={() => ejecutar()}
+              onClick={reintentar}
               className="btn-press inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[var(--accent-strong)] px-3 py-1.5 text-[11px] font-semibold text-[var(--on-accent-strong)]"
             >
               <RotateCw size={12} />
