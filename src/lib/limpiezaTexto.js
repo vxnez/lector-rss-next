@@ -89,7 +89,7 @@ export function stripHtml(texto = "") {
 
 // Líneas que nunca aportan contexto (navegación, CTA, tracking residual).
 const RE_RUIDO_LINEA =
-  /^(learn more|leer m[aá]s|ver m[aá]s|read more|continue reading|seguir leyendo|descubrir m[aá]s|siguiente|anterior|previous|next|suscr[ií]bete|subscribe|cookies|privacidad|aviso legal)[\s›»→.]*$/i;
+  /^(learn more|leer m[aá]s|ver m[aá]s|read more|continue reading|seguir leyendo|descubrir m[aá]s|siguiente|anterior|previous|next|suscr[ií]bete|subscribe|cookies|privacidad|aviso legal|read full stor\w*|full (article|post|story)|more|continue|\[…\]|\[\.\.\.\])[…\s›»→.]*$/i;
 
 function esLineaBasura(linea) {
   const t = linea.trim();

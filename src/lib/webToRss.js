@@ -310,8 +310,9 @@ function imagenDeImg($, img, base) {
   return absolver(cruda, base);
 }
 
-// CTAs que nunca son resumen ("Learn more", "Leer más"...).
-const TEXTO_CTA = /^(learn more|leer m[aá]s|ver m[aá]s|read more|continue reading|seguir leyendo|descubrir m[aá]s)[\s›»→.]*$/i;
+// CTAs que nunca son resumen ("Learn more", "Leer más"...). Incluye colas
+// con enlace ("Read full story…", "More", "[…]") igual que el backend.
+const TEXTO_CTA = /^(learn more|leer m[aá]s|ver m[aá]s|read more|continue reading|seguir leyendo|descubrir m[aá]s|read full stor\w*|full (article|post|story)|more|continue|\[…\]|\[\.\.\.\])[…\s›»→.]*$/i;
 
 function parrafoValido(texto, titulo) {
   const t = String(texto || "").replace(/\s+/g, " ").trim();
