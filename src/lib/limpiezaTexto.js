@@ -60,15 +60,28 @@ const ETIQUETAS_BLOQUE_CIERRE =
   /<\s*\/\s*(p|div|li|ul|ol|h[1-6]|blockquote|pre|tr|section|article)\b[^>]*>|<\s*hr\b[^>]*>/gi;
 const ETIQUETAS_PRE = /<\s*pre\b[^>]*>([\s\S]*?)<\s*\/\s*pre\s*>/gi;
 
+// Dentro de código todo es texto literal: se sueltan solo envoltorios de
+// resaltado (span/a/...) y el resto (<dialog>, <button id=...>) se escapa
+// para que sobreviva al strip genérico y se vea en el lector (luego se
+// decodifica a visible). Sin esto, `<dialog>` se comía y quedaba la
+// píldora vacía o en blanco.
+const ETIQUETAS_ENVOLTORIO_CODIGO =
+  /<\s*\/?\s*(span|a|em|strong|b|i|u|font|mark|small|sub|sup|code)\b[^>]*>/gi;
+function escaparCodigoLiteral(interior = "") {
+  return String(interior || "")
+    .replace(/<\s*br\b[^>]*>/gi, "\n")
+    .replace(ETIQUETAS_ENVOLTORIO_CODIGO, "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export function stripHtml(texto = "") {
   let s = String(texto || "");
   if (!s || !s.includes("<")) return s;
   // Bloques de código (<pre>) se conservan como cercas ``` para que el
   // lector los pinte como consola; el resto del HTML se limpia igual.
   s = s.replace(ETIQUETAS_PRE, (m, interior) => {
-    const codigo = String(interior || "")
-      .replace(/<\s*br\b[^>]*>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
+    const codigo = escaparCodigoLiteral(interior)
       .replace(/[ \t]+\n/g, "\n")
       .trim();
     if (!codigo) return "\n\n";
@@ -81,9 +94,15 @@ export function stripHtml(texto = "") {
   // Resto de etiquetas (aperturas, inline) fuera. El <code> en línea se
   // conserva como `código` para el render.
   s = s.replace(/<\s*code\b[^>]*>([\s\S]*?)<\s*\/\s*code\s*>/gi, (_, interior) =>
-    `\`${String(interior || "").replace(/<[^>]*>/g, "").trim()}\``
+    `\`${escaparCodigoLiteral(interior).trim()}\``
   );
-  s = s.replace(/<[^>]*>/g, " ");
+  // Strip genérico: respeta cercas ``` y `código` (nuevas o preexistentes)
+  // para no comer `<tag>` literales (p. ej. `<dialog>` decodificado antes
+  // por cheerio en el backend). Solo se limpia fuera de ellas.
+  s = s
+    .split(/(```[\s\S]*?(?:```|$)|`[^`\n]+`)/g)
+    .map((parte, i) => (i % 2 === 0 ? parte.replace(/<[^>]*>/g, " ") : parte))
+    .join("");
   return s;
 }
 
