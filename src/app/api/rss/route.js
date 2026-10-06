@@ -832,9 +832,23 @@ export async function GET(req) {
       } catch {
         return NextResponse.json({ imagen: null });
       }
+      // Caché con TTL corto: un fallo (NULL) solo se recuerda 15 min para
+      // no martillar el origen; un hallazgo, 24 h. Sin TTL, un fallo
+      // transitorio (timeout/403 momentáneo) envenenaba la instancia y el
+      // lector quedaba sin imagen para siempre.
+      const CACHE_IMAGEN_OK_MS = 24 * 60 * 60 * 1000;
+      const CACHE_IMAGEN_FALLO_MS = 15 * 60 * 1000;
+      const cacheImagenValida = (entrada) => {
+        if (!entrada || typeof entrada.ts !== "number") return false;
+        const ttl = entrada.imagen || entrada.video ? CACHE_IMAGEN_OK_MS : CACHE_IMAGEN_FALLO_MS;
+        return Date.now() - entrada.ts < ttl;
+      };
       if (imagenPaginaCache.has(verificada)) {
         const c = imagenPaginaCache.get(verificada) || {};
-        return NextResponse.json({ imagen: c.imagen || null, video: c.video || null });
+        if (cacheImagenValida(c)) {
+          return NextResponse.json({ imagen: c.imagen || null, video: c.video || null });
+        }
+        imagenPaginaCache.delete(verificada);
       }
       const encontrada = await extraerImagenDirecta(verificada);
       let medios;
@@ -843,7 +857,7 @@ export async function GET(req) {
         const emb = await extraerVideoDePagina(verificada);
         medios = { imagen: emb.poster || null, video: emb.video || null };
       }
-      imagenPaginaCache.set(verificada, medios);
+      imagenPaginaCache.set(verificada, { ...medios, ts: Date.now() });
       if (imagenPaginaCache.size > 500) imagenPaginaCache.delete(imagenPaginaCache.keys().next().value);
       // Persistencia best-effort: si el lector mandó id, se guarda el hallazgo
       // en el artículo (el backend re-valida; screenshot ⇒ NULL) para no
