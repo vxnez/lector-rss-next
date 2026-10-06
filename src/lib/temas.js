@@ -78,7 +78,7 @@ export function temaInicial() {
 // Activa `tema-anim` ~350ms para una transición fluida de color (sin
 // re-renders: solo variables CSS). Se omite con movimiento reducido.
 export function aplicarTema(id) {
-  const tema = TEMAS.find((t) => t.id === id) || TEMAS[0];
+  const tema = TEMAS.find((t) => t.id === id) || TEMAS.find((t) => t.id === TEMA_POR_DEFECTO) || TEMAS[0];
   try {
     const root = document.documentElement;
     const movimientoReducido =
