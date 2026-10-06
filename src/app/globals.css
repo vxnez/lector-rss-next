@@ -100,7 +100,6 @@ h1 {
 }
 h2 {
   letter-spacing: -0.01em;
-  font-size: clamp(1.25rem, 1rem + 2vw, 1.875rem);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -135,7 +134,7 @@ table {
 
 @media (min-width: 1024px) {
   .dashboard-control-sidebar {
-    max-height: calc(100vh - 7rem);
+    max-height: calc(100dvh - 7rem);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
@@ -157,6 +156,21 @@ button,
 a,
 select {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* iOS hace zoom en inputs <16px: en móvil se iguala sin tocar desktop. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Notch/home-indicator: respiradero inferior para pies fijos y sheets. */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 button:focus-visible,

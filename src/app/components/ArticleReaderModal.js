@@ -898,7 +898,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
               role="dialog"
               aria-modal="true"
               aria-label={sheetMovil === "ia" ? t("lector.resumen_ia") : t("lector.indice")}
-              className="absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] flex-col overflow-hidden rounded-t-3xl border-t border-app-line bg-app-surface shadow-2xl xl:hidden"
+              className="absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] flex-col overflow-hidden rounded-t-3xl border-t border-app-line bg-app-surface shadow-2xl pb-safe xl:hidden"
             >
               <div className="flex items-center gap-2 border-b border-app-line/70 px-4 py-3">
                 {sheetMovil === "ia" ? (
@@ -1000,7 +1000,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
           </>
         )}
         {/* Pie fijo fuera del scroll */}
-        <div className="relative z-10 shrink-0 border-t border-app-line bg-app-surface px-4 py-3 sm:px-6 sm:py-4 md:px-8 notranslate" translate="no">
+        <div className="relative z-10 shrink-0 border-t border-app-line bg-app-surface px-4 py-3 sm:px-6 sm:py-4 md:px-8 pb-safe notranslate" translate="no">
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           <button
             onClick={handleMarcarLeido}

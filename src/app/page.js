@@ -1196,7 +1196,7 @@ export default function HomePage() {
                 title={t("controles.abrir")}
                 aria-label={t("controles.abrir")}
                 aria-expanded={panelMovilAbierto}
-                className="btn-press fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-transparent bg-[var(--accent-strong)] p-2.5 text-[var(--on-accent-strong)] hover:opacity-90 lg:hidden"
+                className="btn-press fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-transparent bg-[var(--accent-strong)] p-2.5 text-[var(--on-accent-strong)] hover:opacity-90 lg:hidden"
               >
                 <span className="relative block">
                   <MorphIcon icon={panelMovilAbierto ? XData : FilterData} size={21} strokeWidth={2.25} />

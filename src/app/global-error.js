@@ -19,7 +19,7 @@ export default function GlobalError({ error, reset }) {
       <body
         style={{
           margin: 0,
-          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
