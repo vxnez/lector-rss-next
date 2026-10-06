@@ -33,6 +33,7 @@ import {
   AlignJustify,
   ChevronDown,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import SelectorTemas from "./SelectorTemas";
 import { FUENTES, FUENTE_PX_MIN, FUENTE_PX_MAX } from "@/lib/fuentes";
@@ -939,7 +940,17 @@ export default function AjustesPanel({
                 })}
               </div>
               <label className="block space-y-1">
-                <span className="px-1 text-xs font-medium text-app-muted">Gemini API key</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="px-1 text-xs font-medium text-app-muted">Gemini API key</span>
+                  <a
+                    href="https://aistudio.google.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-[44px] items-center gap-1 px-2 text-xs font-medium text-app-muted underline-offset-2 hover:text-app-fg hover:underline"
+                  >
+                    {t("ajustes.apis_conseguir")} <ExternalLink size={13} aria-hidden="true" />
+                  </a>
+                </span>
                 <input
                   type="password"
                   autoComplete="off"
@@ -950,7 +961,17 @@ export default function AjustesPanel({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="px-1 text-xs font-medium text-app-muted">Groq API key</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="px-1 text-xs font-medium text-app-muted">Groq API key</span>
+                  <a
+                    href="https://console.groq.com/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-[44px] items-center gap-1 px-2 text-xs font-medium text-app-muted underline-offset-2 hover:text-app-fg hover:underline"
+                  >
+                    {t("ajustes.apis_conseguir")} <ExternalLink size={13} aria-hidden="true" />
+                  </a>
+                </span>
                 <input
                   type="password"
                   autoComplete="off"
