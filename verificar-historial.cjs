@@ -109,6 +109,35 @@ const assert = (cond, msg) => {
   assert(H.pila.some((c) => c.id === idB) === false, "transición: B debió cerrarse");
   assert(pilaNav.length >= 2, "transición: sin expulsión");
 
+  // --- Escenario 5: guardia + capa interna (lector) ---
+  // El diálogo de salida solo aparece sin capas por encima: un atrás con el
+  // lector abierto lo cierra sin diálogo; el siguiente atrás sí lo abre.
+  assert(typeof H.hayCapasExcepto === "function", "falta hayCapasExcepto");
+  H.pila.length = 0;
+  let salidas = 0;
+  let refG = null;
+  const bufG = H.registrarCapa(() => {});
+  const armarG = () => {
+    const id = H.registrarCapa(() => {
+      if (refG !== id) return;
+      refG = armarG();
+      const bloqueado = H.hayCapasExcepto([bufG, id, refG]);
+      if (!bloqueado) salidas += 1;
+    });
+    return id;
+  };
+  refG = armarG();
+  const idLector = H.registrarCapa(() => {});
+  assert(H.hayCapasExcepto([bufG, refG]) === true, "lector debe contar como capa");
+  window.history.back(); // atrás con lector -> solo lo cierra
+  await microtareas();
+  assert(salidas === 0, "diálogo fantasma con lector abierto");
+  assert(H.pila.some((c) => c.id === idLector) === false, "el lector debió cerrarse");
+  window.history.back(); // atrás en feed limpio -> diálogo
+  await microtareas();
+  assert(salidas === 1, "el diálogo debió abrirse sin capas");
+  paridad("guardia+lector");
+
   // --- Escenario 3: fuzz aleatorio (capas, cierres, atrás) ---
   H.pila.length = 0;
   const rnd = (() => { let s = 42; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; })();

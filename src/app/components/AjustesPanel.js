@@ -183,6 +183,9 @@ export default function AjustesPanel({
   // Subvista como estado navegable: el atrás móvil vuelve al menú de ajustes
   // en vez de cerrar todo el panel (comparte la pila global de capas).
   const cerrarVistaHist = useCapaHistorial(abierto && vista !== null, () => setVista(null));
+  // Sub-modal de eliminar cuenta: capa propia para que el atrás lo cierre a
+  // él (y no atraviese al panel ni a la guardia de salida).
+  const cerrarEliminarHist = useCapaHistorial(abierto && pasoEliminar === "modal", () => setPasoEliminar("idle"));
 
   const versionTexto = infoRepo?.commits ? `1.${infoRepo.commits}` : VERSION_APP;
 
@@ -216,9 +219,9 @@ export default function AjustesPanel({
     cerrarRef.current?.focus();
     const alTeclado = (event) => {
       if (event.key !== "Escape") return;
-      // El modal de eliminar cuenta se cierra primero.
+      // El modal de eliminar cuenta se cierra primero (consume su capa).
       if (pasoEliminar === "modal") {
-        setPasoEliminar("idle");
+        cerrarEliminarHist();
         return;
       }
       setPasoEliminar("idle");
@@ -227,7 +230,7 @@ export default function AjustesPanel({
     };
     document.addEventListener("keydown", alTeclado);
     return () => document.removeEventListener("keydown", alTeclado);
-  }, [abierto, vista, pasoEliminar, onCerrar, cerrarVistaHist]);
+  }, [abierto, vista, pasoEliminar, onCerrar, cerrarVistaHist, cerrarEliminarHist]);
 
   if (!abierto) return null;
 
@@ -1093,7 +1096,7 @@ export default function AjustesPanel({
           className="fixed inset-0 z-[60] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/80 p-4 backdrop-blur-sm"
           role="presentation"
           onClick={() => {
-            if (pasoEliminar === "modal") setPasoEliminar("idle");
+            if (pasoEliminar === "modal") cerrarEliminarHist();
           }}
         >
           <div
@@ -1123,7 +1126,7 @@ export default function AjustesPanel({
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setPasoEliminar("idle")}
+                onClick={() => cerrarEliminarHist()}
                 disabled={pasoEliminar === "eliminando"}
                 className="rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-200 btn-press hover:bg-gray-700 disabled:opacity-50"
               >

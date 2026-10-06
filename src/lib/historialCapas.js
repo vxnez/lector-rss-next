@@ -67,7 +67,7 @@ function manejarAtras(event) {
 
 // Exportación solo para pruebas de lógica (verificar-historial.cjs): expone
 // el registro y el manejador tal cual se embarcan, sin duplicar código.
-export const __historialTest = { pila, registrarCapa, retirarCapa, manejarAtras };
+export const __historialTest = { pila, registrarCapa, retirarCapa, manejarAtras, hayCapasExcepto };
 
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", alAtras);
@@ -112,6 +112,16 @@ function retirarCapa(id, onCerrar) {
 function desprenderCapa(id) {
   const indice = pila.findIndex((c) => c.id === id);
   if (indice >= 0) pila.splice(indice, 1);
+}
+
+// ¿Queda alguna capa abierta además de las indicadas? La guardia de salida
+// lo usa para decidir: el diálogo de "¿Cerrar sesión?" solo aparece cuando
+// NO hay ninguna capa (lector, panel, sub-vista...) por encima. Consultar
+// la pila viva evita la lista manual de booleanos, que se desincroniza con
+// capas internas (p. ej. el lector de NewsFeed) y abría el diálogo fantasma.
+export function hayCapasExcepto(ids = []) {
+  const fuera = new Set(ids);
+  return pila.some((c) => !fuera.has(c.id));
 }
 
 // Sincroniza UNA capa con el historial. Devuelve `cerrar` envuelto: úsalo en
@@ -199,7 +209,11 @@ export function useCapaGuardia(activa, onAbrir, hayBloqueo) {
         if (idRef.current !== id) return;
         // Rearme síncrono en el popstate.
         idRef.current = armar();
-        if (!bloqueoRef.current?.()) abrirRef.current?.();
+        // Bloqueo vivo: capas ajenas abiertas (lector, panel, sub-vista…)
+        // o el veto del llamante. Solo sin nada por encima se abre el diálogo.
+        const bloqueado =
+          bloqueoRef.current?.() || hayCapasExcepto([bufRef.current, id, idRef.current]);
+        if (!bloqueado) abrirRef.current?.();
       });
       return id;
     };
