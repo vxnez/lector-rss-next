@@ -236,8 +236,12 @@ export default function AjustesPanel({
 
   const cerrar = () => {
     setPasoEliminar("idle");
-    cerrarVistaHist();
-    onCerrar();
+    // Una capa por gesto: con sub-vista abierta solo se cierra ella (el
+    // segundo clic cierra el panel). Cerrar las dos con dos history.back()
+    // en la misma tarea se pasaba del centinela y abría el diálogo de
+    // salida fantasma.
+    if (vista) cerrarVistaHist();
+    else onCerrar();
   };
 
   const atras = () => {
