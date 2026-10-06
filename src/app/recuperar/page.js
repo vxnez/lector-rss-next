@@ -1,16 +1,18 @@
 // src/app/recuperar/page.js
 // Recuperación de contraseña en 3 pasos: correo -> código de verificación -> nueva contraseña.
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, KeyRound, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
 import MorphIcon from "../components/MorphIcon";
 import { useIdioma } from "@/lib/i18n";
+import { forzarVainillaAuth } from "@/lib/temaAuth";
 
 export default function RecuperarPage() {
   const { t } = useIdioma();
+  useEffect(() => { forzarVainillaAuth(); }, []);
   const [paso, setPaso] = useState(1);
   const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");

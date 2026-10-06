@@ -1,13 +1,14 @@
 // src/app/login/page.js
 "use client";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, UserRound, TriangleAlert, X } from "lucide-react";
 import { Eye as EyeData, EyeOff as EyeOffData } from "lucide";
 import MorphIcon from "../components/MorphIcon";
 import { useIdioma } from "@/lib/i18n";
+import { forzarVainillaAuth } from "@/lib/temaAuth";
 
 const RECORDAR_CORREO_CLAVE = "lector_recordar_correo";
 
@@ -30,6 +31,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [loadingInvitado, setLoadingInvitado] = useState(false);
   const router = useRouter();
+  // Auth siempre en Vainilla (solo DOM): /login no inyecta tema-inicial.js y
+  // tras signOut con recarga pintaba el fallback oscuro del CSS base.
+  useEffect(() => { forzarVainillaAuth(); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

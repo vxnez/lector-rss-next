@@ -1,6 +1,6 @@
 // src/app/register/page.js
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, User } from "lucide-react";
@@ -9,9 +9,11 @@ import MorphIcon from "../components/MorphIcon";
 import { signIn } from "next-auth/react";
 import { restablecerAjustesLocales } from "@/lib/ajustesPorDefecto";
 import { useIdioma } from "@/lib/i18n";
+import { forzarVainillaAuth } from "@/lib/temaAuth";
 
 export default function RegisterPage() {
   const { t } = useIdioma();
+  useEffect(() => { forzarVainillaAuth(); }, []);
   const [form, setForm] = useState({ nombre: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
