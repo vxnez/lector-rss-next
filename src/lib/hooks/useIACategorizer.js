@@ -32,20 +32,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
   const iaAutoRef = useRef(null);
   const proveedorRef = useRef(null); // override "groq"|"gemini" o null (default servidor)
   const cambioHechoRef = useRef(false); // un solo failover por corrida
-  const sinClaveAvisadoRef = useRef(false); // un aviso por sesión
-
-  // Sin clave propia no se quema cuota del servidor: aviso único y fuera.
-  const exigirClaveIA = useCallback(() => {
-    if (authIA().clave) return true;
-    if (!sinClaveAvisadoRef.current) {
-      sinClaveAvisadoRef.current = true;
-      notify(t("avisos.ia_sin_clave"), "info");
-    }
-    return false;
-  }, [notify, t]);
-
   const procesarColaClasificacion = useCallback(async () => {
-    if (!exigirClaveIA()) return;
     const excluidos = [];
     for (let intento = 0; intento < 12; intento++) {
       let restantes = 0;
@@ -74,11 +61,10 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
       if (restantes === 0 || loteNum === 0) break;
       await new Promise((resolve) => setTimeout(resolve, esperaMs));
     }
-  }, [recargarDatos, exigirClaveIA]);
+  }, [recargarDatos]);
 
   const handleCategorizarIA = useCallback(
     (opciones = {}) => {
-      if (!exigirClaveIA()) return;
       if (iaEnCursoRef.current) {
         if (opciones.silencioso) return;
         const pendientes = iaProgreso?.pendientes;
@@ -228,7 +214,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
       });
     },
-    [iaProgreso, notify, recargarDatos, fetchConteos, onLoteClasificado, t, exigirClaveIA]
+    [iaProgreso, notify, recargarDatos, fetchConteos, onLoteClasificado, t]
   );
 
   // Auto-categorización al iniciar sesión (una vez por cuenta)

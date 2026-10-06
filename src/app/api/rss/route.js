@@ -75,15 +75,14 @@ async function clasificarPendientesResponse(userId, body = {}) {
 
   // Failover entre proveedores: el cliente puede pedir "groq"|"gemini" por
   // lote (tras cuota/sin_clave/auth/modelo del otro). Campo aditivo.
-  // Clave del usuario (body.clave_api, desde Datos y privacidad): manda sobre
-  // la del servidor y nunca se persiste en ningún lado. Sin clave no se
-  // quema ni un token del servidor: sin_clave y el cliente invita a
-  // configurarla (la siembra `local` del backend sigue categorizando base).
+  // Híbrido: clave del usuario primero (Datos y privacidad); si no hay,
+  // la del servidor para clasificar sin fricción desde el primer uso.
+  // Ninguna se persiste en ningún lado.
   const cfgIA = configIA(body.proveedor);
   const claveUsuario = typeof body.clave_api === "string" && body.clave_api.trim().length > 0 && body.clave_api.trim().length <= 500
     ? body.clave_api.trim()
     : "";
-  const apiKey = claveUsuario;
+  const apiKey = claveUsuario || cfgIA.apiKey;
   if (!apiKey) {
     return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave", proveedor: cfgIA.proveedor });
   }
