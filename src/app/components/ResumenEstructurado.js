@@ -197,7 +197,10 @@ function partesFormato(texto) {
     ultimo = m.index + m[0].length;
   }
   if (ultimo < texto.length) partes.push({ texto: texto.slice(ultimo) });
-  return partes.length > 0 ? partes : [{ texto }];
+  if (partes.length === 0) return [{ texto }];
+  // Código/enlace/negrita vacíos (p. ej. `` que llegó sin contenido por
+  // decodificación previa): fuera, para no pintar pills huecos.
+  return partes.filter((parte) => parte.texto || parte.enlace);
 }
 
 function conFormato(texto, clave) {
