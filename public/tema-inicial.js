@@ -4,9 +4,24 @@
 (function () {
   try {
     var validos = ["medianoche", "duna", "mineral", "bosque", "ebano", "obsidiana", "celeste", "menta", "celadon", "marfil", "vainilla", "alabastro"];
+    // Purga de claves obsoletas en cada arranque (todas las rutas, antes del
+    // primer pintado): ningún lector las lee, solo ocupan y confunden.
+    try {
+      localStorage.removeItem("lector_familia_fuente");
+      localStorage.removeItem("lector_tamano_fuente");
+    } catch (e2) {
+      // Sin escritura: se sigue con la lectura.
+    }
     var t = localStorage.getItem("lector_tema");
     if (validos.indexOf(t) < 0) {
+      // Forzado del defecto absoluto: se persiste para que /login, /register
+      // y el dashboard pinten Vainilla sin parpadeos ni re-lecturas.
       t = "vainilla"; // Defecto absoluto (con elección guardada manda el guardado).
+      try {
+        localStorage.setItem("lector_tema", "vainilla");
+      } catch (e3) {
+        // Sin escritura: igual se pinta Vainilla en este arranque.
+      }
     }
     var claros = { celeste: 1, menta: 1, celadon: 1, marfil: 1, vainilla: 1, alabastro: 1 };
     document.documentElement.dataset.theme = t;
