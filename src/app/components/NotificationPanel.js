@@ -4,11 +4,11 @@
 // selección múltiple para borrado y gestión estándar de bandeja.
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useBloquearScroll } from "@/lib/useBloquearScroll";
 import { esRuidoCuotaIA } from "@/lib/hooks/useNotificaciones";
 import { useIdioma } from "@/lib/i18n";
-import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2, MoveHorizontal } from "lucide-react";
+import { X, Check, CheckCheck, Trash2, Bell, AlertCircle, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
 
 const TIPOS = {
   info: { icon: Bell, color: "text-sky-400 [html[data-tema-claro='1']_&]:text-sky-600", bg: "bg-sky-500/10 [html[data-tema-claro='1']_&]:bg-sky-600/10", border: "border-sky-500/30 [html[data-tema-claro='1']_&]:border-sky-600/30" },
@@ -52,20 +52,9 @@ function BarraProgresoIA({ progreso, t }) {
   );
 }
 
-function movimientoReducidoActivo() {
-  try {
-    if (document.documentElement.dataset.motion === "reduced") return true;
-    return (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    );
-  } catch {
-    return false;
-  }
-}
-
 function NotificacionItem({
   item,
+  indice,
   modoSeleccion,
   seleccionada,
   onToggleSeleccion,
@@ -78,104 +67,33 @@ function NotificacionItem({
   const Icon = tipo.icon;
   const leida = item.leida;
   // La fijada (IA) nunca se opaca ni se puede eliminar: solo se actualiza
-  // cuando el usuario ejecuta la categorización con IA. Tampoco se desliza.
+  // cuando el usuario ejecuta la categorización con IA.
   const esFijada = item.pinned === true;
-  const deslizable = !esFijada && !modoSeleccion;
-
-  const frenteRef = useRef(null);
-  const baseX = useRef(0);
-  const dxActual = useRef(0);
-  const arrastrando = useRef(false);
-  const idPuntero = useRef(null);
-  const pintarDx = (dx) => {
-    dxActual.current = dx;
-    const el = frenteRef.current;
-    if (el) el.style.transform = dx === 0 ? "" : `translateX(${dx}px)`;
-  };
-
-  const asentar = (dx) => {
-    const el = frenteRef.current;
-    if (el) {
-      el.classList.remove("swipe-arrastrando");
-      el.classList.add("swipe-asentando");
-    }
-    pintarDx(dx);
-  };
-
-  const alPunteroAbajo = (event) => {
-    if (!deslizable || movimientoReducidoActivo()) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    arrastrando.current = true;
-    idPuntero.current = event.pointerId;
-    baseX.current = event.clientX - dxActual.current;
-    const el = frenteRef.current;
-    if (el) {
-      el.classList.add("swipe-arrastrando");
-      el.classList.remove("swipe-asentando");
-    }
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // Sin captura disponible: el gesto sigue funcionando con mouse.
-    }
-  };
-
-  const alPunteroMover = (event) => {
-    if (!arrastrando.current || event.pointerId !== idPuntero.current) return;
-    const ancho = event.currentTarget.offsetWidth || 1;
-    let dx = event.clientX - baseX.current;
-    // Sin acción de leer disponible: el deslizamiento a la derecha rebota.
-    if (leida) dx = Math.min(dx, 0);
-    const tope = Math.round(ancho * 0.45);
-    if (dx > tope) dx = tope + Math.round((dx - tope) * 0.3);
-    if (dx < -tope) dx = -tope + Math.round((dx + tope) * 0.3);
-    pintarDx(Math.round(dx));
-  };
-
-  const alPunteroArriba = (event) => {
-    if (!arrastrando.current || event.pointerId !== idPuntero.current) return;
-    arrastrando.current = false;
-    idPuntero.current = null;
-    const ancho = event.currentTarget.offsetWidth || 1;
-    const dx = dxActual.current;
-    if (!leida && dx >= Math.round(ancho * 0.4)) {
-      asentar(0);
-      onMarcarLeida();
-      anunciar(t("ajustes.notificaciones.leida_anuncio"));
-    } else if (dx <= -Math.round(ancho * 0.4)) {
-      asentar(0);
-      onEliminar();
-      anunciar(t("ajustes.notificaciones.eliminada_anuncio"));
-    } else {
-      // Sin fondo de acciones: todo arrastre parcial vuelve a su sitio.
-      asentar(0);
-    }
-  };
-
-  const cerrarDeslizado = () => {
-    asentar(0);
-  };
 
   const alToqueFila = () => {
     if (modoSeleccion && !esFijada) onToggleSeleccion();
   };
 
+  const marcar = () => {
+    onMarcarLeida();
+    anunciar(t("ajustes.notificaciones.leida_anuncio"));
+  };
+
+  const eliminar = () => {
+    onEliminar();
+    anunciar(t("ajustes.notificaciones.eliminada_anuncio"));
+  };
+
   return (
-    <div className="swipe-row relative overflow-hidden rounded-xl">
-      <div
-        ref={frenteRef}
-        onPointerDown={alPunteroAbajo}
-        onPointerMove={alPunteroMover}
-        onPointerUp={alPunteroArriba}
-        onPointerCancel={cerrarDeslizado}
-        onClick={alToqueFila}
-        role={modoSeleccion && !esFijada ? "checkbox" : undefined}
-        aria-checked={modoSeleccion && !esFijada ? seleccionada : undefined}
-        aria-label={modoSeleccion && !esFijada ? t("ajustes.notificaciones.seleccionar_item") : undefined}
-        title={!deslizable || movimientoReducidoActivo() ? undefined : t("ajustes.notificaciones.deslizar_pista")}
-        className={`swipe-frente group relative flex items-start gap-3 rounded-xl border bg-app-surface px-3 py-2.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""} ${modoSeleccion && !esFijada ? "cursor-pointer" : ""}`}
-      >
-        {modoSeleccion && !esFijada ? (
+    <div
+      onClick={alToqueFila}
+      role={modoSeleccion && !esFijada ? "checkbox" : undefined}
+      aria-checked={modoSeleccion && !esFijada ? seleccionada : undefined}
+      aria-label={modoSeleccion && !esFijada ? t("ajustes.notificaciones.seleccionar_item") : undefined}
+      style={{ "--stagger-delay": `${Math.min(indice * 40, 240)}ms` }}
+      className={`stagger-in group relative flex items-start gap-3 rounded-xl border bg-app-surface px-3 py-2.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${tipo.bg} ${tipo.border} ${leida && !esFijada ? "opacity-60" : ""} ${seleccionada ? "ring-2 ring-[var(--accent)]" : ""} ${modoSeleccion && !esFijada ? "cursor-pointer" : ""}`}
+    >
+      {modoSeleccion && !esFijada ? (
           <button
             type="button"
             role="checkbox"
@@ -199,14 +117,14 @@ function NotificacionItem({
           </span>
         )}
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-sm font-medium ${leida && !esFijada ? "text-app-muted" : "text-app-fg"}`}>
+        <p className={`truncate text-sm font-semibold ${leida && !esFijada ? "text-app-muted" : "text-app-fg"}`}>
           {item.titulo}
         </p>
-        <p className="mt-0.5 text-xs text-app-muted line-clamp-1">
+        <p className="mt-0.5 break-words text-xs leading-relaxed text-app-muted line-clamp-2">
           {item.mensaje}
         </p>
-        <p className="mt-1 text-[10px] text-app-muted/60 flex items-center gap-1">
-          <span>{formatearHora(item.fecha)}</span>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[10px] text-app-muted/60">
+          <span className="tabular-nums">{formatearHora(item.fecha)}</span>
           {item.pinned && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--accent)]/20 px-1.5 py-0.5 text-[9px] font-medium text-[var(--accent)]">
               <CheckCircle2 size={8} strokeWidth={3} />
@@ -219,11 +137,11 @@ function NotificacionItem({
         )}
       </div>
       {!esFijada && !modoSeleccion && (
-        <div className="flex shrink-0 flex-col gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+        <div className="flex shrink-0 flex-col gap-1">
           {!leida && (
             <button
               type="button"
-              onClick={onMarcarLeida}
+              onClick={marcar}
               className="touch-target btn-press rounded-lg p-1.5 text-app-muted hover:text-app-fg"
               aria-label={t("ajustes.notificaciones.marcar_leida")}
             >
@@ -232,7 +150,7 @@ function NotificacionItem({
           )}
           <button
             type="button"
-            onClick={onEliminar}
+            onClick={eliminar}
             className="touch-target btn-press rounded-lg p-1.5 text-app-muted hover:text-rose-400"
             aria-label={t("ajustes.notificaciones.eliminar")}
           >
@@ -241,31 +159,6 @@ function NotificacionItem({
         </div>
       )}
       </div>
-    </div>
-  );
-}
-
-const CLAVE_PISTA_SWIPE = "lector_pista_swipe";
-
-// Aviso emergente desechable que enseña el gesto (una sola vez por navegador).
-// Sustituye al fondo verde/rojo bajo la tarjeta: menos ruido visual.
-function PistaDeslizar({ visible, onCerrar, t }) {
-  if (!visible) return null;
-  return (
-    <div className="anim-toast flex items-center gap-2 rounded-xl border border-app-line bg-app-raised/60 px-3 py-2">
-      <MoveHorizontal size={16} aria-hidden="true" className="shrink-0 text-app-muted" />
-      <p className="min-w-0 flex-1 text-xs leading-snug text-app-muted">
-        {t("ajustes.notificaciones.pista_swipe")}
-      </p>
-      <button
-        type="button"
-        onClick={onCerrar}
-        aria-label={t("ajustes.notificaciones.pista_cerrar")}
-        className="touch-target shrink-0 rounded-lg p-1 text-app-muted transition hover:text-app-fg"
-      >
-        <X size={14} />
-      </button>
-    </div>
   );
 }
 
@@ -285,32 +178,6 @@ export default function NotificationPanel({
   const [seleccionadas, setSeleccionadas] = useState(new Set());
   const [anuncio, setAnuncio] = useState("");
   const anunciar = (mensaje) => setAnuncio(mensaje);
-  // La pista del gesto se muestra una sola vez por navegador y solo si el
-  // gesto está disponible (sin movimiento reducido).
-  const [pistaVista, setPistaVista] = useState(() => {
-    try {
-      if (window.localStorage.getItem(CLAVE_PISTA_SWIPE) === "1") return true;
-      if (document.documentElement.dataset.motion === "reduced") return true;
-      if (
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
-        return true;
-      }
-      return false;
-    } catch {
-      return true;
-    }
-  });
-
-  const cerrarPista = () => {
-    setPistaVista(true);
-    try {
-      window.localStorage.setItem(CLAVE_PISTA_SWIPE, "1");
-    } catch {
-      // Sin almacenamiento: la pista reaparece, sin romper nada.
-    }
-  };
 
   // Mismo comportamiento que AjustesPanel: fondo sin scroll ni interacción,
   // Escape cierra. Sin setState en el cuerpo del efecto.
@@ -376,7 +243,7 @@ export default function NotificationPanel({
         >
           <ChevronLeft size={20} />
         </button>
-        <h2 className="min-w-0 flex-1 truncate text-base font-bold text-app-fg">
+        <h2 className="min-w-0 flex-1 truncate whitespace-nowrap text-base font-bold text-app-fg">
           {t("ajustes.notificaciones.titulo")}
         </h2>
         {modoSeleccion ? (
@@ -416,12 +283,7 @@ export default function NotificationPanel({
       </div>
 
       {/* Lista */}
-      <div className="panel-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        <PistaDeslizar
-          visible={!pistaVista && !modoSeleccion && visibles.some((n) => !n.pinned)}
-          onCerrar={cerrarPista}
-          t={t}
-        />
+      <div className="panel-scroll flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
         {visibles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-app-muted/50">
             <Bell size={32} className="mb-2 opacity-50" />
@@ -429,10 +291,11 @@ export default function NotificationPanel({
             <p className="text-xs text-center px-4">{t("ajustes.notificaciones.vacio_d")}</p>
           </div>
         ) : (
-          visibles.map((item) => (
+          visibles.map((item, i) => (
             <NotificacionItem
               key={item.id}
               item={item}
+              indice={i}
               modoSeleccion={modoSeleccion}
               seleccionada={seleccionadas.has(item.id)}
               onToggleSeleccion={() => toggleSeleccion(item.id)}
