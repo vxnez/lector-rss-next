@@ -967,16 +967,23 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
                       </li>
                     ))}
                   </ul>
+                ) : resumenMovil.diag === "sin_clave" ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold leading-relaxed text-app-fg">
+                      {t("lector.resumen_configura")}
+                    </p>
+                    <p className="text-xs leading-relaxed text-app-muted">
+                      {t("lector.resumen_donde")}
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <p role="alert" className="text-sm leading-relaxed text-app-muted">
-                      {resumenMovil.diag === "sin_clave"
-                        ? t("lector.resumen_sin_clave")
-                        : resumenMovil.diag === "cuota"
-                          ? t("lector.resumen_cuota")
-                          : resumenMovil.diag === "corto"
-                            ? t("lector.resumen_corto")
-                            : t("lector.err_resumen")}
+                      {resumenMovil.diag === "cuota"
+                        ? t("lector.resumen_cuota")
+                        : resumenMovil.diag === "corto"
+                          ? t("lector.resumen_corto")
+                          : t("lector.err_resumen")}
                     </p>
                     <button
                       type="button"

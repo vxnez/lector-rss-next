@@ -14,7 +14,7 @@ Aplicación web full-stack para centralizar, organizar y leer noticias de fuente
 | Backend | Route Handlers de Next.js (`rss-parser`, `cheerio`, `bcryptjs`, `animejs`) vía `src/lib/api.js` a la API interna |
 | Autenticación | NextAuth 5 beta: credenciales, Google OAuth, GitHub OAuth |
 | Base de datos | MySQL 8.4 en servidor local Ubuntu Server, acceso solo vía API interna (`https://servxn-mysql.duckdns.org`, header `x-api-key`). Sin `mysql2`, sin `DATABASE_URL`, sin credenciales MySQL en el frontend |
-| IA | Gemini REST + Groq OpenAI-compatible (failover, caché en memoria); clasificación por lotes y resúmenes por artículo con claves del servidor o del usuario |
+| IA | Gemini + Groq con claves del usuario (Ajustes > Datos y privacidad); sin clave no se gasta cuota del servidor; categorización base `local` en backend |
 | Notificaciones | Web Push API (VAPID) + Service Worker |
 | CI | GitHub Actions (build + lint en Node 20.x y 22.x) |
 

@@ -5,17 +5,31 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { paramsAuthIA } from "@/lib/clavesIA";
+import { authIA, paramsAuthIA } from "@/lib/clavesIA";
 
 export function useResumenIA(titulo, texto, activo) {
-  const [estado, setEstado] = useState(() => (!texto ? "error" : "cargando"));
+  const [estado, setEstado] = useState(() => {
+    if (!texto) return "error";
+    return authIA().clave ? "cargando" : "error";
+  });
   const [puntos, setPuntos] = useState([]);
-  const [diag, setDiag] = useState(() => (!texto ? "corto" : null));
+  const [diag, setDiag] = useState(() => {
+    if (!texto) return "corto";
+    return authIA().clave ? null : "sin_clave";
+  });
   const [proveedor, setProveedor] = useState("");
   const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     if (!activo || !texto) return undefined;
+    // Sin clave propia no se quema cuota del servidor: aviso, sin fetch.
+    if (!authIA().clave) {
+      Promise.resolve().then(() => {
+        setDiag("sin_clave");
+        setEstado("error");
+      });
+      return undefined;
+    }
     const ctrl = new AbortController();
     const temporizador = setTimeout(() => ctrl.abort(), 30000);
     // Cadena .then (no setState síncrono en el cuerpo del efecto).

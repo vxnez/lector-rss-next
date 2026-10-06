@@ -14,7 +14,6 @@ import {
   marcarArticulo,
   patchFuente,
   refreshFuentes,
-  resumirIaBackend,
 } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
 import { clasificarLoteConIA, configIA, resumirConIA } from "@/lib/clasificadorIA";
@@ -77,12 +76,14 @@ async function clasificarPendientesResponse(userId, body = {}) {
   // Failover entre proveedores: el cliente puede pedir "groq"|"gemini" por
   // lote (tras cuota/sin_clave/auth/modelo del otro). Campo aditivo.
   // Clave del usuario (body.clave_api, desde Datos y privacidad): manda sobre
-  // la del servidor y nunca se persiste en ningún lado.
+  // la del servidor y nunca se persiste en ningún lado. Sin clave no se
+  // quema ni un token del servidor: sin_clave y el cliente invita a
+  // configurarla (la siembra `local` del backend sigue categorizando base).
   const cfgIA = configIA(body.proveedor);
   const claveUsuario = typeof body.clave_api === "string" && body.clave_api.trim().length > 0 && body.clave_api.trim().length <= 500
     ? body.clave_api.trim()
     : "";
-  const apiKey = claveUsuario || cfgIA.apiKey;
+  const apiKey = claveUsuario;
   if (!apiKey) {
     return NextResponse.json({ clasificados: 0, restantes: pendientes.length, diag: "sin_clave", proveedor: cfgIA.proveedor });
   }
@@ -613,10 +614,10 @@ export async function POST(req) {
       return clasificarPendientesResponse(userId, body);
     }
 
-    // Resumen IA por artículo (viñetas): primero el backend servxn (caché
-    // compartida 24h entre dispositivos); si responde sin_clave/vacío/falla,
-    // fallback a la cadena local con la key de Vercel. 429 del backend se
-    // respeta tal cual (no se quema la otra cuota encima).
+    // Resumen IA por artículo (viñetas): SOLO con clave del usuario
+    // (Ajustes > Datos y privacidad > APIs de IA). Sin clave no se quema
+    // ni un token del servidor: diag sin_clave y el panel invita a
+    // configurarla.
     if (body.action === "resumir_articulo") {
       const titulo = limpiarTitulo(body.titulo || "", 300);
       const texto = limpiarTextoResumen(body.resumen || "")
@@ -626,41 +627,21 @@ export async function POST(req) {
       if (!texto) {
         return NextResponse.json({ puntos: [], diag: "corto", proveedor: null, cacheado: false });
       }
-      const local = async () => {
-        const clave = typeof body.clave_api === "string" && body.clave_api.trim() ? body.clave_api.trim().slice(0, 500) : undefined;
+      const clave = typeof body.clave_api === "string" && body.clave_api.trim() ? body.clave_api.trim().slice(0, 500) : "";
+      if (!clave) {
+        return NextResponse.json({ puntos: [], diag: "sin_clave", proveedor: null, cacheado: false });
+      }
+      try {
         const r = await resumirConIA(clave, titulo, texto, body.proveedor);
-        return {
+        return NextResponse.json({
           puntos: r.puntos,
           proveedor: r.proveedor,
           diag: r.diag,
           cacheado: Boolean(r.cacheado),
-        };
-      };
-      try {
-        const b = await resumirIaBackend({ usuario_id: userId, titulo, resumen: texto, proveedor: body.proveedor });
-        if (Array.isArray(b?.puntos) && b.puntos.length > 0) {
-          return NextResponse.json({
-            puntos: b.puntos,
-            proveedor: b.proveedor || "servxn",
-            diag: b.diag || null,
-            cacheado: Boolean(b.cacheado),
-          });
-        }
-        if (b?.diag === "cuota") {
-          return NextResponse.json({ puntos: [], diag: "cuota", proveedor: null, cacheado: false });
-        }
-        return NextResponse.json(await local());
+        });
       } catch (error) {
-        if (Number(error?.status) === 429) {
-          return NextResponse.json({ puntos: [], diag: "cuota", proveedor: null, cacheado: false });
-        }
-        console.warn("Resumen backend no disponible, fallback local:", error?.message || error);
-        try {
-          return NextResponse.json(await local());
-        } catch (errorLocal) {
-          console.error("Error resumiendo con IA:", errorLocal?.message || errorLocal);
-          return NextResponse.json({ puntos: [], diag: "respuesta", proveedor: null, cacheado: false });
-        }
+        console.error("Error resumiendo con IA:", error?.message || error);
+        return NextResponse.json({ puntos: [], diag: "respuesta", proveedor: null, cacheado: false });
       }
     }
 

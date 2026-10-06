@@ -183,20 +183,31 @@ export default function PanelResumenIA({ article, t }) {
             ))}
           </ul>
         )}
-        {estado === "error" && (
-          <div className="space-y-2.5">
-            <p role="alert" className="text-[12px] leading-relaxed text-app-muted">
-              {mensajeDiag(diag, t)}
+        {estado === "error" && diag === "sin_clave" ? (
+          <div className="space-y-2">
+            <p className="text-[12px] font-semibold leading-relaxed text-app-fg">
+              {t("lector.resumen_configura")}
             </p>
-            <button
-              type="button"
-              onClick={reintentar}
-              className="btn-press inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[var(--accent-strong)] px-3 py-1.5 text-[11px] font-semibold text-[var(--on-accent-strong)]"
-            >
-              <RotateCw size={12} />
-              {t("lector.reintentar")}
-            </button>
+            <p className="text-[11px] leading-relaxed text-app-muted">
+              {t("lector.resumen_donde")}
+            </p>
           </div>
+        ) : (
+          estado === "error" && (
+            <div className="space-y-2.5">
+              <p role="alert" className="text-[12px] leading-relaxed text-app-muted">
+                {mensajeDiag(diag, t)}
+              </p>
+              <button
+                type="button"
+                onClick={reintentar}
+                className="btn-press inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[var(--accent-strong)] px-3 py-1.5 text-[11px] font-semibold text-[var(--on-accent-strong)]"
+              >
+                <RotateCw size={12} />
+                {t("lector.reintentar")}
+              </button>
+            </div>
+          )
         )}
       </div>
     </aside>,

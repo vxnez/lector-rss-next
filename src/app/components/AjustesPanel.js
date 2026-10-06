@@ -918,6 +918,9 @@ export default function AjustesPanel({
               <p className="px-1 text-xs leading-relaxed text-app-muted">
                 {t("ajustes.apis_d")}
               </p>
+              <p className="rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-2.5 text-xs leading-relaxed text-app-fg">
+                {t("ajustes.apis_info")}
+              </p>
               <div className="flex gap-1.5" role="radiogroup" aria-label={t("ajustes.apis_prov")}>
                 {["auto", "gemini", "groq"].map((prov) => {
                   const activo = (clavesIA.proveedor || "auto") === prov;
