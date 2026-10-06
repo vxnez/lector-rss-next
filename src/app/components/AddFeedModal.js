@@ -129,28 +129,28 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
       : 0;
 
   return (
-    <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50">
+    <div className="anim-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-x-hidden overflow-y-auto p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="addfeed-titulo">
       <div className="anim-modal scroll-oculto bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-2xl w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto box-border max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden shadow-2xl relative">
         {/* Botón cerrar X */}
         <button
           onClick={onClose}
           aria-label={t("addfeed.cerrar")}
-          className="btn-press absolute top-4 right-4 text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800"
+          className="btn-press absolute top-4 end-4 text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800"
         >
           <X size={18} />
         </button>
 
         {/* Encabezado con icono */}
-        <div className="flex items-center gap-2 mb-5 sm:mb-6 pr-8">
+        <div className="flex items-center gap-2 mb-5 sm:mb-6 pe-8">
           <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg border border-sky-500/20">
             <Rss size={20} />
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-white">{t("addfeed.titulo")}</h3>
+          <h3 id="addfeed-titulo" className="text-lg sm:text-xl font-bold text-white">{t("addfeed.titulo")}</h3>
         </div>
 
         {/* Mensaje de error con icono */}
         {error && (
-          <div className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
+          <div role="alert" aria-live="assertive" className="anim-toast bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
             <AlertCircle size={18} className="shrink-0" />
             <span>{error}</span>
           </div>
@@ -162,14 +162,14 @@ export default function AddFeedModal({ isOpen, onClose, onSuccess, initialUrl = 
               {t("addfeed.url")}
             </label>
             <div className="relative flex items-center gap-1.5">
-              <LinkIcon size={16} className="absolute left-3 text-gray-500" />
+              <LinkIcon size={16} className="absolute start-3 text-gray-500" />
               <input
                 type="url"
                 placeholder={t("addfeed.url_ph")}
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="field-focus min-w-0 flex-1 bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none text-sm"
+                className="field-focus min-w-0 flex-1 bg-gray-800 border border-gray-700 rounded-xl ps-9 pe-3 py-2 text-white placeholder-gray-500 focus:outline-none text-base"
               />
               <button
                 type="button"

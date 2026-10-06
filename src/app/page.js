@@ -780,6 +780,7 @@ export default function HomePage() {
   );
 
   const handleRefresh = async () => {
+    if (refreshing) return;
     setRefreshing(true);
     bumpCacheVersion();
     try {
@@ -961,15 +962,15 @@ export default function HomePage() {
               />
 
               <div ref={busquedaZonaRef} className="order-3 lg:order-none flex flex-col sm:flex-row gap-3 items-stretch sm:items-center scroll-mt-24">
-                <label className="relative flex-1 rounded-2xl border border-app-line bg-app-surface transition duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-within:border-[var(--accent)]/70 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <label className="relative flex-1 min-w-0 rounded-2xl border border-app-line bg-app-surface transition duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] focus-within:border-[var(--accent)]/70 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]">
+                  <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     ref={searchInputRef}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={t("buscar.ph")}
                     aria-label={t("buscar.aria")}
-                    className="w-full bg-transparent rounded-2xl pl-9 pr-3 py-2.5 text-sm text-app-fg placeholder:text-app-muted outline-none"
+                    className="w-full bg-transparent rounded-2xl ps-9 pe-3 py-2.5 text-base sm:text-sm text-app-fg placeholder:text-app-muted outline-none"
                   />
                 </label>
 

@@ -213,7 +213,7 @@ function conFormato(texto, clave) {
           href={parte.enlace}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-[var(--accent-ink)] underline decoration-[var(--accent)]/50 underline-offset-2 hover:decoration-[var(--accent)]"
+          className="font-medium text-[var(--accent-ink)] underline decoration-[var(--accent)]/50 underline-offset-2 hover:decoration-[var(--accent)] break-all min-w-0"
         >
           {parte.texto}
         </a>
@@ -223,7 +223,7 @@ function conFormato(texto, clave) {
       return (
         <code
           key={key}
-          className="rounded-md border border-app-line bg-app-raised/70 px-1.5 py-0.5 font-mono text-[0.85em] text-app-fg"
+          className="rounded-md border border-app-line bg-app-raised/70 px-1.5 py-0.5 font-mono text-[0.85em] text-app-fg break-all"
         >
           {parte.texto}
         </code>

@@ -406,7 +406,7 @@ export default function ArticleReaderModal({ article, onClose, onToggleRead, onT
         if (data.video) setVideoRemoto(data.video);
       })
       .catch(() => {
-        if (!ctrl.signal.aborted) setFalloCompleto(true);
+        if (vivo) setFalloCompleto(true);
       })
       .finally(() => {
         if (vivo) setCargandoImagen(false);

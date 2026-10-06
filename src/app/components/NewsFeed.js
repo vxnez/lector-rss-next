@@ -72,7 +72,7 @@ const TarjetaCards = memo(function TarjetaCards({
       >
         <div>
           <div className="flex items-center justify-between gap-2 mb-2 notranslate" translate="no">
-            <div className="flex items-center gap-2 flex-wrap text-xs">
+            <div className="flex items-center gap-2 flex-wrap text-xs min-w-0 flex-1">
               <span
                 style={pillDominioStyle}
                 className={`text-[11px] font-bold border px-2 py-0.5 rounded flex items-center gap-1.5 tracking-wide transition-opacity ${

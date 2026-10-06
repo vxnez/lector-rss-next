@@ -100,6 +100,9 @@ h1 {
 }
 h2 {
   letter-spacing: -0.01em;
+  font-size: clamp(1.25rem, 1rem + 2vw, 1.875rem);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 html,
@@ -119,9 +122,15 @@ html::-webkit-scrollbar {
 }
 
 img,
-svg,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
 table {
   max-width: 100%;
+  display: block;
+  overflow-x: auto;
 }
 
 @media (min-width: 1024px) {
