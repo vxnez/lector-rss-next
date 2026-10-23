@@ -56,6 +56,72 @@ export function otroProveedorIA(proveedor) {
   return String(proveedor).trim().toLowerCase() === "groq" ? "gemini" : "groq";
 }
 
+// Exportar estado de circuit breakers para monitoreo/debug
+export function getCircuitBreakerState(proveedor) {
+  return cbGetState(proveedor);
+}
+
+export function getAllCircuitBreakerStates() {
+  return {
+    gemini: cbGetState("gemini"),
+    groq: cbGetState("groq"),
+  };
+}
+
+// ---- Circuit Breaker para proveedores IA ----
+// Evita martillar un proveedor que está fallando (429, 5xx, network errors).
+// Estados: CLOSED (normal) → OPEN (fallando, rechaza rápido) → HALF_OPEN (prueba)
+const CB_FAILURE_THRESHOLD = 3; // fallos consecutivos para abrir
+const CB_RESET_TIMEOUT_MS = 60_000; // 1 min antes de half-open
+const CB_HALF_OPEN_MAX = 1; // 1 request de prueba en half-open
+
+const circuitBreakers = {
+  gemini: { state: "CLOSED", failures: 0, lastFailure: 0, halfOpenRequests: 0 },
+  groq: { state: "CLOSED", failures: 0, lastFailure: 0, halfOpenRequests: 0 },
+};
+
+function cbRecordSuccess(proveedor) {
+  const cb = circuitBreakers[proveedor];
+  if (!cb) return;
+  cb.failures = 0;
+  cb.state = "CLOSED";
+  cb.halfOpenRequests = 0;
+}
+
+function cbRecordFailure(proveedor) {
+  const cb = circuitBreakers[proveedor];
+  if (!cb) return;
+  cb.failures += 1;
+  cb.lastFailure = Date.now();
+  if (cb.state === "HALF_OPEN" || cb.failures >= CB_FAILURE_THRESHOLD) {
+    cb.state = "OPEN";
+  }
+}
+
+function cbCanExecute(proveedor) {
+  const cb = circuitBreakers[proveedor];
+  if (!cb) return true;
+  if (cb.state === "CLOSED") return true;
+  if (cb.state === "OPEN") {
+    if (Date.now() - cb.lastFailure >= CB_RESET_TIMEOUT_MS) {
+      cb.state = "HALF_OPEN";
+      cb.halfOpenRequests = 0;
+      return true;
+    }
+    return false;
+  }
+  // HALF_OPEN: permitir solo 1 request de prueba
+  if (cb.halfOpenRequests < CB_HALF_OPEN_MAX) {
+    cb.halfOpenRequests += 1;
+    return true;
+  }
+  return false;
+}
+
+function cbGetState(proveedor) {
+  return circuitBreakers[proveedor]?.state || "UNKNOWN";
+}
+
 // forzarProveedor ("groq"|"gemini") permite al cliente alternar de proveedor
 // dentro de una corrida (failover ante cuota) sin tocar variables de entorno.
 export function configIA(forzarProveedor) {
@@ -250,21 +316,33 @@ async function llamarModeloChat(cfg, apiKey, modelo, textoPrompt, maxTokens, tim
 }
 
 async function ejecutarCadenaIA(apiKey, textoPrompt, maxTokens, timeoutMs, proveedor) {
+  // Circuit breaker check
+  if (!cbCanExecute(proveedor)) {
+    const err = new Error(`${proveedor} circuit breaker OPEN`);
+    err.cause = { codigo: "circuit_open", proveedor };
+    throw err;
+  }
+
   const cfg = configIA(proveedor);
   const clave = cfg.apiKey || apiKey;
   let ultimoError = new Error(`${cfg.etiqueta} no respondió correctamente`);
   for (const modelo of cfg.modelos) {
     try {
+      let resultado;
       if (cfg.proveedor === "groq") {
-        return await llamarModeloChat(cfg, clave, modelo, textoPrompt, maxTokens, timeoutMs);
+        resultado = await llamarModeloChat(cfg, clave, modelo, textoPrompt, maxTokens, timeoutMs);
+      } else {
+        resultado = await llamarModeloGemini(clave, modelo, textoPrompt, maxTokens, timeoutMs);
       }
-      return await llamarModeloGemini(clave, modelo, textoPrompt, maxTokens, timeoutMs);
+      cbRecordSuccess(proveedor);
+      return resultado;
     } catch (error) {
       ultimoError = error;
+      // Registrar fallo en circuit breaker (excepto errores fatales de auth)
+      if (!error?.cause?.fatal) {
+        cbRecordFailure(proveedor);
+      }
       if (error?.cause?.fatal) break;
-      // Sin espera ni reintento dentro de la petición: la cuota es por
-      // proyecto (no por modelo) y dormir aquí agota el maxDuration del
-      // serverless. Se propaga el hint y el cliente espera entre lotes.
       if (error?.cause?.esperaMs) break;
       console.warn(`Clasificación con ${modelo} falló; probando siguiente modelo:`, ultimoError.message);
     }

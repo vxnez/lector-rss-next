@@ -32,9 +32,9 @@ const MAX_ITEMS = 25;
 // tiempo para no agotar el maxDuration del serverless (el presupuesto manda:
 // en sitios lentos el crawl se detiene antes y conserva lo recolectado).
 // Entre páginas hay una pausa de cortesía secuencial (sin concurrencia).
-const MAX_PAGINAS_CRAWL = 20;
+const MAX_PAGINAS_CRAWL = 10; // reducido de 20 a 10
 const MAX_ITEMS_TOTAL = 100;
-const TIEMPO_MAX_CRAWL_MS = 45000;
+const TIEMPO_MAX_CRAWL_MS = 30000; // reducido de 45000 a 30000
 const CORTESIA_ENTRE_PAGINAS_MS = 500;
 
 function esperar(ms) {
@@ -897,185 +897,199 @@ export function extraerFeedDeHtml(html, baseFinal) {
  * o { sinCambios: true, urlFinal } si la página no cambió (validadores).
  * Lanza Error con mensaje limpio para el usuario si no es convertible.
  */
-export async function convertirPaginaAFeed(urlIngresada, { validadores = {} } = {}) {
+export async function convertirPaginaAFeed(urlIngresada, { validadores = {}, timeoutMs = 30000 } = {}) {
   const urlLimpia = limpiarUrlEntrada(urlIngresada);
-  const descarga = await descargarPagina(urlLimpia, validadores);
-  if (descarga.sinCambios) return { sinCambios: true, urlFinal: descarga.urlFinal };
+  
+  // Timeout global para toda la conversión
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const descarga = await descargarPagina(urlLimpia, validadores);
+    if (descarga.sinCambios) return { sinCambios: true, urlFinal: descarga.urlFinal };
 
-  const { html, baseFinal, etag, lastModified } = descarga;
-  let primera = extraerFeedDeHtml(html, baseFinal);
-  if (primera.items.length === 0 && !primera.esArticuloUnico) {
-    // (d) Sondeo inicial: algunas plantillas no exponen nada seguible en la
-    // primera página; probar /page/2/, ?paged=2 y ?page=2 como páginas
-    // iniciales antes de declarar WEB_INCOMPATIBLE.
-    let hostSondeo = "";
-    try {
-      hostSondeo = new URL(baseFinal).hostname.toLowerCase();
-    } catch {
-      // Base inválida: sin sondeo.
-    }
-    if (hostSondeo) {
-      for (const urlSondeo of candidatosSondeoPagina(primera.base || baseFinal, hostSondeo)) {
-        let sonda = null;
-        try {
-          sonda = await descargarPagina(urlSondeo);
-        } catch {
-          continue;
-        }
-        if (sonda?.sinCambios || !sonda?.html) continue;
-        let extra = null;
-        try {
-          extra = extraerFeedDeHtml(sonda.html, sonda.baseFinal);
-        } catch {
-          continue;
-        }
-        if (extra && extra.items.length > 0 && !extra.esArticuloUnico) {
-          primera = extra;
-          break;
+    const { html, baseFinal, etag, lastModified } = descarga;
+    let primera = extraerFeedDeHtml(html, baseFinal);
+    if (primera.items.length === 0 && !primera.esArticuloUnico) {
+      // (d) Sondeo inicial: algunas plantillas no exponen nada seguible en la
+      // primera página; probar /page/2/, ?paged=2 y ?page=2 como páginas
+      // iniciales antes de declarar WEB_INCOMPATIBLE.
+      let hostSondeo = "";
+      try {
+        hostSondeo = new URL(baseFinal).hostname.toLowerCase();
+      } catch {
+        // Base inválida: sin sondeo.
+      }
+      if (hostSondeo) {
+        for (const urlSondeo of candidatosSondeoPagina(primera.base || baseFinal, hostSondeo)) {
+          let sonda = null;
+          try {
+            sonda = await descargarPagina(urlSondeo);
+          } catch {
+            continue;
+          }
+          if (sonda?.sinCambios || !sonda?.html) continue;
+          let extra = null;
+          try {
+            extra = extraerFeedDeHtml(sonda.html, sonda.baseFinal);
+          } catch {
+            continue;
+          }
+          if (extra && extra.items.length > 0 && !extra.esArticuloUnico) {
+            primera = extra;
+            break;
+          }
         }
       }
     }
-  }
-  if (primera.items.length === 0) {
-    throw errorWeb(
-      "Esta página no tiene una estructura de contenido compatible: no se encontraron artículos (ni datos JSON-LD, ni artículo único, ni lista de titulares).",
-      "WEB_INCOMPATIBLE"
-    );
-  }
-
-  // Multipage crawling: recorre páginas siguientes hasta agotar el listado o
-  // alcanzar los topes (páginas, noticias, tiempo). Los artículos únicos no
-  // paginan. Corte por página sin novedades = fin del listado. La cola
-  // mezcla URLs detectadas en el HTML con sondeos de patrones clásicos; cada
-  // sondeo fallido se descarta y se prueba el siguiente sin cortar el crawl.
-  let todos = [...primera.items];
-  let paginas = 1;
-  const visitadas = new Set([primera.base, normalizarUrlPagina(urlLimpia)]);
-  let baseHostSondeo = "";
-  try {
-    baseHostSondeo = new URL(primera.base).hostname.toLowerCase();
-  } catch {
-    // Base inválida: el crawl queda solo con la detección del HTML.
-  }
-  const cola = [];
-  if (primera.siguiente) {
-    cola.push({ url: primera.siguiente, sondeo: false });
-  } else if (!primera.esArticuloUnico && baseHostSondeo) {
-    for (const url of candidatosSondeoPagina(primera.base, baseHostSondeo)) {
-      cola.push({ url, sondeo: true });
+    if (primera.items.length === 0) {
+      throw errorWeb(
+        "Esta página no tiene una estructura de contenido compatible: no se encontraron artículos (ni datos JSON-LD, ni artículo único, ni lista de titulares).",
+        "WEB_INCOMPATIBLE"
+      );
     }
-  }
-  const arranque = Date.now();
-  while (
-    cola.length > 0 &&
-    !primera.esArticuloUnico &&
-    paginas < MAX_PAGINAS_CRAWL &&
-    todos.length < MAX_ITEMS_TOTAL &&
-    Date.now() - arranque < TIEMPO_MAX_CRAWL_MS
-  ) {
-    const { url: urlSiguiente, sondeo } = cola.shift();
-    const urlPagina = normalizarUrlPagina(urlSiguiente);
-    if (!urlPagina || visitadas.has(urlPagina)) continue;
-    visitadas.add(urlPagina);
-    await esperar(CORTESIA_ENTRE_PAGINAS_MS);
-    if (Date.now() - arranque >= TIEMPO_MAX_CRAWL_MS) break;
-    let pagina;
+
+    // Multipage crawling: recorre páginas siguientes hasta agotar el listado o
+    // alcanzar los topes (páginas, noticias, tiempo). Los artículos únicos no
+    // paginan. Corte por página sin novedades = fin del listado. La cola
+    // mezcla URLs detectadas en el HTML con sondeos de patrones clásicos; cada
+    // sondeo fallido se descarta y se prueba el siguiente sin cortar el crawl.
+    let todos = [...primera.items];
+    let paginas = 1;
+    const visitadas = new Set([primera.base, normalizarUrlPagina(urlLimpia)]);
+    let baseHostSondeo = "";
     try {
-      pagina = await descargarPagina(urlPagina);
+      baseHostSondeo = new URL(primera.base).hostname.toLowerCase();
     } catch {
-      if (sondeo) continue; // Sondeo fallido: probar el siguiente patrón.
-      break; // Página caída/bloqueada: se conserva lo ya recolectado.
+      // Base inválida: el crawl queda solo con la detección del HTML.
     }
-    if (pagina?.sinCambios || !pagina?.html) {
-      if (sondeo) continue;
-      break;
+    const cola = [];
+    if (primera.siguiente) {
+      cola.push({ url: primera.siguiente, sondeo: false });
+    } else if (!primera.esArticuloUnico && baseHostSondeo) {
+      for (const url of candidatosSondeoPagina(primera.base, baseHostSondeo)) {
+        cola.push({ url, sondeo: true });
+      }
     }
-    let extraidos;
-    try {
-      extraidos = extraerFeedDeHtml(pagina.html, pagina.baseFinal);
-    } catch {
-      if (sondeo) continue;
-      break;
+    const arranque = Date.now();
+    while (
+      cola.length > 0 &&
+      !primera.esArticuloUnico &&
+      paginas < MAX_PAGINAS_CRAWL &&
+      todos.length < MAX_ITEMS_TOTAL &&
+      Date.now() - arranque < TIEMPO_MAX_CRAWL_MS
+    ) {
+      // Verificar timeout global antes de cada iteración
+      if (controller.signal.aborted) {
+        console.warn("[convertirPaginaAFeed] Timeout global alcanzado, devolviendo resultados parciales");
+        break;
+      }
+      const { url: urlSiguiente, sondeo } = cola.shift();
+      const urlPagina = normalizarUrlPagina(urlSiguiente);
+      if (!urlPagina || visitadas.has(urlPagina)) continue;
+      visitadas.add(urlPagina);
+      await esperar(CORTESIA_ENTRE_PAGINAS_MS);
+      if (Date.now() - arranque >= TIEMPO_MAX_CRAWL_MS) break;
+      let pagina;
+      try {
+        pagina = await descargarPagina(urlPagina);
+      } catch {
+        if (sondeo) continue; // Sondeo fallido: probar el siguiente patrón.
+        break; // Página caída/bloqueada: se conserva lo ya recolectado.
+      }
+      if (pagina?.sinCambios || !pagina?.html) {
+        if (sondeo) continue;
+        break;
+      }
+      let extraidos;
+      try {
+        extraidos = extraerFeedDeHtml(pagina.html, pagina.baseFinal);
+      } catch {
+        if (sondeo) continue;
+        break;
+      }
+      visitadas.add(extraidos.base);
+      const vistos = new Set(todos.map((item) => item.url));
+      let nuevos = 0;
+      for (const item of extraidos.items) {
+        if (todos.length >= MAX_ITEMS_TOTAL) break;
+        if (!item.url || vistos.has(item.url)) continue;
+        vistos.add(item.url);
+        todos.push(item);
+        nuevos++;
+      }
+      if (nuevos === 0) {
+        if (sondeo) continue; // Patrón que no aplica: probar el siguiente.
+        paginas++; // Se cuenta la página terminal detectada (semántica previa).
+        break; // Listado agotado (o página repetida).
+      }
+      paginas++;
+      // Página con novedades: se sigue la detección normal del HTML; si la
+      // página no expone siguiente pero llegamos por sondeo (o la URL ya está
+      // numerada), se continúa con el mismo patrón N+1 para paginadores JS.
+      if (extraidos.siguiente) {
+        cola.push({ url: extraidos.siguiente, sondeo: false });
+      } else {
+        const mas = siguienteUrlMismoEstilo(urlPagina);
+        if (mas) cola.push({ url: mas, sondeo: true });
+      }
     }
-    visitadas.add(extraidos.base);
-    const vistos = new Set(todos.map((item) => item.url));
-    let nuevos = 0;
-    for (const item of extraidos.items) {
-      if (todos.length >= MAX_ITEMS_TOTAL) break;
-      if (!item.url || vistos.has(item.url)) continue;
-      vistos.add(item.url);
-      todos.push(item);
-      nuevos++;
-    }
-    if (nuevos === 0) {
-      if (sondeo) continue; // Patrón que no aplica: probar el siguiente.
-      paginas++; // Se cuenta la página terminal detectada (semántica previa).
-      break; // Listado agotado (o página repetida).
-    }
-    paginas++;
-    // Página con novedades: se sigue la detección normal del HTML; si la
-    // página no expone siguiente pero llegamos por sondeo (o la URL ya está
-    // numerada), se continúa con el mismo patrón N+1 para paginadores JS.
-    if (extraidos.siguiente) {
-      cola.push({ url: extraidos.siguiente, sondeo: false });
-    } else {
-      const mas = siguienteUrlMismoEstilo(urlPagina);
-      if (mas) cola.push({ url: mas, sondeo: true });
-    }
-  }
 
-  // Consolidación: desduplicar por URL y ordenar cronológicamente inverso
-  // (más reciente primero). Sin fecha válida van al final, en orden de
-  // descubrimiento, para no fingir una novedad que no tienen.
-  const vistosFinal = new Set();
-  const unicos = todos.filter((item) => {
-    if (!item.url || vistosFinal.has(item.url)) return false;
-    vistosFinal.add(item.url);
-    return true;
-  });
-  unicos.sort((a, b) => {
-    const ta = Date.parse(a.fecha || "");
-    const tb = Date.parse(b.fecha || "");
-    const va = Number.isNaN(ta) ? -1 : ta;
-    const vb = Number.isNaN(tb) ? -1 : tb;
-    return vb - va;
-  });
+    // Consolidación: desduplicar por URL y ordenar cronológicamente inverso
+    // (más reciente primero). Sin fecha válida van al final, en orden de
+    // descubrimiento, para no fingir una novedad que no tienen.
+    const vistosFinal = new Set();
+    const unicos = todos.filter((item) => {
+      if (!item.url || vistosFinal.has(item.url)) return false;
+      vistosFinal.add(item.url);
+      return true;
+    });
+    unicos.sort((a, b) => {
+      const ta = Date.parse(a.fecha || "");
+      const tb = Date.parse(b.fecha || "");
+      const va = Number.isNaN(ta) ? -1 : ta;
+      const vb = Number.isNaN(tb) ? -1 : tb;
+      return vb - va;
+    });
 
-  const ahora = new Date().toISOString();
-  const itemsFeed = [];
-  for (const item of unicos.slice(0, MAX_ITEMS_TOTAL)) {
-    const descripcion = cortarExtendido(
-      [item.resumen, item.autor ? `Por ${item.autor}` : ""].filter(Boolean).join(" · ")
-    );
-    const entrada = {
-      title: item.titulo,
-      link: item.url,
-      guid: item.url,
-      contentSnippet: descripcion,
-      isoDate: item.fecha || ahora,
-      pubDate: item.fecha || ahora,
+    const ahora = new Date().toISOString();
+    const itemsFeed = [];
+    for (const item of unicos.slice(0, MAX_ITEMS_TOTAL)) {
+      const descripcion = cortarExtendido(
+        [item.resumen, item.autor ? `Por ${item.autor}` : ""].filter(Boolean).join(" · ")
+      );
+      const entrada = {
+        title: item.titulo,
+        link: item.url,
+        guid: item.url,
+        contentSnippet: descripcion,
+        isoDate: item.fecha || ahora,
+        pubDate: item.fecha || ahora,
+      };
+      if (item.imagen && esImagenValida(item.imagen)) {
+        entrada.enclosure = { url: item.imagen };
+      }
+      if (item.video && /\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)/i.test(item.video)) {
+        entrada["media:content"] = { $: { url: item.video, type: "video/mp4" } };
+      }
+      itemsFeed.push(entrada);
+    }
+    if (itemsFeed.length === 0) {
+      throw errorWeb(
+        "Esta página no tiene una estructura de contenido compatible para convertir a RSS.",
+        "WEB_INCOMPATIBLE"
+      );
+    }
+
+    return {
+      feed: { title: primera.tituloSitio, link: baseFinal, items: itemsFeed },
+      urlFinal: baseFinal,
+      etag: etag || null,
+      lastModified: lastModified || null,
+      convertida: true,
+      paginas,
     };
-    if (item.imagen && esImagenValida(item.imagen)) {
-      entrada.enclosure = { url: item.imagen };
-    }
-    if (item.video && /\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)/i.test(item.video)) {
-      entrada["media:content"] = { $: { url: item.video, type: "video/mp4" } };
-    }
-    itemsFeed.push(entrada);
+  } finally {
+    clearTimeout(timeoutId);
   }
-  if (itemsFeed.length === 0) {
-    throw errorWeb(
-      "Esta página no tiene una estructura de contenido compatible para convertir a RSS.",
-      "WEB_INCOMPATIBLE"
-    );
-  }
-
-  return {
-    feed: { title: primera.tituloSitio, link: baseFinal, items: itemsFeed },
-    urlFinal: baseFinal,
-    etag: etag || null,
-    lastModified: lastModified || null,
-    convertida: true,
-    paginas,
-  };
 }

@@ -26,6 +26,10 @@ export function bumpCacheVersion() {
       if (memoria.size <= MAX_ENTRADAS) break;
     }
   }
+  // También limpiar vuelos huérfanos de versiones anteriores
+  for (const clave of vuelos.keys()) {
+    if (!clave.startsWith(prefijo)) vuelos.delete(clave);
+  }
 }
 
 function claveDe(url) {
@@ -55,21 +59,28 @@ export async function fetchJson(url, { ttlMs = 0, signal } = {}) {
   let vuelo = vuelos.get(clave);
   if (!vuelo) {
     vuelo = (async () => {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) return undefined;
-      const datos = await res.json().catch(() => undefined);
-      if (ttlMs > 0 && datos !== undefined) {
-        memoria.set(clave, { datos, expira: Date.now() + ttlMs });
-        if (memoria.size > MAX_ENTRADAS) {
-          memoria.delete(memoria.keys().next().value);
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return undefined;
+        const datos = await res.json().catch(() => undefined);
+        if (ttlMs > 0 && datos !== undefined) {
+          memoria.set(clave, { datos, expira: Date.now() + ttlMs });
+          // Limpieza LRU simple: borrar la entrada más antigua si excede límite
+          if (memoria.size > MAX_ENTRADAS) {
+            const firstKey = memoria.keys().next().value;
+            if (firstKey) memoria.delete(firstKey);
+          }
         }
+        return datos;
+      } finally {
+        // Siempre limpiar el vuelo de la tabla, sin race condition
+        // Usamos delete incondicional porque si otro request creó un nuevo
+        // vuelo para la misma clave, ese nuevo vuelo ya está en vuelos.set()
+        // y no queremos borrarlo. Comprobamos identidad por referencia.
+        if (vuelos.get(clave) === vuelo) vuelos.delete(clave);
       }
-      return datos;
     })();
     vuelos.set(clave, vuelo);
-    vuelo.finally(() => {
-      if (vuelos.get(clave) === vuelo) vuelos.delete(clave);
-    }).catch(() => {});
   }
 
   const carrera = esperarAborto(signal);

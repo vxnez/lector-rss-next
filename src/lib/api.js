@@ -2,9 +2,7 @@
 // Solo servidor: nunca importar desde componentes cliente ("use client").
 // Añade `x-api-key: process.env.API_SECRET_KEY` a `process.env.API_URL`.
 // Sin MySQL directo: todo acceso a datos pasa por este fetch.
-if (typeof window !== "undefined") {
-  throw new Error("lib/api solo puede usarse en el servidor.");
-}
+import "server-only";
 
 function baseUrl() {
   const base = (process.env.API_URL || "").trim().replace(/\/+$/, "");
@@ -30,7 +28,10 @@ function reintentoTras(res, intento) {
   const header = res.headers?.get?.("retry-after");
   const seg = Number(header);
   if (Number.isFinite(seg) && seg >= 0 && seg <= 60) return seg * 1000;
-  return Math.min(1000 * 2 ** intento, 8000);
+  // Backoff exponencial con jitter (±30%) para evitar thundering herd
+  const base = Math.min(1000 * 2 ** intento, 8000);
+  const jitter = base * 0.3 * (Math.random() * 2 - 1); // ±30%
+  return Math.max(100, Math.round(base + jitter));
 }
 
 export async function api(path, { method = "GET", body, query, timeoutMs = 30000 } = {}) {
@@ -419,12 +420,11 @@ export async function marcarArticulo(articulo_id, usuario_id, patch = {}) {
   });
 }
 
-// Bulk paginado compatible con el clamp del backend (limit 1..100; >100 =
-// 400 `limit_fuera_de_rango_1_100`): pagina con limit 100 y une hasta `tope`
-// (o el total si es menor). La primera página va en serie (revela el total)
-// y el resto en paralelo acotado (tandas de 4, anti-429). Nunca lanza: ante
-// fallo devuelve lo unido.
+// Configuración de bulk requests
 const LIMITE_PAGINA_BULK = 100;
+const MAX_CONCURRENCIA_BULK = 2; // reducido de 4 a 2 para evitar 429
+const MAX_TOTAL_REQUESTS_BULK = 20; // tope duro: 20 requests = 2000 items máx
+
 function extraerItemsBulk(res) {
   if (Array.isArray(res)) return { items: res, total: res.length, exacto: false };
   const items = res?.articles || res?.articulos || res?.data || res?.items || [];
@@ -435,12 +435,15 @@ function extraerItemsBulk(res) {
   return { items: Array.isArray(items) ? items : [], total: Number(crudo) || 0, exacto: true };
 }
 
+async function dormirConJitter(ms) {
+  const jitter = Math.random() * Math.min(ms * 0.3, 500);
+  await new Promise((r) => setTimeout(r, ms + jitter));
+}
+
 export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
   const topeSeguro = Math.max(Number(tope) || 0, 0);
   if (topeSeguro <= 0) return [];
   const avisarFallo = (donde, error) => {
-    // Un 400 tragado aquí se vería como "listas vacías / conteos en cero":
-    // se loguea el status para cazarlo al instante.
     console.warn(
       `Bulk articulos ${donde}:`,
       error?.status ? `status=${error.status}` : "",
@@ -465,9 +468,14 @@ export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
   for (let off = LIMITE_PAGINA_BULK; off < objetivo; off += LIMITE_PAGINA_BULK) {
     offsets.push(off);
   }
-  for (let i = 0; i < offsets.length; i += 4) {
+  // Limitar total de requests para no exceder MAX_TOTAL_REQUESTS_BULK
+  const maxRequests = Math.min(offsets.length + 1, MAX_TOTAL_REQUESTS_BULK);
+  const offsetsLimitados = offsets.slice(0, maxRequests - 1);
+
+  for (let i = 0; i < offsetsLimitados.length; i += MAX_CONCURRENCIA_BULK) {
+    const lote = offsetsLimitados.slice(i, i + MAX_CONCURRENCIA_BULK);
     const respuestas = await Promise.all(
-      offsets.slice(i, i + 4).map((off) =>
+      lote.map((off) =>
         getArticulos({ usuario_id, ...params, limit: LIMITE_PAGINA_BULK, offset: off }).catch((error) => {
           avisarFallo(`offset=${off}`, error);
           return null;
@@ -479,6 +487,10 @@ export async function getArticulosBulk(usuario_id, params = {}, tope = 1000) {
       if (Array.isArray(mas) && mas.length > 0) items.push(...mas);
     }
     if (items.length >= objetivo) break;
+    // Pausa entre tandas para dar respiro al backend (respeta Retry-After si hubo 429)
+    if (i + MAX_CONCURRENCIA_BULK < offsetsLimitados.length) {
+      await dormirConJitter(200);
+    }
   }
   return items.slice(0, objetivo);
 }

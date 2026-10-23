@@ -471,6 +471,7 @@ const TEXTOS_ES = {
       transitorio:
         "El servidor tardó demasiado en responder. Espera unos segundos e inténtalo de nuevo.",
       generico: "Ocurrió un error al iniciar sesión. Inténtalo de nuevo.",
+      cargando: "Cargando...",
       reintentar: "Volver al inicio de sesión",
       inicio: "Ir al inicio",
     },
@@ -1228,6 +1229,7 @@ const TEXTOS_EN = {
       transitorio:
         "The server took too long to respond. Wait a few seconds and try again.",
       generico: "An error occurred while signing in. Try again.",
+      cargando: "Loading...",
       reintentar: "Back to sign in",
       inicio: "Go home",
     },

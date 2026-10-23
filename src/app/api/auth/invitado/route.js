@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { INVITADO_COOKIE, INVITADO_PROVEEDOR, firmarInvitado, invitadoIdDesdeRequest } from "@/lib/invitado";
 import { createUser, deleteUser, getUser } from "@/lib/api";
+import { rateLimit, getClientIp, createRateLimitHeaders } from "@/lib/rateLimit";
 
 function limpiarCookie(res) {
   res.cookies.set(INVITADO_COOKIE, "", { path: "/", maxAge: 0 });
@@ -30,75 +31,98 @@ async function esInvitadoValido(id) {
   }
 }
 
-export async function GET(req) {
-  const id = invitadoIdDesdeRequest(req);
-  if (!id) return NextResponse.json({ invitado: false }, { status: 401 });
-  const u = await esInvitadoValido(id);
-  if (!u) {
-    return limpiarCookie(NextResponse.json({ invitado: false }, { status: 401 }));
+function withRateLimit(req, handler) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(ip, { max: 10, windowMs: 60_000 });
+  const headers = createRateLimitHeaders(rl);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Intente de nuevo en un minuto." },
+      { status: 429, headers }
+    );
   }
-  return NextResponse.json({ invitado: true });
+  const response = handler();
+  if (response instanceof NextResponse) {
+    Object.entries(headers).forEach(([k, v]) => response.headers.set(k, v));
+  }
+  return response;
+}
+
+export async function GET(req) {
+  return withRateLimit(req, async () => {
+    const id = invitadoIdDesdeRequest(req);
+    if (!id) return NextResponse.json({ invitado: false }, { status: 401 });
+    const u = await esInvitadoValido(id);
+    if (!u) {
+      return limpiarCookie(NextResponse.json({ invitado: false }, { status: 401 }));
+    }
+    return NextResponse.json({ invitado: true });
+  });
 }
 
 export async function POST(req) {
-  try {
-    const { action } = await req.json().catch(() => ({}));
-
-    if (action === "salir") {
-      const id = invitadoIdDesdeRequest(req);
-      // Solo se borra si es invitado verificado; si no, solo se limpia la
-      // cookie (nunca una cuenta real).
-      if (id && (await esInvitadoValido(id))) {
-        try {
-          await deleteUser(id);
-        } catch (error) {
-          console.error("Error al eliminar invitado vía API:", error?.message || error);
-        }
-      }
-      return limpiarCookie(NextResponse.json({ ok: true }));
-    }
-
-    // Crear invitado efímero vía API interna.
-    const email = `invitado_${Date.now().toString(36)}${crypto.randomInt(100000, 999999)}@invitado.local`;
-    const secreto = crypto.randomBytes(32).toString("hex");
-    let nuevoId = null;
+  return withRateLimit(req, async () => {
     try {
-      const creado = await createUser({
-        nombre: "Invitado",
-        email,
-        password: secreto,
-        proveedor: INVITADO_PROVEEDOR,
+      const { action } = await req.json().catch(() => ({}));
+
+      if (action === "salir") {
+        const id = invitadoIdDesdeRequest(req);
+        // Solo se borra si es invitado verificado; si no, solo se limpia la
+        // cookie (nunca una cuenta real).
+        if (id && (await esInvitadoValido(id))) {
+          try {
+            await deleteUser(id);
+          } catch (error) {
+            console.error("Error al eliminar invitado vía API:", error?.message || error);
+          }
+        }
+        return limpiarCookie(NextResponse.json({ ok: true }));
+      }
+
+      // Crear invitado efímero vía API interna.
+      const email = `invitado_${Date.now().toString(36)}${crypto.randomInt(100000, 999999)}@invitado.local`;
+      const secreto = crypto.randomBytes(32).toString("hex");
+      let nuevoId = null;
+      try {
+        const creado = await createUser({
+          nombre: "Invitado",
+          email,
+          password: secreto,
+          proveedor: INVITADO_PROVEEDOR,
+        });
+        nuevoId = creado?.user?.id || creado?.usuario?.id || creado?.id || creado?.insertId || null;
+      } catch (error) {
+        console.error("Error al crear invitado vía API:", error?.message || error);
+        return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
+      }
+      if (!nuevoId) {
+        return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
+      }
+      const res = NextResponse.json({ ok: true });
+      res.cookies.set(INVITADO_COOKIE, firmarInvitado(nuevoId), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
       });
-      nuevoId = creado?.user?.id || creado?.usuario?.id || creado?.id || creado?.insertId || null;
+      return res;
     } catch (error) {
-      console.error("Error al crear invitado vía API:", error?.message || error);
+      console.error("Error en modo invitado vía API:", error?.message || error);
       return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
     }
-    if (!nuevoId) {
-      return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
-    }
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set(INVITADO_COOKIE, firmarInvitado(nuevoId), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-    return res;
-  } catch (error) {
-    console.error("Error en modo invitado vía API:", error?.message || error);
-    return NextResponse.json({ error: "No se pudo iniciar como invitado." }, { status: 500 });
-  }
+  });
 }
 
 export async function DELETE(req) {
-  const id = invitadoIdDesdeRequest(req);
-  if (id && (await esInvitadoValido(id))) {
-    try {
-      await deleteUser(id);
-    } catch (error) {
-      console.error("Error al eliminar invitado vía API:", error?.message || error);
+  return withRateLimit(req, async () => {
+    const id = invitadoIdDesdeRequest(req);
+    if (id && (await esInvitadoValido(id))) {
+      try {
+        await deleteUser(id);
+      } catch (error) {
+        console.error("Error al eliminar invitado vía API:", error?.message || error);
+      }
     }
-  }
-  return limpiarCookie(NextResponse.json({ ok: true }));
+    return limpiarCookie(NextResponse.json({ ok: true }));
+  });
 }

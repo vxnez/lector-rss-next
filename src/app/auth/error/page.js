@@ -3,7 +3,7 @@
 // tarjeta del sistema de diseño, en el idioma de la app y con reintento.
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
 import { useIdioma } from "@/lib/i18n";
@@ -21,13 +21,38 @@ const ERRORES_TRANSITORIOS = new Set([
 
 export default function PaginaErrorAuth() {
   const { t } = useIdioma();
-  const [codigo] = useState(() => {
+  const [codigo, setCodigo] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
     try {
-      return new URLSearchParams(window.location.search).get("error") || "";
+      const params = new URLSearchParams(window.location.search);
+      setCodigo(params.get("error") || "");
     } catch {
-      return "";
+      setCodigo("");
     }
-  });
+  }, []);
+
+  // No renderizar mensaje específico hasta que el cliente se haya hidratado
+  // para evitar hydration mismatch (servidor no tiene window.location)
+  if (!mounted) {
+    return (
+      <div className="auth-ambient min-h-screen flex items-center justify-center bg-app-bg text-app-fg p-4">
+        <div className="bezel-outer w-full max-w-md stagger-in relative z-10">
+          <div className="bezel-inner p-8 text-center space-y-4">
+            <span className="mx-auto grid h-12 w-12 place-content-center rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-400">
+              <TriangleAlert size={22} />
+            </span>
+            <h1 className="text-balance text-2xl font-bold tracking-tighter text-app-fg">
+              {t("auth_error.titulo")}
+            </h1>
+            <p className="text-pretty text-sm leading-relaxed text-app-muted">{t("auth_error.cargando")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const mensaje = codigo === "AccessDenied"
     ? t("auth_error.denegado")

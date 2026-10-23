@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node --env-file=.env.local scripts/validate-env.js && next build",
     "start": "next start",
     "lint": "eslint",
     "verify:feeds": "node scripts/verify-feeds.js",
-    "verify:feeds:ci": "node scripts/verify-feeds.js || true"
+    "verify:feeds:ci": "node scripts/verify-feeds.js || true",
+    "validate:env": "node --env-file=.env.local scripts/validate-env.js"
   },
   "dependencies": {
     "animejs": "^4.5.0",
@@ -24,6 +25,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "rss-parser": "^3.13.0",
+    "server-only": "^0.0.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

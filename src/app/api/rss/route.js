@@ -494,11 +494,11 @@ async function buscarPrimerFeed(candidatos) {
   return null;
 }
 
-async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
+async function buscarFeedRSS(urlIngresada, { forzarWeb = false, timeoutMs = 25000 } = {}) {
   const urlLimpia = limpiarUrl(urlIngresada);
   if (!urlLimpia) throw new Error("La URL es obligatoria.");
   if (forzarWeb) {
-    const conversion = await convertirPaginaAFeed(urlLimpia);
+    const conversion = await convertirPaginaAFeed(urlLimpia, { timeoutMs });
     if (conversion?.sinCambios || !conversion?.feed) throw new Error("No se pudo convertir la página a RSS.");
     return { feed: conversion.feed, urlFinal: conversion.urlFinal, convertida: true, paginas: conversion.paginas || 1 };
   }
@@ -517,7 +517,7 @@ async function buscarFeedRSS(urlIngresada, { forzarWeb = false } = {}) {
   obtenerRutasFeed(urlLimpia).forEach((u) => agregarCandidato(candidatos, u, urlLimpia, 40));
   const descubierto = await buscarPrimerFeed(candidatos);
   if (descubierto) return descubierto;
-  const conversion = await convertirPaginaAFeed(urlLimpia);
+  const conversion = await convertirPaginaAFeed(urlLimpia, { timeoutMs });
   if (conversion?.sinCambios || !conversion?.feed) throw new Error("No se pudo detectar un feed RSS válido en esta URL.");
   return { feed: conversion.feed, urlFinal: conversion.urlFinal, convertida: true, paginas: conversion.paginas || 1 };
 }
@@ -724,6 +724,7 @@ export async function POST(req) {
 
     const { feed, urlFinal, convertida, paginas } = await buscarFeedRSS(url_feed, {
       forzarWeb: body.forzar_conversion === true,
+      timeoutMs: 25000,
     });
     if (!feed.items || feed.items.length === 0) {
       throw new Error("La URL es válida, pero no contiene artículos RSS disponibles.");

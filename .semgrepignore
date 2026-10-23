@@ -1,0 +1,65 @@
+# .semgrepignore — Archivos y patrones excluidos del escaneo Semgrep
+
+# Dependencias y lockfiles
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Archivos generados
+*.generated.ts
+*.generated.js
+scripts/verify-feeds.js
+
+# Tests (tienen patrones inseguros intencionales para testing)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/**
+**/__mocks__/
+
+# Configuración
+*.config.js
+*.config.mjs
+*.config.ts
+eslint.config.mjs
+postcss.config.mjs
+tailwind.config.ts
+next.config.mjs
+vercel.json
+
+# Archivos de entorno y secretos (no escanear valores reales)
+.env*
+!.env.example
+
+# Archivos de tipo declaration
+*.d.ts
+
+# Archivos de migración SQL
+sql/
+
+# Documentación
+*.md
+docs/
+
+# Public assets
+public/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archivos temporales
+*.tmp
+*.temp
+.tmp/
+.temp/
