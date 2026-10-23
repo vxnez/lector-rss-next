@@ -76,9 +76,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 proveedor: account.provider,
               });
             } catch (errorCreacion) {
-              // 409 = el usuario ya existe (carrera o 429 previo que sí creó):
-              // dejar pasar y que la sesión lo resuelva.
-              if (Number(errorCreacion?.status) !== 409) throw errorCreacion;
+              // 409 = el usuario ya existe (carrera o 429 previo que sí creó).
+              // 404 = el backend no expone POST /api/users (no implementado):
+              // en ambos casos dejar pasar y que la sesión lo resuelva.
+              const st = Number(errorCreacion?.status);
+              if (st !== 409 && st !== 404) throw errorCreacion;
             }
           } else if (!String(existente.proveedor || "").split(",").includes(account.provider)) {
             try {
