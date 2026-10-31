@@ -30,6 +30,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
   const [iaProgreso, setIaProgreso] = useState(null);
   const iaEnCursoRef = useRef(false);
   const iaAutoRef = useRef(null);
+  const sondeoRef = useRef(null);
   const proveedorRef = useRef(null); // override "groq"|"gemini" o null (default servidor)
   const cambioHechoRef = useRef(false); // un solo failover por corrida
   const procesarColaClasificacion = useCallback(async () => {
@@ -113,7 +114,7 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
         // Sondeo ligero de telemetría backend (~3 s, solo durante la
         // corrida): mantiene vivos los pendientes en esperas largas
         // (reintentarEn hasta 120 s) sin refetch completo. Silencioso.
-        const sondeoProgreso = setInterval(async () => {
+        sondeoRef.current = setInterval(async () => {
           try {
             if (!iaEnCursoRef.current) return;
             const res = await fetch("/api/ia/progreso", { cache: "no-store" });
@@ -205,11 +206,13 @@ export function useIACategorizer({ session, recargarDatos, fetchConteos, onLoteC
           // vista con lo persistido (los parches por lote ya adelantaron).
           recargarDatos();
         } finally {
-          clearInterval(sondeoProgreso);
+          if (sondeoRef.current) clearInterval(sondeoRef.current);
+          sondeoRef.current = null;
           iaEnCursoRef.current = false;
         }
       })().catch(() => {
-        clearInterval(sondeoProgreso);
+        if (sondeoRef.current) clearInterval(sondeoRef.current);
+        sondeoRef.current = null;
         iaEnCursoRef.current = false;
         setIaProgreso({ total: null, procesadas: 0, pendientes: null, estado: "error", diag: null });
       });
