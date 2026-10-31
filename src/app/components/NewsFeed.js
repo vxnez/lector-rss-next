@@ -8,6 +8,7 @@ import { Check as CheckData, CheckCheck as CheckCheckData } from "lucide";
 import { Bookmark as BookmarkData, BookmarkCheck as BookmarkCheckData } from "lucide";
 import MorphIcon from "./MorphIcon";
 import { animarEntradaTarjetas } from "@/lib/animaciones";
+import { animateStagger, prefersReducedMotion } from "@/lib/gsap";
 import { resumenPlano } from "./ResumenEstructurado";
 import InsigniaCategoria from "./InsigniaCategoria";
 import { tiempoLecturaMinutos } from "@/lib/lectura";
