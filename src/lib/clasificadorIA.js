@@ -136,10 +136,23 @@ export function configIA(forzarProveedor) {
   const iaApiKey = String(process.env.IA_API_KEY || "").trim();
   const esGroqKey = iaApiKey.startsWith("gsk_");
 
-  const modelosPropios = String(process.env.IA_MODELOS || "")
+  // Modelos: usar IA_MODELOS solo si contiene modelos compatibles con el proveedor.
+  // Si IA_MODELOS tiene modelos de Groq (con "/") y el proveedor es Gemini,
+  // usar defaults de Gemini para evitar 404.
+  const modelosPropiosRaw = String(process.env.IA_MODELOS || "")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
+
+  // Validar que los modelos sean compatibles con el proveedor
+  const modelosCompatibles = modelosPropiosRaw.filter((m) => {
+    if (proveedor === "groq") return m.includes("/"); // Groq usa "provider/model"
+    if (proveedor === "gemini") return !m.includes("/"); // Gemini no usa "/"
+    return true;
+  });
+
+  const modelosPropios = modelosCompatibles.length > 0 ? modelosCompatibles : [];
+
   if (proveedor === "groq") {
     return {
       proveedor: "groq",
