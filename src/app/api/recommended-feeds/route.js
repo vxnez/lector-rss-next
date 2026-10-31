@@ -1,7 +1,8 @@
 // src/app/api/recommended-feeds/route.js — Feeds recomendados pre-verificados por categoría.
 import { NextResponse } from "next/server";
-import path from "path";
-import { readFile } from "fs/promises";
+
+// Importar JSON directamente para que Next.js lo incluya en el bundle del serverless
+import feedsData from "@/data/recommended-feeds.json";
 
 export async function GET(req) {
   try {
@@ -9,9 +10,7 @@ export async function GET(req) {
     const categoriasParam = searchParams.get("categorias");
     const categorias = categoriasParam ? categoriasParam.split(",").map(c => c.trim()) : null;
 
-    const filePath = path.join(process.cwd(), "src/data/recommended-feeds.json");
-    const fileContent = await readFile(filePath, "utf-8");
-    const data = JSON.parse(fileContent);
+    const data = feedsData;
 
     let feeds = data.categorias;
 
@@ -35,7 +34,7 @@ export async function GET(req) {
       headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" },
     });
   } catch (error) {
-    console.error("Error en GET /api/recommended-feeds:", error);
+    console.error("Error en GET /api/recommended-feeds:", error?.message || error);
     return NextResponse.json({ 
       error: "Error al obtener feeds recomendados",
       categorias: {}, 

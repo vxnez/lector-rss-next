@@ -32,12 +32,14 @@ const nextConfig = {
       "frame-ancestors 'self'",
     ].join("; ");
 
-    // CSP Report-Only: versión objetivo para endurecer (sin unsafe-inline, sin unsafe-eval)
+    // CSP Report-Only: versión objetivo para endurecer
     // Se monitoriza en Vercel Logs / Reporting API antes de activar.
+    // NOTA: Incluye 'unsafe-inline' para no generar reportes falsos de Next.js
+    // inline scripts/styles. El objetivo es solo detectar violaciones reales.
     const cspReportOnly = [
       "default-src 'self'",
-      "script-src 'self'", // sin 'unsafe-inline' — requiere nonces/hashes
-      "style-src 'self'", // sin 'unsafe-inline' — requiere nonces/hashes
+      "script-src 'self' 'unsafe-inline'", // Next.js necesita inline scripts
+      "style-src 'self' 'unsafe-inline'", // Next.js necesita inline styles
       "img-src 'self' http: https: data: blob:",
       "media-src 'self' http: https: blob: data:",
       "font-src 'self' data:",
