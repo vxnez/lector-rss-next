@@ -129,6 +129,13 @@ export function configIA(forzarProveedor) {
   const proveedor = PROVEEDORES_IA.includes(pedido)
     ? pedido
     : String(process.env.IA_PROVEEDOR || "gemini").trim().toLowerCase();
+
+  // Alias: si IA_API_KEY empieza con "gsk_" es key de Groq, si no es Gemini.
+  // Esto evita usar una key de Gemini para Groq (y viceversa) cuando el
+  // usuario solo configura IA_API_KEY sin GROQ_API_KEY/GEMINI_API_KEY.
+  const iaApiKey = String(process.env.IA_API_KEY || "").trim();
+  const esGroqKey = iaApiKey.startsWith("gsk_");
+
   const modelosPropios = String(process.env.IA_MODELOS || "")
     .split(",")
     .map((m) => m.trim())
@@ -137,7 +144,7 @@ export function configIA(forzarProveedor) {
     return {
       proveedor: "groq",
       etiqueta: "Groq",
-      apiKey: process.env.IA_API_KEY || process.env.GROQ_API_KEY || "",
+      apiKey: (esGroqKey ? iaApiKey : "") || process.env.GROQ_API_KEY || "",
       modelos: modelosPropios.length > 0 ? modelosPropios : MODELOS_GROQ,
       baseUrl: "https://api.groq.com/openai/v1",
     };
@@ -145,7 +152,7 @@ export function configIA(forzarProveedor) {
   return {
     proveedor: "gemini",
     etiqueta: "Gemini",
-    apiKey: process.env.IA_API_KEY || process.env.GEMINI_API_KEY || "",
+    apiKey: (!esGroqKey && iaApiKey ? iaApiKey : "") || process.env.GEMINI_API_KEY || "",
     modelos: modelosPropios.length > 0 ? modelosPropios : MODELOS_GEMINI,
     baseUrl: null,
   };
