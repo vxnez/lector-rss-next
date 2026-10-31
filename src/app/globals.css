@@ -214,8 +214,9 @@ textarea:focus-visible {
   inset: 0.65rem auto 0.65rem 0.5rem;
   border-radius: 0.125rem;
   background: var(--accent);
-  transition: transform 300ms ease;
+  transition: transform 250ms var(--ease-out);
   z-index: 4;
+  will-change: transform;
 }
 .github-float-link:hover:after {
   transform: translateX(0.15rem);
@@ -228,8 +229,9 @@ textarea:focus-visible {
   padding: 0.65rem 2rem 0.4rem 1.25rem;
   font-weight: 500;
   font-size: 1.05rem;
-  transition: transform 300ms ease;
+  transition: transform 250ms var(--ease-out);
   z-index: 5;
+  will-change: transform;
 }
 .github-float-link:hover .notititle {
   transform: translateX(0.15rem);
@@ -237,8 +239,9 @@ textarea:focus-visible {
 .github-float .notibody {
   color: var(--muted);
   padding: 0 1.25rem 1rem;
-  transition: transform 300ms ease;
+  transition: transform 250ms var(--ease-out);
   z-index: 5;
+  will-change: transform;
 }
 .github-float-link:hover .notibody {
   transform: translateX(0.25rem);
@@ -258,7 +261,7 @@ textarea:focus-visible {
   height: 1.5rem;
   border-radius: 0.5rem;
   color: #71717a;
-  transition: color 150ms ease-in-out, background-color 150ms ease-in-out;
+  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
 .github-float-close:hover {
   color: #fff;
@@ -361,8 +364,8 @@ textarea:focus-visible {
 @keyframes articulo-apertura {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
-    filter: blur(6px);
+    transform: translateY(10px) scale(0.985);
+    filter: blur(2px);
   }
   100% {
     opacity: 1;
@@ -382,7 +385,7 @@ textarea:focus-visible {
 }
 
 .anim-articulo-apertura {
-  animation: articulo-apertura 0.35s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation: articulo-apertura 0.28s var(--ease-out) both;
   will-change: transform, opacity, filter;
 }
 
@@ -471,34 +474,35 @@ html.tema-anim textarea {
 
 /* Presión física: botones y controles responden al tacto (<300ms, ease-out). */
 .btn-press {
-  transition: transform 160ms var(--ease-out), border-color 200ms var(--ease-out),
-    background-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  transition: transform 120ms var(--ease-out), border-color 180ms var(--ease-out),
+    background-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  will-change: transform;
 }
 .btn-press:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 /* Elevación de tarjeta: hover magnético sutil + presión. */
 .card-lift {
-  transition: transform 250ms var(--ease-out), border-color 250ms var(--ease-out),
-    box-shadow 250ms var(--ease-out), opacity 250ms var(--ease-out);
+  transition: transform 200ms var(--ease-out), border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out), opacity 200ms var(--ease-out);
   will-change: transform;
 }
 @media (hover: hover) and (pointer: fine) {
   .card-lift:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
   }
 }
 .card-lift:active {
-  transform: scale(0.99);
+  transform: scale(0.98);
 }
 
-/* Entrada escalonada: fade-up suave con blur mínimo (máx 4px). */
+/* Entrada escalonada: fade-up suave con blur mínimo (máx 2px). */
 @keyframes ui-stagger-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
-    filter: blur(4px);
+    transform: translateY(8px) scale(0.985);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
@@ -507,7 +511,7 @@ html.tema-anim textarea {
   }
 }
 .stagger-in {
-  animation: ui-stagger-in 500ms var(--ease-out) both;
+  animation: ui-stagger-in 350ms var(--ease-out) both;
   animation-delay: var(--stagger-delay, 0ms);
   will-change: transform, opacity, filter;
 }
@@ -726,12 +730,13 @@ html.tema-anim textarea {
   animation: ui-overlay-in 180ms ease-out both;
 }
 
-/* Modal: entra desde escala 0.95 + 10px abajo + blur (nunca desde 0). */
+/* Modal: entra desde escala 0.95 + 10px abajo + blur (nunca desde 0).
+   Blur reducido a 2px para mejor rendimiento GPU. */
 @keyframes ui-modal-in {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.95);
-    filter: blur(4px);
+    transform: translateY(8px) scale(0.96);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
@@ -740,7 +745,7 @@ html.tema-anim textarea {
   }
 }
 .anim-modal {
-  animation: ui-modal-in 280ms var(--ease-out) both;
+  animation: ui-modal-in 250ms var(--ease-out) both;
   will-change: transform, opacity, filter;
 }
 
@@ -748,8 +753,8 @@ html.tema-anim textarea {
 @keyframes ui-toast-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.97);
-    filter: blur(3px);
+    transform: translateY(8px) scale(0.97);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
@@ -758,7 +763,7 @@ html.tema-anim textarea {
   }
 }
 .anim-toast {
-  animation: ui-toast-in 400ms var(--ease-out) both;
+  animation: ui-toast-in 300ms var(--ease-out) both;
   will-change: transform, opacity, filter;
 }
 
@@ -794,8 +799,9 @@ html.tema-anim textarea {
 
 /* Campo con foco: anillo suave + elevación mínima, curva del sistema. */
 .field-focus {
-  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out),
-    background-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+  transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out),
+    background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+  will-change: border-color, box-shadow;
 }
 .field-focus:focus-within {
   border-color: color-mix(in srgb, var(--accent) 65%, transparent);
