@@ -18,9 +18,9 @@ let version = 0;
 
 export function bumpCacheVersion() {
   version += 1;
+  const prefijo = `${version}|`;
   // Poda perezosa de versiones viejas para acotar memoria.
   if (memoria.size > MAX_ENTRADAS) {
-    const prefijo = `${version}|`;
     for (const clave of memoria.keys()) {
       if (!clave.startsWith(prefijo)) memoria.delete(clave);
       if (memoria.size <= MAX_ENTRADAS) break;
